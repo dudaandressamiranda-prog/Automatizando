@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1f2937" />
+  <title>Portão de Casa</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon.svg" />
+  <link rel="apple-touch-icon" href="icons/icon.svg" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="screen">
+    <h1>Portão de Casa</h1>
+
+    <div class="status-row">
+      <span class="dot" id="connDot"></span>
+      <span id="connText">Desconectado</span>
+    </div>
+
+    <button id="gateButton" class="gate-button" disabled>
+      ABRIR / FECHAR
+    </button>
+
+    <p id="lastStatus" class="last-status">—</p>
+
+    <button id="settingsToggle" class="link-button">Configurar conexão</button>
+
+    <form id="settingsForm" class="settings hidden">
+      <label>
+        Host do broker MQTT (WSS)
+        <input type="text" id="mqttHost" placeholder="xxxx.s1.eu.hivemq.cloud" required />
+      </label>
+      <label>
+        Porta WSS
+        <input type="number" id="mqttPort" placeholder="8884" required />
+      </label>
+      <label>
+        Usuário
+        <input type="text" id="mqttUser" required />
+      </label>
+      <label>
+        Senha
+        <input type="password" id="mqttPass" required />
+      </label>
+      <label>
+        ID do portão (device id)
+        <input type="text" id="deviceId" placeholder="portao-casa-XXXXX" required />
+      </label>
+      <button type="submit" class="primary-button">Salvar e conectar</button>
+    </form>
+  </main>
+
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

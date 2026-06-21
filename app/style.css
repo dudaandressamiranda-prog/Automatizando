@@ -1,0 +1,125 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  background: #111827;
+  color: #f9fafb;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.screen {
+  width: 100%;
+  max-width: 420px;
+  padding: 24px;
+  text-align: center;
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin-bottom: 24px;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 32px;
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  display: inline-block;
+}
+
+.dot.online {
+  background: #22c55e;
+}
+
+.gate-button {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  border: none;
+  background: #2563eb;
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.4);
+}
+
+.gate-button:disabled {
+  background: #374151;
+  box-shadow: none;
+}
+
+.gate-button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.last-status {
+  margin-top: 24px;
+  color: #9ca3af;
+  font-size: 0.85rem;
+  min-height: 1.2em;
+}
+
+.link-button {
+  margin-top: 32px;
+  background: none;
+  border: none;
+  color: #60a5fa;
+  text-decoration: underline;
+  font-size: 0.9rem;
+}
+
+.settings {
+  margin-top: 16px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings.hidden {
+  display: none;
+}
+
+.settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #d1d5db;
+}
+
+.settings input {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #374151;
+  background: #1f2937;
+  color: #f9fafb;
+  font-size: 1rem;
+}
+
+.primary-button {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  font-weight: 600;
+}
