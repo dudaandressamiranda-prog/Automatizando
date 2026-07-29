@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import Papa from 'papaparse';
 import ExcelJS from 'exceljs';
+import { mapCategory } from './catmap.js';
 import { type ColumnMap, type Field, detectColumns } from './columns.js';
 import { cleanBarcode, norm } from './normalize.js';
 
@@ -123,7 +124,7 @@ export function toImportRows(
       barcode,
       brand: cell(record, map.brand),
       supplier: cell(record, map.supplier),
-      category: cell(record, map.category),
+      category: mapCategory(cell(record, map.category)),
       externalId: cell(record, map.externalId),
       externalUrl: cell(record, map.externalUrl),
       photoUrl,

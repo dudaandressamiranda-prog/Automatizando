@@ -103,6 +103,12 @@ Rode sempre a simulação primeiro; o `--apply` só executa o plano exibido.
 > **Produto novo só entra ativo:** linha com situação Inativo/Excluído
 > não vira produto novo; um produto já cadastrado que for inativado no
 > ERP recebe a mudança de situação normalmente na reimportação.
+>
+> **Categorias:** `categorias-mapa.csv` traduz os nomes da planilha para
+> a taxonomia curada do catálogo ("Medicamentos Shopee" → "Medicamentos"
+> etc.) — edite o CSV para ajustar. E a categoria do ERP só **preenche**
+> produto sem categoria: quem já foi categorizado no catálogo não é
+> movido pela reimportação (curadoria manual vence).
 
 ### Relatório de faltantes
 

@@ -134,10 +134,12 @@ export function buildPlan(
       seenDedupe.set(key, row.line);
     }
 
-    // -- categoria ---------------------------------------------------------
-    if (row.category && !knownCategories.has(norm(row.category)) && !newCategories.has(norm(row.category))) {
-      newCategories.set(norm(row.category), row.category);
-    }
+    // categoria só é criada quando alguma linha realmente vai usá-la
+    const useCategory = (name: string) => {
+      if (!knownCategories.has(norm(name)) && !newCategories.has(norm(name))) {
+        newCategories.set(norm(name), name);
+      }
+    };
 
     // -- casamento com o banco --------------------------------------------
     let match: ExistingProduct | undefined;
@@ -172,6 +174,7 @@ export function buildPlan(
         noPhotoSkipped++;
         continue;
       }
+      if (row.category) useCategory(row.category);
       inserts.push({
         name: row.name,
         barcode: row.barcode,
@@ -202,10 +205,11 @@ export function buildPlan(
     }
     if (row.brand && norm(row.brand) !== norm(match.brand ?? '')) changes.brand = row.brand;
     if (row.supplier && norm(row.supplier) !== norm(match.supplier ?? '')) changes.supplier = row.supplier;
-    if (row.category) {
-      const catId = categoryIdByNorm.get(norm(row.category));
-      // categoria nova, ou diferente da atual do produto
-      if (!catId || catId !== match.category_id) changes.categoryName = row.category;
+    // Categoria do ERP só PREENCHE quando o produto ainda não tem —
+    // a curadoria manual feita no catálogo vence a planilha.
+    if (row.category && !match.category_id) {
+      useCategory(row.category);
+      changes.categoryName = row.category;
     }
     if (row.externalId && !match.external_id) changes.external_id = row.externalId;
     if (row.externalUrl) changes.external_url = row.externalUrl;

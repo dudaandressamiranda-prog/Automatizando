@@ -156,24 +156,24 @@ describe('buildPlan', () => {
     expect(plan.warnings[0]).toMatch(/mesmo código de barras/);
   });
 
-  it('categoria diferente da atual gera update; igual não gera', () => {
+  it('categoria do ERP só preenche produto sem categoria (curadoria manual vence)', () => {
     const existing = [
-      product({ id: 'p1', name: 'Ração A', barcode: '7891111111111', category_id: 'cat-1' }),
-      product({ id: 'p2', name: 'Ração B', barcode: '7892222222222', category_id: 'cat-1' }),
+      product({ id: 'p1', name: 'Ração A', barcode: '7891111111111', category_id: 'cat-1' }), // já tem
+      product({ id: 'p2', name: 'Ração B', barcode: '7892222222222', category_id: null }), // sem categoria
     ];
     const plan = buildPlan(
       [
-        row({ name: 'Ração A', barcode: '7891111111111', category: 'Rações' }), // igual
-        row({ name: 'Ração B', barcode: '7892222222222', category: 'Promoções' }), // muda
+        row({ name: 'Ração A', barcode: '7891111111111', category: 'Promoções' }), // NÃO troca
+        row({ name: 'Ração B', barcode: '7892222222222', category: 'Rações' }), // preenche
       ],
       existing,
       [CAT_RACOES],
       'site_admin',
     );
-    expect(plan.unchanged).toBe(1);
+    expect(plan.unchanged).toBe(1); // Ração A intocada
     expect(plan.updates).toHaveLength(1);
-    expect(plan.updates[0]!.changes.categoryName).toBe('Promoções');
-    expect(plan.newCategories).toEqual(['Promoções']);
+    expect(plan.updates[0]!.changes.categoryName).toBe('Rações');
+    expect(plan.newCategories).toEqual([]); // "Promoções" NÃO é criada (ninguém usa)
   });
 });
 
