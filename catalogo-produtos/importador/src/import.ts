@@ -96,6 +96,9 @@ async function main() {
   console.log(`  Produtos novos:        ${plan.inserts.length}`);
   console.log(`  Produtos atualizados:  ${plan.updates.length}`);
   console.log(`  Sem mudança:           ${plan.unchanged}`);
+  if (plan.inactiveSkipped > 0) {
+    console.log(`  Inativos (barrados):   ${plan.inactiveSkipped} — só produtos ativos entram no catálogo.`);
+  }
   if (plan.noPhotoSkipped > 0) {
     console.log(
       `  Sem foto (barrados):   ${plan.noPhotoSkipped} — só entram com foto; ` +

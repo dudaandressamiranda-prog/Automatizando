@@ -99,6 +99,10 @@ Rode sempre a simulação primeiro; o `--apply` só executa o plano exibido.
 > **Produto novo só entra com foto:** linha sem URL de imagem não vira
 > produto novo (mas reimportação de produto já cadastrado atualiza
 > normalmente). Para forçar, use `--incluir-sem-foto`.
+>
+> **Produto novo só entra ativo:** linha com situação Inativo/Excluído
+> não vira produto novo; um produto já cadastrado que for inativado no
+> ERP recebe a mudança de situação normalmente na reimportação.
 
 ### Relatório de faltantes
 

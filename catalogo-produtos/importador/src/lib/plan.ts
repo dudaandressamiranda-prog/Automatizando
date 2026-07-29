@@ -46,12 +46,15 @@ export interface Plan {
   updates: ProductUpdate[];
   unchanged: number;
   noPhotoSkipped: number; // linhas novas sem foto, barradas (política: catálogo só com foto)
+  inactiveSkipped: number; // linhas novas inativas, barradas (política: catálogo só de ativos)
   warnings: string[];
 }
 
 export interface PlanOptions {
   /** Produto novo só entra se tiver foto (padrão). Reimportações de produtos já cadastrados atualizam normalmente. */
   requirePhoto?: boolean;
+  /** Produto novo só entra se estiver ativo (padrão). Produtos já cadastrados recebem a mudança de situação normalmente. */
+  requireActive?: boolean;
 }
 
 /**
@@ -74,8 +77,10 @@ export function buildPlan(
   options: PlanOptions = {},
 ): Plan {
   const requirePhoto = options.requirePhoto ?? true;
+  const requireActive = options.requireActive ?? true;
   const warnings: string[] = [];
   let noPhotoSkipped = 0;
+  let inactiveSkipped = 0;
 
   const byExternal = new Map<string, ExistingProduct>();
   const byBarcode = new Map<string, ExistingProduct>();
@@ -159,6 +164,10 @@ export function buildPlan(
     }
 
     if (!match) {
+      if (requireActive && row.status && row.status !== 'ativo') {
+        inactiveSkipped++;
+        continue;
+      }
       if (requirePhoto && !row.photoUrl) {
         noPhotoSkipped++;
         continue;
@@ -216,6 +225,7 @@ export function buildPlan(
     updates,
     unchanged,
     noPhotoSkipped,
+    inactiveSkipped,
     warnings,
   };
 }
