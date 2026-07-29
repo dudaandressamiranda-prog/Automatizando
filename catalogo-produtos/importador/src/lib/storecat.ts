@@ -14,11 +14,14 @@ export function classifyByStorePath(path: string): string | null {
   const tem = (rx: RegExp) => rx.test(p);
   const porEspecie = (g: string, c: string) => (gato ? g : c);
 
-  if (tem(/racao|alimento umido|sache/)) {
+  if (tem(/racao|alimento umido|sache|umid/)) {
+    if (tem(/umid|umida|sache|pate|lata|enlatad/)) {
+      return porEspecie('Ração para Gatos > Ração Úmida', 'Ração para Cães > Ração Úmida');
+    }
     if (tem(/medicamentos|terapeutic|clinic/)) {
       return porEspecie('Ração para Gatos > Nutrição Clínica', 'Ração para Cães > Nutrição Clínica');
     }
-    return porEspecie('Ração para Gatos', 'Ração para Cães');
+    return porEspecie('Ração para Gatos > Ração Seca', 'Ração para Cães > Ração Seca');
   }
   if (tem(/petisco|bifinho|biscoito|osso|stick|palito|cookie|molho|snack/)) {
     return porEspecie('Ração para Gatos > Petiscos para Gatos', 'Ração para Cães > Petiscos para Cães');

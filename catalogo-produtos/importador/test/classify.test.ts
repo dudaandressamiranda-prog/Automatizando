@@ -7,7 +7,7 @@ describe('classifyByName', () => {
     expect(classifyByName('Comedouro ou Bebedouro Alto Pet Toys 250g')).toBe('Acessórios > Comedouros e Bebedouros');
     expect(classifyByName('PEITORAL H + GUIA TOH Swell P')).toBe('Acessórios > Coleiras e Guias');
     expect(classifyByName('Shampoo Sebotrat S Dr. Clean 200ml')).toBe('Higiene e Limpeza');
-    expect(classifyByName('Ração Golden Gatos Castrados 1kg')).toBe('Ração para Gatos');
+    expect(classifyByName('Ração Golden Gatos Castrados 1kg')).toBe('Ração para Gatos > Ração Seca');
     expect(classifyByName('SEMENTE ALECRIM ORVALHO DO MAR')).toBe('Sementes');
   });
 
@@ -27,6 +27,13 @@ describe('classifyByName', () => {
     expect(classifyByName('CONJ. COLEIRA BASIC G MARINHO')).toBe('Acessórios > Coleiras e Guias');
     // ração terapêutica é ração de prescrição, não medicamento
     expect(classifyByName('Ração Premier Nutrição Clínica Renal Gatos 1,5kg')).toBe('Ração para Gatos > Nutrição Clínica');
+    // úmida ganha até de nutrição clínica; sachê/lata/patê são úmidas
+    expect(classifyByName('WHISKAS SACHE ADULTO FRANGO 85g')).toBe('Ração para Gatos > Ração Úmida');
+    expect(classifyByName('Ração Úmida Royal Canin Lata Urinary Cães')).toBe('Ração para Cães > Ração Úmida');
+    expect(classifyByName('PED SACHE JUNIOR CARNE Cães')).toBe('Ração para Cães > Ração Úmida');
+    // osso sintético é brinquedo, osso comestível é petisco
+    expect(classifyByName('OSSO SILICONE BONINHO GD BIFE Cães')).toBe('Brinquedos');
+    expect(classifyByName('Osso Defumado Natural Cães')).toBe('Ração para Cães > Petiscos para Cães');
     // granulado sanitário é areia
     expect(classifyByName('Granulado Sanitário Katbom Capim Limão')).toBe('Higiene e Limpeza > Areia Higiênica');
     // colar elizabetano e focinheira não são coleira/transporte
@@ -47,7 +54,7 @@ describe('classifyByName', () => {
 
 describe('classifyByStorePath', () => {
   it('traduz a árvore das lojas', () => {
-    expect(classifyByStorePath('/Cachorros/Rações/Ração Seca/')).toBe('Ração para Cães');
+    expect(classifyByStorePath('/Cachorros/Rações/Ração Seca/')).toBe('Ração para Cães > Ração Seca');
     expect(classifyByStorePath('/Gatos/Arranhadores e Brinquedos/Arranhadores/')).toBe('Acessórios > Arranhadores');
     expect(classifyByStorePath('/Cachorro/Proteção e Adestramento/Colar Elizabetano/')).toBe('Acessórios > Colares e Focinheiras');
     expect(classifyByStorePath('/Cachorro/Acessórios para Transporte/Focinheira/')).toBe('Acessórios > Colares e Focinheiras');
