@@ -1,8 +1,8 @@
-import type { Product } from '../lib/types';
+import type { ListProduct } from '../lib/types';
 import { STATUS_LABEL } from '../lib/types';
 
 interface Props {
-  product: Product;
+  product: ListProduct;
   src: string | null;
 }
 

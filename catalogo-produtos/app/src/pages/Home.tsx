@@ -1,9 +1,9 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { ProductCard } from '../components/ProductCard';
 import { SEM_CATEGORIA, topLevel, useCatalog } from '../lib/catalog';
 import { cleanBarcode, norm } from '../lib/normalize';
 import { photoSrc, useSignedUrls } from '../lib/photos';
-import type { Product } from '../lib/types';
+import type { ListProduct } from '../lib/types';
 
 // A biblioteca de leitura de código é pesada — só baixa quando abrir a câmera.
 const Scanner = lazy(() =>
@@ -156,12 +156,32 @@ export function Home({ navigate }: Props) {
   );
 }
 
-export function CardGrid({ products, signed }: { products: Product[]; signed: Record<string, string> }) {
+const PAGINA = 60;
+
+/**
+ * Mostra os produtos em cards, de 60 em 60 — uma categoria grande tem
+ * centenas de itens e renderizar tudo de uma vez trava o celular.
+ */
+export function CardGrid({ products, signed }: { products: ListProduct[]; signed: Record<string, string> }) {
+  const [limite, setLimite] = useState(PAGINA);
+  const chave = products.length > 0 ? products[0]!.id : '';
+
+  // lista mudou (busca nova, outra categoria): volta para a primeira página
+  useEffect(() => setLimite(PAGINA), [chave, products.length]);
+
+  const visiveis = products.slice(0, limite);
   return (
-    <div className="card-grid">
-      {products.map((p) => (
-        <ProductCard key={p.id} product={p} src={photoSrc(p, signed)} />
-      ))}
-    </div>
+    <>
+      <div className="card-grid">
+        {visiveis.map((p) => (
+          <ProductCard key={p.id} product={p} src={photoSrc(p, signed)} />
+        ))}
+      </div>
+      {products.length > limite && (
+        <button className="secondary mais" onClick={() => setLimite((l) => l + PAGINA)}>
+          Mostrar mais ({products.length - limite} restantes)
+        </button>
+      )}
+    </>
   );
 }
