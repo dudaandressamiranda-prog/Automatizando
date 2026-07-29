@@ -15,6 +15,7 @@ import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import Papa from 'papaparse';
 import { detectColumns } from './lib/columns.js';
+import { isIgnorado, loadIgnorados } from './lib/ignorados.js';
 import { cleanBarcode, norm } from './lib/normalize.js';
 import { KIT_NAME, readSpreadsheet } from './lib/parse.js';
 
@@ -66,6 +67,8 @@ async function main() {
   };
   const faltantes: Falta[] = [];
   let presentes = 0;
+  let descartados = 0;
+  const ignorados = loadIgnorados();
 
   for (const r of records) {
     const name = cell(r, map.name);
@@ -74,6 +77,10 @@ async function main() {
     const bc = cleanBarcode(cell(r, map.barcode) || null);
     const barcode = bc.ok ? bc.value : null;
 
+    if (isIgnorado(ignorados, { externalId, barcode })) {
+      descartados++;
+      continue;
+    }
     if ((externalId && inCatalogExternalIds.has(externalId)) || (barcode && inCatalogBarcodes.has(barcode))) {
       presentes++;
       continue;
@@ -120,6 +127,7 @@ async function main() {
 
   console.log('');
   console.log(`No catálogo: ${presentes} linhas da planilha já têm produto correspondente.`);
+  if (descartados > 0) console.log(`Descartados de vez (ignorados.csv): ${descartados}`);
   console.log(`Fora do catálogo: ${faltantes.length}`);
   for (const [k, n] of resumo) console.log(`  ${k}: ${n}`);
 

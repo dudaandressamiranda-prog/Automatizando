@@ -16,6 +16,7 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import { applyPlan, fetchExisting } from './lib/apply.js';
+import { isIgnorado, loadIgnorados } from './lib/ignorados.js';
 import { parseFile } from './lib/parse.js';
 import { buildPlan } from './lib/plan.js';
 
@@ -85,8 +86,10 @@ async function main() {
   const inCatalogIds = new Set(existing.products.map((p) => p.external_id).filter(Boolean));
 
   // alvo: ativo (ou sem situação), sem foto na planilha, com EAN, fora do catálogo
+  const ignorados = loadIgnorados();
   const alvo = parsed.rows.filter(
     (r) =>
+      !isIgnorado(ignorados, r) &&
       (!r.status || r.status === 'ativo') &&
       !r.photoUrl &&
       r.barcode &&

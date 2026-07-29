@@ -18,6 +18,7 @@ import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import { applyPlan, fetchExisting } from './lib/apply.js';
 import type { ColumnMap, Field } from './lib/columns.js';
+import { isIgnorado, loadIgnorados } from './lib/ignorados.js';
 import { parseFile } from './lib/parse.js';
 import { buildPlan } from './lib/plan.js';
 
@@ -68,7 +69,13 @@ async function main() {
 
   console.log(`Lendo ${file}...`);
   const parsed = await parseFile(file, overrides);
+  const ignorados = loadIgnorados();
+  const antes = parsed.rows.length;
+  parsed.rows = parsed.rows.filter((r) => !isIgnorado(ignorados, r));
   console.log(`  ${parsed.rows.length} linhas válidas.`);
+  if (antes > parsed.rows.length) {
+    console.log(`  Descartados de vez (ignorados.csv): ${antes - parsed.rows.length}`);
+  }
   if (parsed.kitsSkipped > 0) {
     console.log(`  Kits/pacotes de anúncio ignorados: ${parsed.kitsSkipped} (só produtos únicos entram no catálogo).`);
   }
