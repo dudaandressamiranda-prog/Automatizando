@@ -5,7 +5,7 @@ const Scanner = lazy(() =>
   import('../components/Scanner').then((m) => ({ default: m.Scanner })),
 );
 import { cleanBarcode, norm } from '../lib/normalize';
-import { supabase } from '../lib/supabase';
+import { PHOTO_BUCKET, supabase } from '../lib/supabase';
 import { STATUS_LABEL, type Category, type Product } from '../lib/types';
 
 const PAGE_SIZE = 50;
@@ -22,7 +22,31 @@ export function ProductList({ navigate }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanMiss, setScanMiss] = useState<string | null>(null);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const debounce = useRef<ReturnType<typeof setTimeout>>();
+
+  // Fotos que estão no bucket privado precisam de URL assinada — pede
+  // todas de uma vez para a página atual (1 chamada, não 1 por produto).
+  useEffect(() => {
+    const paths = products
+      .map((p) => p.photo_path)
+      .filter((x): x is string => Boolean(x));
+    if (paths.length === 0) {
+      setSignedUrls({});
+      return;
+    }
+    supabase.storage
+      .from(PHOTO_BUCKET)
+      .createSignedUrls(paths, 3600)
+      .then(({ data }) => {
+        if (!data) return;
+        const m: Record<string, string> = {};
+        for (const d of data) {
+          if (d.path && d.signedUrl) m[d.path] = d.signedUrl;
+        }
+        setSignedUrls(m);
+      });
+  }, [products]);
 
   useEffect(() => {
     supabase
@@ -120,9 +144,23 @@ export function ProductList({ navigate }: Props) {
       )}
 
       <ul className="product-list">
-        {products.map((p) => (
+        {products.map((p) => {
+          const thumb =
+            (p.photo_path && signedUrls[p.photo_path]) || p.photo_source_url || null;
+          return (
           <li key={p.id}>
             <a href={`#/p/${p.id}`} className="product-row">
+              <div className="thumb">
+                <span aria-hidden>🐾</span>
+                {thumb && (
+                  <img
+                    src={thumb}
+                    alt=""
+                    loading="lazy"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                )}
+              </div>
               <div className="product-main">
                 <span className="product-name">{p.name}</span>
                 <span className="muted small">
@@ -130,16 +168,15 @@ export function ProductList({ navigate }: Props) {
                     .filter(Boolean)
                     .join(' · ') || '—'}
                 </span>
+                {p.barcode && <span className="mono small muted">{p.barcode}</span>}
               </div>
-              <div className="product-side">
-                {p.barcode && <span className="mono small">{p.barcode}</span>}
-                {p.status !== 'ativo' && (
-                  <span className={`badge badge-${p.status}`}>{STATUS_LABEL[p.status]}</span>
-                )}
-              </div>
+              {p.status !== 'ativo' && (
+                <span className={`badge badge-${p.status}`}>{STATUS_LABEL[p.status]}</span>
+              )}
             </a>
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       <a href="#/novo" className="fab" title="Cadastrar produto">+</a>
