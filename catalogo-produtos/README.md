@@ -114,6 +114,23 @@ da planilha, ordenado por prioridade: aptos a importar → ativos sem
 foto → inativos → kits. Cada linha traz nome, código de barras, ID do
 ERP e o motivo de estar fora.
 
+### Robô de fotos
+
+Para os produtos ativos sem foto: procura a imagem na internet pelo
+código de barras (APIs públicas de catálogo de grandes pet shops —
+American Pet, Cobasi) e importa o produto já com a foto:
+
+```bash
+npm run fotos -- ~/Downloads/produtos.csv           # só procura e lista
+npm run fotos -- ~/Downloads/produtos.csv --apply   # importa o que achou
+```
+
+Só aceita foto quando o EAN da loja bate exatamente com o nosso. O que
+o robô não acha (produto sem EAN, apresentação fora de linha) fica no
+relatório de faltantes — resolve-se com busca assistida numa sessão do
+Claude (que combina busca na web + extração da foto da página) ou com
+foto manual pelo app.
+
 ## Passo 3 — O app (`app/`)
 
 App React + TypeScript (Vite) para usar no celular e no computador:
