@@ -28,6 +28,7 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
   const [status, setStatus] = useState<ProductStatus>('ativo');
   const [notes, setNotes] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoUrl, setPhotoUrl] = useState('');
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -92,18 +93,53 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
     return data.id;
   }
 
-  async function uploadPhoto(id: string): Promise<void> {
-    if (!photoFile) return;
-    const ext = (photoFile.name.split('.').pop() || 'jpg').toLowerCase();
-    const path = `products/${id}/${Date.now()}.${ext}`;
+  async function uploadBlob(id: string, blob: Blob, mime: string): Promise<string> {
+    const EXT: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+      'image/avif': 'avif',
+    };
+    const path = `products/${id}/${Date.now()}.${EXT[mime] ?? 'jpg'}`;
     const { error: upErr } = await supabase.storage
       .from(PHOTO_BUCKET)
-      .upload(path, photoFile, { contentType: photoFile.type || 'image/jpeg' });
+      .upload(path, blob, { contentType: mime });
     if (upErr) throw new Error(`A foto não subiu: ${upErr.message}`);
-    const { error: updErr } = await supabase
-      .from('products')
-      .update({ photo_path: path, photo_updated_at: new Date().toISOString() })
-      .eq('id', id);
+    return path;
+  }
+
+  async function savePhoto(id: string): Promise<void> {
+    const link = photoUrl.trim();
+    let path: string | null = null;
+
+    if (photoFile) {
+      path = await uploadBlob(id, photoFile, photoFile.type || 'image/jpeg');
+    } else if (link) {
+      // Tenta baixar a imagem do link para o bucket. Muitos sites bloqueiam
+      // esse download pelo navegador (CORS) — nesse caso guardamos só o
+      // link e a foto é exibida direto de lá.
+      try {
+        const resp = await fetch(link);
+        if (resp.ok) {
+          const blob = await resp.blob();
+          if (['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(blob.type)) {
+            path = await uploadBlob(id, blob, blob.type);
+          }
+        }
+      } catch {
+        // bloqueado pelo site de origem — segue só com o link
+      }
+    }
+
+    const updates: Record<string, string> = {};
+    if (path) {
+      updates.photo_path = path;
+      updates.photo_updated_at = new Date().toISOString();
+    }
+    if (link) updates.photo_source_url = link;
+    if (Object.keys(updates).length === 0) return;
+
+    const { error: updErr } = await supabase.from('products').update(updates).eq('id', id);
     if (updErr) throw new Error(`Foto salva, mas não foi vinculada: ${updErr.message}`);
   }
 
@@ -152,7 +188,7 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
         id = data.id;
       }
 
-      await uploadPhoto(id!);
+      await savePhoto(id!);
       navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -181,7 +217,11 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
       <form onSubmit={onSubmit} className="card form">
         <h2>{editing ? 'Editar produto' : 'Novo produto'}</h2>
 
-        {product?.photo_path && <Photo path={product.photo_path} alt={product.name} />}
+        {product?.photo_path ? (
+          <Photo path={product.photo_path} alt={product.name} />
+        ) : product?.photo_source_url ? (
+          <img src={product.photo_source_url} alt={product.name} className="photo" />
+        ) : null}
 
         <label>
           Nome *
@@ -236,12 +276,23 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
         </label>
 
         <label>
-          {product?.photo_path ? 'Trocar foto' : 'Foto'}
+          {product?.photo_path || product?.photo_source_url ? 'Trocar foto' : 'Foto'}
           <input
             type="file"
             accept="image/*"
             capture="environment"
             onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
+          />
+        </label>
+
+        <label>
+          …ou cole o link da imagem
+          <input
+            type="url"
+            value={photoUrl}
+            onChange={(e) => setPhotoUrl(e.target.value)}
+            placeholder="https://…"
+            disabled={Boolean(photoFile)}
           />
         </label>
 
