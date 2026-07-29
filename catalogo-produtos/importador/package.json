@@ -1,0 +1,25 @@
+{
+  "name": "catalogo-importador",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Importa a planilha exportada do painel admin (CSV/Excel) para o Catálogo de Produtos no Supabase.",
+  "scripts": {
+    "import": "tsx src/import.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "papaparse": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.0",
+    "@types/papaparse": "^5.3.14",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}
