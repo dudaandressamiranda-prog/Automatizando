@@ -24,6 +24,14 @@ describe('classifyByName', () => {
     expect(classifyByName('Ração Premier Nutrição Clínica Renal Gatos 1,5kg')).toBe('Ração para Gatos > Nutrição Clínica');
     // granulado sanitário é areia
     expect(classifyByName('Granulado Sanitário Katbom Capim Limão')).toBe('Higiene e Limpeza > Areia Higiênica');
+    // colar elizabetano e focinheira não são coleira/transporte
+    expect(classifyByName('COLAR ELIZABETANO N 3')).toBe('Acessórios > Colares e Focinheiras');
+    expect(classifyByName('FOCINHEIRA PVC N3 10X6')).toBe('Acessórios > Colares e Focinheiras');
+    // grade de portão × grade higiênica (banheiro do gato)
+    expect(classifyByName('GRADE PORTA PLUS TUBLINE 70 CM')).toBe('Acessórios > Portões e Grades');
+    expect(classifyByName('PET GREEN GRADE HIGENICA')).toBe('Higiene e Limpeza > Areia Higiênica');
+    // enfeite de pelo vai com os laços
+    expect(classifyByName('ADESIVO PIERCING HAIR DOG')).toBe('Acessórios > Laços');
   });
 
   it('prefere não chutar quando a espécie é indefinida', () => {
@@ -36,7 +44,8 @@ describe('classifyByStorePath', () => {
   it('traduz a árvore das lojas', () => {
     expect(classifyByStorePath('/Cachorros/Rações/Ração Seca/')).toBe('Ração para Cães');
     expect(classifyByStorePath('/Gatos/Arranhadores e Brinquedos/Arranhadores/')).toBe('Brinquedos');
-    expect(classifyByStorePath('/Cachorro/Proteção e Adestramento/Colar Elizabetano/')).toBe('Acessórios');
+    expect(classifyByStorePath('/Cachorro/Proteção e Adestramento/Colar Elizabetano/')).toBe('Acessórios > Colares e Focinheiras');
+    expect(classifyByStorePath('/Cachorro/Acessórios para Transporte/Focinheira/')).toBe('Acessórios > Colares e Focinheiras');
     expect(classifyByStorePath('/Gatos/Rações/Ração Medicamentosa/')).toBe('Ração para Gatos > Nutrição Clínica');
     expect(classifyByStorePath('/Cachorros/Ossos e Petiscos/Biscoitos/')).toBe('Ração para Cães > Petiscos para Cães');
     expect(classifyByStorePath('/Alguma/Coisa/Desconhecida/')).toBeNull();

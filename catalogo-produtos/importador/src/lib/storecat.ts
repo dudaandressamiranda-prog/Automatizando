@@ -27,14 +27,18 @@ export function classifyByStorePath(path: string): string | null {
   if (tem(/farmacia|medicament|antiacido|infeccao|coracao|\/pele|vermifug|antipulga/)) return 'Medicamentos';
   if (tem(/areia|banheiro|caixa de areia/)) return 'Higiene e Limpeza > Areia Higiênica';
   if (tem(/comedouro|bebedouro|acessorios (para|de) alimentacao/)) return 'Acessórios > Comedouros e Bebedouros';
+  // a loja põe "Colar Elizabetano" em adestramento e "Focinheira" em
+  // transporte; no catálogo os dois ficam juntos numa categoria própria
+  if (tem(/elizabetano|focinheira/)) return 'Acessórios > Colares e Focinheiras';
   if (tem(/coleira|guia|peitoral/)) return 'Acessórios > Coleiras e Guias';
-  if (tem(/transporte|caixas de transporte|capas para banco|focinheira/)) return 'Acessórios > Transporte';
+  if (tem(/transporte|caixas de transporte|capas para banco/)) return 'Acessórios > Transporte';
   if (tem(/arranhador|brinquedo|mordedor|bolinha/)) return 'Brinquedos';
   if (tem(/cama|colchao|casinha|tapete/)) return 'Acessórios > Camas e Tapetes';
   if (tem(/roupa|vestuario|camiseta/)) return 'Acessórios > Roupas';
   if (tem(/beleza|higiene|banho|sabonete|shampoo|perfume|colonia|escova|pente|rasqueadeira|unha|dente|odor|limpeza|controle de praga/)) {
     return 'Higiene e Limpeza';
   }
-  if (tem(/colar elizabetano|protecao e adestramento|escada/)) return 'Acessórios';
+  if (tem(/grade|portao|escada/)) return 'Acessórios > Portões e Grades';
+  if (tem(/protecao e adestramento/)) return 'Acessórios';
   return null;
 }

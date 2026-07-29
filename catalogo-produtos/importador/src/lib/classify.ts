@@ -37,6 +37,12 @@ export function classifyByName(nome: string): string | null {
     return 'Higiene e Limpeza > Fraldas e Tapetes Higiênicos';
   }
   if (tem(/casinha|dog house/)) return 'Acessórios > Casinhas';
+  // colar elizabetano e focinheira não são coleira — categoria própria
+  if (tem(/elizabetano|focinheira|\bcone\b/)) return 'Acessórios > Colares e Focinheiras';
+  // "grade higiênica" é do banheiro do gato, não portão
+  // (o cadastro do ERP escreve "HIGENICA", sem o i — daí o hig\w*)
+  if (tem(/grade hig\w*|grade sanitaria/)) return 'Higiene e Limpeza > Areia Higiênica';
+  if (tem(/\bgrade\b|portao|port[oõ]es|escada (tub|pet)/)) return 'Acessórios > Portões e Grades';
   if (tem(/adaptil|feliway|feromonio|calmante/)) return 'Medicamentos';
   // ração terapêutica é ração (de prescrição), não medicamento
   if (tem(/nutricao clinica/) ||
@@ -59,7 +65,10 @@ export function classifyByName(nome: string): string | null {
   if (tem(/shampoo|xampu|sabonete|condicionador|colonia|perfume|talco|escova dental|creme dental|banho a seco|limpa (patas|orelhas|lagrima)|higieniza|rasqueadeira|neutralizador|desinfet/)) {
     return 'Higiene e Limpeza';
   }
-  if (tem(/\blac(o|inho)s?\b/)) return 'Acessórios > Laços';
+  // enfeites de pelo (adesivo/piercing/presilha) ficam junto dos laços
+  if (tem(/\blac(o|inho)s?\b|piercing|presilha|(adesivo|enfeite).*(pelo|hair|dog|pet)/)) {
+    return 'Acessórios > Laços';
+  }
   if (tem(/\b(roupa|roupinha|vestido|camiseta|moletom|casaco|babador)\b/)) return 'Acessórios > Roupas';
   if (tem(/pelucia/)) return 'Brinquedos > Pelúcias';
   if (tem(/osso (macio|texturizado|nylon|borracha)|\bbolinha\b|bola de tenis|\bcorda\b/)) return 'Brinquedos';
