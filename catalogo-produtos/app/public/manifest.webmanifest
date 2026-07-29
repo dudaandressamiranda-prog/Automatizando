@@ -1,0 +1,11 @@
+{
+  "name": "Catálogo de Produtos",
+  "short_name": "Catálogo",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8faf8",
+  "theme_color": "#14532d",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

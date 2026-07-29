@@ -13,9 +13,9 @@ próprio, sem nenhuma integração entre os dois.
 
 | Parte | Status |
 | --- | --- |
-| Estrutura do banco (`supabase/migrations/`) | ✅ pronta para rodar |
+| Estrutura do banco (`supabase/migrations/`) | ✅ rodada no projeto Supabase (verificado em 29/07) |
 | Importador de CSV/Excel (`importador/`) | ✅ pronto, com testes |
-| App React (consulta/cadastro, login, leitor de código) | ⏳ próxima etapa |
+| App React (consulta/cadastro, login, leitor de código) | ✅ pronto (`app/`) — falta publicar |
 | Automação de fotos do painel admin | ⏳ depende dos pontos em aberto |
 | Etiquetas | ⏳ design ainda não definido |
 
@@ -24,7 +24,8 @@ próprio, sem nenhuma integração entre os dois.
 ```
 catalogo-produtos/
 ├── supabase/migrations/   # SQL do banco (rodar no projeto Supabase novo)
-└── importador/            # script que importa a planilha do painel admin
+├── importador/            # script que importa a planilha do painel admin
+└── app/                   # app React de consulta/cadastro (celular e desktop)
 ```
 
 ## Passo 1 — Criar o projeto Supabase
@@ -81,6 +82,33 @@ Regras de segurança:
   diferença de acento/caixa ("Rações" ≡ "rações").
 
 Rode sempre a simulação primeiro; o `--apply` só executa o plano exibido.
+
+## Passo 3 — O app (`app/`)
+
+App React + TypeScript (Vite) para usar no celular e no computador:
+
+- **Login** com o usuário criado no Supabase (nada é público);
+- **Busca** por trecho do nome/marca, ignorando acentos ("racao" acha
+  "Ração"), e por código de barras;
+- **Leitor de código de barras** pela câmera (botão 📷) — se o código
+  não existir, oferece cadastrar na hora já com o código preenchido;
+- **Cadastro/edição** com foto (câmera ou galeria), categoria (com
+  criação na hora, sem duplicar por acento/caixa), status e observações;
+- Fotos ficam no bucket privado e aparecem via URL assinada, só logado.
+
+Para rodar localmente:
+
+```bash
+cd app
+npm install
+cp .env.example .env   # preencha com a URL do projeto e a chave anon
+npm run dev            # abre em http://localhost:5173
+```
+
+Para publicar (necessário para a câmera funcionar no celular, que exige
+HTTPS): qualquer host de site estático serve — Vercel, Netlify ou
+Cloudflare Pages. Build com `npm run build` (sai em `app/dist/`),
+configurando as duas variáveis `VITE_*` no painel do host.
 
 ## Decisões sobre a estrutura proposta
 

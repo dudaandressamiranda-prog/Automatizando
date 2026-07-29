@@ -1,0 +1,26 @@
+{
+  "name": "catalogo-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "App do Catálogo de Produtos: consulta, cadastro e leitor de código de barras.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "@zxing/browser": "^0.1.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2"
+  }
+}
