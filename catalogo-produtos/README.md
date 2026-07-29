@@ -83,6 +83,12 @@ Regras de segurança:
 
 Rode sempre a simulação primeiro; o `--apply` só executa o plano exibido.
 
+> **Regra do ERP (Olist/Tiny):** o código de barras (GTIN/EAN) manda,
+> nunca o SKU. No ERP usávamos variações de produto e o SKU ganhava um
+> "x" na frente ou letras extras — então linhas com o mesmo GTIN/EAN
+> são o mesmo produto físico, e o importador mantém só uma. A coluna
+> SKU é ignorada de propósito.
+
 ## Passo 3 — O app (`app/`)
 
 App React + TypeScript (Vite) para usar no celular e no computador:
