@@ -110,6 +110,24 @@ Rode sempre a simulação primeiro; o `--apply` só executa o plano exibido.
 > produto sem categoria: quem já foi categorizado no catálogo não é
 > movido pela reimportação (curadoria manual vence).
 
+### Como um produto ganha categoria
+
+Três evidências, nesta ordem:
+
+1. **categoria da planilha**, traduzida por `categorias-mapa.csv`;
+2. **nome do produto** (`src/lib/classify.ts`) — regras com guardas contra
+   falsos amigos: "osso mordedor" é brinquedo e "osso defumado" é petisco;
+   "tapete gelado" é cama e "tapete higiênico" é higiene; coleira
+   antipulgas é medicamento e coleira comum é acessório; ração renal é
+   nutrição clínica (ração de prescrição), não medicamento;
+3. **categoria que as lojas usam** para aquele código de barras
+   (`src/lib/storecat.ts`), colhida junto com a foto pelo `npm run fotos`.
+
+O classificador devolve `null` quando não tem certeza (ex.: "Ração
+Premium 15kg", sem espécie) — melhor deixar para revisão manual no app do
+que chutar. Foto como referência resolve o resto: produtos cujo cadastro
+no ERP veio sem nome foram identificados abrindo a imagem.
+
 ### Relatório de faltantes
 
 Compara a planilha **completa** do ERP com o catálogo e lista o que está

@@ -14,7 +14,8 @@ describe('toImportRows', () => {
     ]);
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({ line: 2, name: 'Ração X', barcode: '7891234567890', category: 'Rações' });
-    expect(rows[1]).toMatchObject({ line: 3, barcode: null, category: null });
+    // categoria vazia na planilha: o classificador por nome preenche
+    expect(rows[1]).toMatchObject({ line: 3, barcode: null, category: 'Brinquedos' });
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toMatch(/código de barras inválido/);
   });

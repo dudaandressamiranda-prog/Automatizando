@@ -3,6 +3,7 @@ import path from 'node:path';
 import Papa from 'papaparse';
 import ExcelJS from 'exceljs';
 import { mapCategory } from './catmap.js';
+import { classifyByName } from './classify.js';
 import { type ColumnMap, type Field, detectColumns } from './columns.js';
 import { cleanBarcode, isValidEan, norm } from './normalize.js';
 
@@ -151,7 +152,8 @@ export function toImportRows(
       barcode,
       brand: cell(record, map.brand),
       supplier: cell(record, map.supplier),
-      category: mapCategory(cell(record, map.category)),
+      // sem categoria na planilha, o classificador por nome dá o palpite
+      category: mapCategory(cell(record, map.category)) ?? classifyByName(name),
       externalId: cell(record, map.externalId),
       externalUrl: cell(record, map.externalUrl),
       photoUrl,

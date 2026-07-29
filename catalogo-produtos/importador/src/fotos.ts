@@ -19,6 +19,7 @@ import { applyPlan, fetchExisting } from './lib/apply.js';
 import { isIgnorado, loadIgnorados } from './lib/ignorados.js';
 import { parseFile } from './lib/parse.js';
 import { buildPlan } from './lib/plan.js';
+import { classifyByStorePath } from './lib/storecat.js';
 
 /** Lojas com API pública de catálogo (VTEX) consultável por EAN. */
 const SHOPS = ['www.americanpet.com.br', 'www.cobasi.com.br'];
@@ -29,6 +30,7 @@ const UA =
 interface Hit {
   image: string;
   storeName: string;
+  storeCategory: string | null; // categoria que a loja usa (2ª evidência da classificação)
   shop: string;
 }
 
@@ -53,7 +55,13 @@ async function vtexByEan(shop: string, ean: string): Promise<Hit | null> {
       // só aceita se o EAN da loja bate exatamente com o nosso
       if (item.ean === ean || prod.productReference === ean) {
         const image = item.images?.[0]?.imageUrl;
-        if (image) return { image, storeName: prod.productName, shop };
+        if (image) {
+          const storeCategory =
+            (prod.categories ?? [])
+              .map((c: string) => classifyByStorePath(c))
+              .find((c: string | null) => c) ?? null;
+          return { image, storeName: prod.productName, storeCategory, shop };
+        }
       }
     }
   }
@@ -108,6 +116,8 @@ async function main() {
     }
     if (hit) {
       row.photoUrl = hit.image;
+      // nome não deu pista de categoria? usa a que a loja usa para esse EAN
+      if (!row.category && hit.storeCategory) row.category = hit.storeCategory;
       achou++;
       console.log(`  ✓ ${row.name.slice(0, 45).padEnd(47)} [${hit.shop}] "${hit.storeName.slice(0, 40)}"`);
     } else {
