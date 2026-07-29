@@ -5,14 +5,16 @@ import { useCallback, useEffect, useState } from 'react';
  * precisar de um router completo:
  *   #/         início: busca + categorias
  *   #/c/<nome> categoria (nome do grupo, URL-encoded)
- *   #/revisao  produtos sem código de barras (desativados)
- *   #/novo     cadastro (aceita ?barcode=... vindo do leitor)
+ *   #/revisao  produtos sem código de barras (desativados) — admin
+ *   #/logs     atividade recente do catálogo — admin
+ *   #/novo     cadastro (aceita ?barcode=... vindo do leitor) — admin
  *   #/p/<id>   edição de um produto
  */
 export type Route =
   | { page: 'list' }
   | { page: 'category'; group: string }
   | { page: 'review' }
+  | { page: 'logs' }
   | { page: 'new'; barcode?: string }
   | { page: 'product'; id: string };
 
@@ -23,6 +25,7 @@ function parseHash(hash: string): Route {
     return { page: 'new', barcode };
   }
   if (path === '/revisao') return { page: 'review' };
+  if (path === '/logs') return { page: 'logs' };
   const p = path?.match(/^\/p\/(.+)$/);
   if (p) return { page: 'product', id: p[1]! };
   const c = path?.match(/^\/c\/(.+)$/);

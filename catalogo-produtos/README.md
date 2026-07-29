@@ -186,6 +186,24 @@ HTTPS): qualquer host de site estático serve — Vercel, Netlify ou
 Cloudflare Pages. Build com `npm run build` (sai em `app/dist/`),
 configurando as duas variáveis `VITE_*` no painel do host.
 
+## Área administrativa
+
+A barra lateral do app tem uma seção **Administração** (Cadastrar produto,
+A revisar, Logs de atividade) que só aparece para quem está na lista
+`VITE_ADMIN_EMAILS` (emails separados por vírgula, configurada no host).
+Vazia = o único usuário logado é tratado como admin. As rotas admin
+(`#/novo`, `#/revisao`, `#/logs`) também redirecionam para o início quando
+o usuário não é admin.
+
+> **Importante — isto é controle de tela, não de banco.** Esconder o menu
+> não impede um usuário logado de gravar via API, porque hoje o RLS
+> concede `for all to authenticated`. Enquanto só existe o seu login, isso
+> basta. **Quando forem criados logins para funcionários**, é preciso levar
+> o papel de admin para o banco: uma tabela `profiles(user_id, role)` e
+> policies que só deixem `role = 'admin'` escrever, mantendo leitura para
+> os demais. Posso implementar essa migration quando você chegar nessa
+> etapa.
+
 ## Decisões sobre a estrutura proposta
 
 A base é a que você propôs, com estes ajustes (nada travado — dá para
