@@ -15,6 +15,7 @@ function row(partial: Partial<ImportRow> & { name: string }): ImportRow {
     externalUrl: null,
     photoUrl: 'https://foto.exemplo/p.jpg', // regra: produto novo só entra com foto
     status: null,
+    stock: null,
     ...partial,
   };
 }
@@ -205,5 +206,25 @@ describe('regra: produto novo só entra com foto', () => {
     );
     expect(plan.inserts).toHaveLength(1);
     expect(plan.noPhotoSkipped).toBe(0);
+  });
+});
+
+describe('regra: produto novo só entra com estoque', () => {
+  it('barra insert com estoque zerado em todas as lojas; atualiza existente normalmente', () => {
+    const existente = product({ id: 'p1', name: 'Ração A', barcode: '7891111111111' });
+    const plan = buildPlan(
+      [
+        row({ name: 'Ração A', barcode: '7891111111111', brand: 'ACME', stock: 0 }), // update: passa
+        row({ name: 'Parado Sem Saldo', barcode: '7892222222222', stock: 0 }),       // insert: barrado
+        row({ name: 'Tem Saldo', barcode: '7893333333333', stock: 5 }),              // insert: entra
+        row({ name: 'Planilha Sem Coluna', barcode: '7894444444444', stock: null }), // insert: entra
+      ],
+      [existente],
+      [],
+      'erp',
+    );
+    expect(plan.inserts.map((i) => i.name)).toEqual(['Tem Saldo', 'Planilha Sem Coluna']);
+    expect(plan.noStockSkipped).toBe(1);
+    expect(plan.updates).toHaveLength(1);
   });
 });

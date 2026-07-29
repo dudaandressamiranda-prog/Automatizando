@@ -43,3 +43,21 @@ export function cleanBarcode(raw: string | number | null | undefined):
   if (/^[0-9]{6,14}$/.test(s)) return { ok: true, value: s };
   return { ok: false, raw: String(raw) };
 }
+
+/**
+ * Confere o dígito verificador de um EAN/GTIN (8, 12, 13 ou 14 dígitos).
+ * Usado só onde o valor é um palpite — por exemplo o SKU aproveitado como
+ * código de barras: um código interno que "parece" numérico quase nunca
+ * fecha o dígito verificador, então isso evita cadastrar código errado.
+ */
+export function isValidEan(code: string): boolean {
+  if (!/^[0-9]{8}$|^[0-9]{12,14}$/.test(code)) return false;
+  const digits = code.split('').map(Number);
+  const check = digits.pop()!;
+  let sum = 0;
+  // da direita para a esquerda: pesos 3,1,3,1...
+  for (let i = digits.length - 1, peso = 3; i >= 0; i--, peso = peso === 3 ? 1 : 3) {
+    sum += digits[i]! * peso;
+  }
+  return (10 - (sum % 10)) % 10 === check;
+}

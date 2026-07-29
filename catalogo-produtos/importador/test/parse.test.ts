@@ -71,3 +71,27 @@ describe('parseFile (CSV)', () => {
     await expect(parseFile('produtos.pdf')).rejects.toThrow(/não suportada/);
   });
 });
+
+describe('planilha de estoque do painel', () => {
+  it('usa o SKU como código de barras quando o GTIN falta e o SKU é um EAN válido', () => {
+    const { rows } = toImportRows(['Produto', 'SKU', 'GTIN'], [
+      { Produto: 'Abacate Catnip', SKU: '6976245090431', GTIN: '' },
+      { Produto: 'Com GTIN', SKU: 'x7891111111111', GTIN: '7891111111111' },
+      { Produto: 'SKU com letras', SKU: 'areia-bio-fina-4', GTIN: '' },
+    ]);
+    expect(rows[0]!.barcode).toBe('6976245090431'); // recuperado do SKU
+    expect(rows[1]!.barcode).toBe('7891111111111'); // GTIN manda, SKU "x..." ignorado
+    expect(rows[2]!.barcode).toBeNull();            // SKU não numérico não vira código
+  });
+
+  it('lê o estoque total e ignora nomes genéricos', () => {
+    const { rows, genericSkipped } = toImportRows(['Produto', 'Total'], [
+      { Produto: 'Coleira Basic P', Total: '12' },
+      { Produto: 'Brinquedos variados macicos em plastico', Total: '344' },
+      { Produto: 'PRODUTOS A GRANEL', Total: '10' },
+    ]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.stock).toBe(12);
+    expect(genericSkipped).toBe(2);
+  });
+});

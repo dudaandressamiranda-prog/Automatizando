@@ -4,7 +4,7 @@ import Papa from 'papaparse';
 import ExcelJS from 'exceljs';
 import { mapCategory } from './catmap.js';
 import { type ColumnMap, type Field, detectColumns } from './columns.js';
-import { cleanBarcode, norm } from './normalize.js';
+import { cleanBarcode, isValidEan, norm } from './normalize.js';
 
 export type RowStatus = 'ativo' | 'desativado' | 'descontinuado';
 
@@ -20,7 +20,13 @@ export interface ImportRow {
   externalUrl: string | null;
   photoUrl: string | null;
   status: RowStatus | null;
+  /** Estoque somado das lojas, quando a planilha traz. null = planilha não informa. */
+  stock: number | null;
 }
+
+/** Nomes genéricos demais para virar produto de catálogo. */
+const NOME_GENERICO =
+  /^\s*(produtos?|itens?|diversos|avulsos?|sortidos?)\b|\bvariados\b|\ba granel\b/i;
 
 /** Traduz a situação da planilha ("Ativo"/"Inativo"…) para o status do catálogo. */
 const STATUS_MAP: Record<string, RowStatus> = {
@@ -37,6 +43,7 @@ export interface ParseResult {
   columnMap: ColumnMap;
   unmatchedHeaders: string[];
   kitsSkipped: number;
+  genericSkipped: number;
 }
 
 /**
@@ -74,6 +81,7 @@ export function toImportRows(
   const rows: ImportRow[] = [];
   const warnings: string[] = [];
   let kitsSkipped = 0;
+  let genericSkipped = 0;
 
   records.forEach((record, i) => {
     const line = i + 2; // +1 do cabeçalho, +1 porque planilha começa em 1
@@ -93,6 +101,11 @@ export function toImportRows(
       kitsSkipped++;
       return;
     }
+    if (NOME_GENERICO.test(name)) {
+      warnings.push(`Linha ${line} ("${name}"): nome genérico demais para o catálogo — ignorada.`);
+      genericSkipped++;
+      return;
+    }
 
     const rawBarcode = map.barcode ? (record[map.barcode] as string | number | null | undefined) : null;
     const bc = cleanBarcode(rawBarcode ?? null);
@@ -101,6 +114,20 @@ export function toImportRows(
       barcode = bc.value;
     } else {
       warnings.push(`Linha ${line} ("${name}"): código de barras inválido "${bc.raw}" — importada sem código.`);
+    }
+    // Sem código de barras: aceita o SKU só quando ele é um EAN de verdade —
+    // formato certo E dígito verificador fechando. Código interno numérico
+    // (e SKU com "x"/letras do ERP) não passa.
+    if (!barcode && map.sku) {
+      const alt = cleanBarcode((record[map.sku] as string | number | null | undefined) ?? null);
+      if (alt.ok && alt.value && isValidEan(alt.value)) barcode = alt.value;
+    }
+
+    let stock: number | null = null;
+    if (map.stock) {
+      const raw = record[map.stock];
+      const n = typeof raw === 'number' ? raw : Number(String(raw ?? '').replace(',', '.'));
+      stock = Number.isFinite(n) ? n : null;
     }
 
     let photoUrl = cell(record, map.photoUrl);
@@ -129,10 +156,11 @@ export function toImportRows(
       externalUrl: cell(record, map.externalUrl),
       photoUrl,
       status,
+      stock,
     });
   });
 
-  return { rows, warnings, columnMap: map, unmatchedHeaders: unmatched, kitsSkipped };
+  return { rows, warnings, columnMap: map, unmatchedHeaders: unmatched, kitsSkipped, genericSkipped };
 }
 
 async function readCsv(filePath: string): Promise<{ headers: string[]; records: Record<string, unknown>[] }> {

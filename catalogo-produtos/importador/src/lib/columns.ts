@@ -11,7 +11,9 @@ export type Field =
   | 'externalUrl'
   | 'photoUrl'
   | 'status'
-  | 'kind';
+  | 'kind'
+  | 'sku'
+  | 'stock';
 
 /**
  * Cabeçalhos (normalizados) reconhecidos automaticamente.
@@ -23,11 +25,18 @@ const AUTO: Array<[Field, string[]]> = [
   ['brand', ['marca', 'fabricante', 'brand']],
   ['supplier', ['fornecedor', 'supplier']],
   ['category', ['categoria', 'categorias', 'category', 'departamento', 'secao']],
-  ['externalId', ['id', 'codigo', 'cod', 'sku', 'referencia', 'ref', 'slug', 'id do produto']],
+  // "sku" fora de propósito: no ERP o SKU ganha "x"/letras nas variações e não
+  // identifica o produto — quem identifica é o ID (e o código de barras).
+  ['externalId', ['id', 'codigo', 'cod', 'referencia', 'ref', 'slug', 'id do produto']],
   ['externalUrl', ['url', 'link', 'link do produto']],
   ['photoUrl', ['url imagem 1', 'url da imagem', 'url imagem', 'imagem 1', 'imagem', 'foto', 'url da foto', 'link da imagem']],
   ['status', ['situacao', 'status']],
   ['kind', ['tipo do produto', 'tipo do item', 'tipo']],
+  // SKU só é usado como último recurso para o código de barras (planilha de
+  // estoque do painel, onde o SKU costuma ser o próprio EAN). Nas planilhas do
+  // Tiny o SKU tem "x"/letras nas variações e é descartado pela validação.
+  ['sku', ['codigo (sku)', 'sku', 'codigo interno']],
+  ['stock', ['total', 'estoque total', 'saldo', 'estoque']],
 ];
 
 export type ColumnMap = Partial<Record<Field, string>>;

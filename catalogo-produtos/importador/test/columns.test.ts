@@ -3,12 +3,20 @@ import { detectColumns } from '../src/lib/columns.js';
 
 describe('detectColumns', () => {
   it('reconhece cabeçalhos comuns em português', () => {
-    const { map, unmatched } = detectColumns(['Código de Barras', 'Nome', 'Marca', 'Categoria', 'Estoque']);
+    const { map, unmatched } = detectColumns(['Código de Barras', 'Nome', 'Marca', 'Categoria', 'Estoque', 'Preço']);
     expect(map.barcode).toBe('Código de Barras');
     expect(map.name).toBe('Nome');
     expect(map.brand).toBe('Marca');
     expect(map.category).toBe('Categoria');
-    expect(unmatched).toEqual(['Estoque']);
+    expect(map.stock).toBe('Estoque');
+    expect(unmatched).toEqual(['Preço']);
+  });
+
+  it('SKU nunca vira external_id (no ERP ele tem "x"/letras nas variações)', () => {
+    const { map } = detectColumns(['Produto', 'SKU', 'GTIN']);
+    expect(map.externalId).toBeUndefined();
+    expect(map.sku).toBe('SKU');
+    expect(map.barcode).toBe('GTIN');
   });
 
   it('não confunde "Código" (id) com "Código de Barras"', () => {

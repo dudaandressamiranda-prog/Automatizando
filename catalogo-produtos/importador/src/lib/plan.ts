@@ -47,6 +47,7 @@ export interface Plan {
   unchanged: number;
   noPhotoSkipped: number; // linhas novas sem foto, barradas (política: catálogo só com foto)
   inactiveSkipped: number; // linhas novas inativas, barradas (política: catálogo só de ativos)
+  noStockSkipped: number; // linhas novas com estoque zerado em todas as lojas
   warnings: string[];
 }
 
@@ -55,6 +56,12 @@ export interface PlanOptions {
   requirePhoto?: boolean;
   /** Produto novo só entra se estiver ativo (padrão). Produtos já cadastrados recebem a mudança de situação normalmente. */
   requireActive?: boolean;
+  /**
+   * Quando a planilha informa estoque, produto novo só entra se houver saldo
+   * em alguma loja (padrão) — estoque zerado em todas indica cadastro parado.
+   * Planilha sem coluna de estoque não é afetada.
+   */
+  requireStock?: boolean;
 }
 
 /**
@@ -78,9 +85,11 @@ export function buildPlan(
 ): Plan {
   const requirePhoto = options.requirePhoto ?? true;
   const requireActive = options.requireActive ?? true;
+  const requireStock = options.requireStock ?? true;
   const warnings: string[] = [];
   let noPhotoSkipped = 0;
   let inactiveSkipped = 0;
+  let noStockSkipped = 0;
 
   const byExternal = new Map<string, ExistingProduct>();
   const byBarcode = new Map<string, ExistingProduct>();
@@ -170,6 +179,10 @@ export function buildPlan(
         inactiveSkipped++;
         continue;
       }
+      if (requireStock && row.stock !== null && row.stock <= 0) {
+        noStockSkipped++;
+        continue;
+      }
       if (requirePhoto && !row.photoUrl) {
         noPhotoSkipped++;
         continue;
@@ -230,6 +243,7 @@ export function buildPlan(
     unchanged,
     noPhotoSkipped,
     inactiveSkipped,
+    noStockSkipped,
     warnings,
   };
 }

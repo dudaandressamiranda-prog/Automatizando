@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanBarcode, dedupeKey, norm } from '../src/lib/normalize.js';
+import { cleanBarcode, dedupeKey, norm, isValidEan } from '../src/lib/normalize.js';
 
 describe('norm', () => {
   it('remove acentos, caixa e espaços extras', () => {
@@ -43,5 +43,16 @@ describe('cleanBarcode', () => {
     expect(cleanBarcode('ABC123')).toEqual({ ok: false, raw: 'ABC123' });
     expect(cleanBarcode('12345')).toEqual({ ok: false, raw: '12345' });
     expect(cleanBarcode('123456789012345')).toEqual({ ok: false, raw: '123456789012345' });
+  });
+});
+
+describe('isValidEan', () => {
+  it('aceita EANs reais e recusa código interno numérico', () => {
+    expect(isValidEan('7891126001070')).toBe(true);  // Alergovet
+    expect(isValidEan('8713184128188')).toBe(true);  // Pulvex (prefixo holandês)
+    expect(isValidEan('7908275615086')).toBe(true);
+    expect(isValidEan('790827561508')).toBe(false);  // SKU truncado do ERP
+    expect(isValidEan('1234567890123')).toBe(false); // sequência inventada
+    expect(isValidEan('123456')).toBe(false);        // código interno curto
   });
 });

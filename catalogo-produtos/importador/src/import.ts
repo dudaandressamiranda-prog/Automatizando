@@ -96,6 +96,9 @@ async function main() {
   console.log(`  Produtos novos:        ${plan.inserts.length}`);
   console.log(`  Produtos atualizados:  ${plan.updates.length}`);
   console.log(`  Sem mudança:           ${plan.unchanged}`);
+  if (plan.noStockSkipped > 0) {
+    console.log(`  Estoque zerado:        ${plan.noStockSkipped} — sem saldo em nenhuma loja, ficam para depois.`);
+  }
   if (plan.inactiveSkipped > 0) {
     console.log(`  Inativos (barrados):   ${plan.inactiveSkipped} — só produtos ativos entram no catálogo.`);
   }
