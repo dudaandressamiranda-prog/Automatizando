@@ -13,6 +13,8 @@ function row(partial: Partial<ImportRow> & { name: string }): ImportRow {
     category: null,
     externalId: null,
     externalUrl: null,
+    photoUrl: null,
+    status: null,
     ...partial,
   };
 }
@@ -25,6 +27,8 @@ function product(partial: Partial<ExistingProduct> & { id: string; name: string 
     category_id: null,
     source: 'site_admin',
     external_id: null,
+    photo_source_url: null,
+    status: 'ativo',
     dedupe_key: dedupeKey(partial.name, partial.brand ?? null),
     ...partial,
   };

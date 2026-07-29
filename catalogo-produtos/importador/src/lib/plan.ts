@@ -11,6 +11,8 @@ export interface ExistingProduct {
   category_id: string | null;
   source: string;
   external_id: string | null;
+  photo_source_url: string | null;
+  status: string;
   dedupe_key: string;
 }
 
@@ -28,6 +30,8 @@ export interface ProductInsert {
   source: string;
   external_id: string | null;
   external_url: string | null;
+  photo_source_url: string | null;
+  status: string | null; // null = usa o padrão do banco ('ativo')
 }
 
 export interface ProductUpdate {
@@ -155,6 +159,8 @@ export function buildPlan(
         source,
         external_id: row.externalId,
         external_url: row.externalUrl,
+        photo_source_url: row.photoUrl,
+        status: row.status,
       });
       continue;
     }
@@ -181,6 +187,8 @@ export function buildPlan(
     }
     if (row.externalId && !match.external_id) changes.external_id = row.externalId;
     if (row.externalUrl) changes.external_url = row.externalUrl;
+    if (row.photoUrl && row.photoUrl !== match.photo_source_url) changes.photo_source_url = row.photoUrl;
+    if (row.status && row.status !== match.status) changes.status = row.status;
 
     if (Object.keys(changes).length === 0) {
       unchanged++;

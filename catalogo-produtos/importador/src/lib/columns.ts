@@ -8,20 +8,24 @@ export type Field =
   | 'supplier'
   | 'category'
   | 'externalId'
-  | 'externalUrl';
+  | 'externalUrl'
+  | 'photoUrl'
+  | 'status';
 
 /**
  * Cabeçalhos (normalizados) reconhecidos automaticamente.
  * A ordem importa: o primeiro que casar vence.
  */
 const AUTO: Array<[Field, string[]]> = [
-  ['barcode', ['codigo de barras', 'cod de barras', 'cod barras', 'codigo barras', 'ean', 'gtin', 'barcode']],
+  ['barcode', ['codigo de barras', 'cod de barras', 'cod barras', 'codigo barras', 'ean', 'gtin', 'gtin/ean', 'ean/gtin', 'barcode']],
   ['name', ['nome', 'produto', 'nome do produto', 'descricao', 'descricao do produto', 'titulo']],
   ['brand', ['marca', 'fabricante', 'brand']],
   ['supplier', ['fornecedor', 'supplier']],
   ['category', ['categoria', 'categorias', 'category', 'departamento', 'secao']],
   ['externalId', ['id', 'codigo', 'cod', 'sku', 'referencia', 'ref', 'slug', 'id do produto']],
   ['externalUrl', ['url', 'link', 'link do produto']],
+  ['photoUrl', ['url imagem 1', 'url da imagem', 'url imagem', 'imagem 1', 'imagem', 'foto', 'url da foto', 'link da imagem']],
+  ['status', ['situacao', 'status']],
 ];
 
 export type ColumnMap = Partial<Record<Field, string>>;

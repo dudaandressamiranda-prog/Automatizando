@@ -10,7 +10,7 @@
  *   --source=site_admin  origem dos registros (padrão: site_admin)
  *   --map campo="Coluna" força o mapeamento de uma coluna
  *                        (campos: name, barcode, brand, supplier, category,
- *                         externalId, externalUrl)
+ *                         externalId, externalUrl, photoUrl, status)
  */
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
@@ -19,7 +19,7 @@ import type { ColumnMap, Field } from './lib/columns.js';
 import { parseFile } from './lib/parse.js';
 import { buildPlan } from './lib/plan.js';
 
-const VALID_FIELDS: Field[] = ['name', 'barcode', 'brand', 'supplier', 'category', 'externalId', 'externalUrl'];
+const VALID_FIELDS: Field[] = ['name', 'barcode', 'brand', 'supplier', 'category', 'externalId', 'externalUrl', 'photoUrl', 'status'];
 const VALID_SOURCES = ['site_admin', 'pdf_fornecedor', 'erp', 'manual'];
 
 function parseArgs(argv: string[]) {

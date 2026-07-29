@@ -3,7 +3,9 @@ import path from 'node:path';
 import Papa from 'papaparse';
 import ExcelJS from 'exceljs';
 import { type ColumnMap, type Field, detectColumns } from './columns.js';
-import { cleanBarcode } from './normalize.js';
+import { cleanBarcode, norm } from './normalize.js';
+
+export type RowStatus = 'ativo' | 'desativado' | 'descontinuado';
 
 /** Linha da planilha já traduzida para os campos do catálogo. */
 export interface ImportRow {
@@ -15,7 +17,18 @@ export interface ImportRow {
   category: string | null;
   externalId: string | null;
   externalUrl: string | null;
+  photoUrl: string | null;
+  status: RowStatus | null;
 }
+
+/** Traduz a situação da planilha ("Ativo"/"Inativo"…) para o status do catálogo. */
+const STATUS_MAP: Record<string, RowStatus> = {
+  ativo: 'ativo',
+  inativo: 'desativado',
+  desativado: 'desativado',
+  descontinuado: 'descontinuado',
+  excluido: 'descontinuado',
+};
 
 export interface ParseResult {
   rows: ImportRow[];
@@ -66,6 +79,21 @@ export function toImportRows(
       warnings.push(`Linha ${line} ("${name}"): código de barras inválido "${bc.raw}" — importada sem código.`);
     }
 
+    let photoUrl = cell(record, map.photoUrl);
+    if (photoUrl && !/^https?:\/\//i.test(photoUrl)) {
+      warnings.push(`Linha ${line} ("${name}"): "${photoUrl.slice(0, 40)}" não parece um link de imagem — ignorado.`);
+      photoUrl = null;
+    }
+
+    const rawStatus = cell(record, map.status);
+    let status: RowStatus | null = null;
+    if (rawStatus) {
+      status = STATUS_MAP[norm(rawStatus)] ?? null;
+      if (!status) {
+        warnings.push(`Linha ${line} ("${name}"): situação "${rawStatus}" desconhecida — status não alterado.`);
+      }
+    }
+
     rows.push({
       line,
       name,
@@ -75,6 +103,8 @@ export function toImportRows(
       category: cell(record, map.category),
       externalId: cell(record, map.externalId),
       externalUrl: cell(record, map.externalUrl),
+      photoUrl,
+      status,
     });
   });
 

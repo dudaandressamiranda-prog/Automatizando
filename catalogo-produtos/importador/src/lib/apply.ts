@@ -21,7 +21,7 @@ export async function fetchExisting(db: SupabaseClient): Promise<{
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db
       .from('products')
-      .select('id, name, barcode, brand, supplier, category_id, source, external_id, dedupe_key')
+      .select('id, name, barcode, brand, supplier, category_id, source, external_id, photo_source_url, status, dedupe_key')
       .order('created_at', { ascending: true })
       .range(from, from + 999);
     if (error) throw new Error(`Erro lendo produtos: ${error.message}`);
@@ -63,6 +63,8 @@ export async function applyPlan(
       source: p.source,
       external_id: p.external_id,
       external_url: p.external_url,
+      photo_source_url: p.photo_source_url,
+      ...(p.status ? { status: p.status } : {}), // sem situação na planilha → padrão do banco
     }));
     const { error } = await db.from('products').insert(batch);
     if (error) throw new Error(`Erro inserindo produtos (lote a partir do item ${i + 1}): ${error.message}`);
