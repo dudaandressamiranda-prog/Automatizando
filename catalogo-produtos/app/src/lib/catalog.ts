@@ -47,6 +47,9 @@ export function useCatalog() {
         const { data, error: err } = await supabase
           .from('products')
           .select(LIST_COLUMNS)
+          // catálogo mostra só produtos ativos — sem EAN/desativados ficam
+          // no banco para edição, mas fora da vitrine
+          .eq('status', 'ativo')
           .order('name')
           .range(from, from + PAGE - 1);
         if (!alive) return;

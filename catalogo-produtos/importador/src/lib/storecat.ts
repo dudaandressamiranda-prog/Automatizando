@@ -23,17 +23,19 @@ export function classifyByStorePath(path: string): string | null {
   if (tem(/petisco|bifinho|biscoito|osso|stick|palito|cookie|molho|snack/)) {
     return porEspecie('Ração para Gatos > Petiscos para Gatos', 'Ração para Cães > Petiscos para Cães');
   }
-  if (tem(/vitamina|suplement/)) return 'Medicamentos > Vitaminas e Suplementos';
-  if (tem(/farmacia|medicament|antiacido|infeccao|coracao|\/pele|vermifug|antipulga/)) return 'Medicamentos';
+  if (tem(/vitamina|suplement|farmacia|medicament|antiacido|infeccao|coracao|\/pele|vermifug|antipulga/)) {
+    return 'Medicamentos';
+  }
   if (tem(/areia|banheiro|caixa de areia/)) return 'Higiene e Limpeza > Areia Higiênica';
   if (tem(/comedouro|bebedouro|acessorios (para|de) alimentacao/)) return 'Acessórios > Comedouros e Bebedouros';
   // a loja põe "Colar Elizabetano" em adestramento e "Focinheira" em
   // transporte; no catálogo os dois ficam juntos numa categoria própria
   if (tem(/elizabetano|focinheira/)) return 'Acessórios > Colares e Focinheiras';
+  if (tem(/arranhador/)) return 'Acessórios > Arranhadores';
   if (tem(/coleira|guia|peitoral/)) return 'Acessórios > Coleiras e Guias';
   if (tem(/transporte|caixas de transporte|capas para banco/)) return 'Acessórios > Transporte';
-  if (tem(/arranhador|brinquedo|mordedor|bolinha/)) return 'Brinquedos';
-  if (tem(/cama|colchao|casinha|tapete/)) return 'Acessórios > Camas e Tapetes';
+  if (tem(/brinquedo|mordedor|bolinha/)) return 'Brinquedos';
+  if (tem(/cama|colchao|casinha|tapete/)) return 'Acessórios > Camas e Casinhas';
   if (tem(/roupa|vestuario|camiseta/)) return 'Acessórios > Roupas';
   if (tem(/beleza|higiene|banho|sabonete|shampoo|perfume|colonia|escova|pente|rasqueadeira|unha|dente|odor|limpeza|controle de praga/)) {
     return 'Higiene e Limpeza';

@@ -27,18 +27,19 @@ export function classifyByName(nome: string): string | null {
   const esp = especie(n);
   const porEspecie = (gato: string, cao: string) => (esp === 'gato' ? gato : cao);
 
-  if (tem(/\b(brinquedo|mordedor|arranhador)\b/)) {
+  // arranhador tem categoria própria (avaliado antes de "brinquedo")
+  if (tem(/arranhador|\bcat relax\b|super cat/)) return 'Acessórios > Arranhadores';
+  if (tem(/\b(brinquedo|mordedor)\b/)) {
     return tem(/pelucia|boneca/) ? 'Brinquedos > Pelúcias' : 'Brinquedos';
   }
-  if (tem(/tapete gelado|caminha|colchonete|\bcama\b|\bmanta\b|\bcobertor\b/)) {
-    return 'Acessórios > Camas e Tapetes';
+  if (tem(/tapete gelado|caminha|colchonete|\bcama\b|\bmanta\b|\bcobertor\b|casinha|dog house/)) {
+    return 'Acessórios > Camas e Casinhas';
   }
   if (tem(/tapete higienico|tapetim|\bfralda/)) {
     return 'Higiene e Limpeza > Fraldas e Tapetes Higiênicos';
   }
-  if (tem(/casinha|dog house/)) return 'Acessórios > Casinhas';
-  // colar elizabetano e focinheira não são coleira — categoria própria
-  if (tem(/elizabetano|focinheira|\bcone\b/)) return 'Acessórios > Colares e Focinheiras';
+  // colar elizabetano, focinheira e protetor de pescoço — categoria própria
+  if (tem(/elizabetano|focinheira|\bcone\b|protetor.*pesco/)) return 'Acessórios > Colares e Focinheiras';
   // "grade higiênica" é do banheiro do gato, não portão
   // (o cadastro do ERP escreve "HIGENICA", sem o i — daí o hig\w*)
   if (tem(/grade hig\w*|grade sanitaria/)) return 'Higiene e Limpeza > Areia Higiênica';
@@ -49,11 +50,9 @@ export function classifyByName(nome: string): string | null {
       (tem(/\bracao\b/) && tem(/renal|cardio|hepatic|gastrointestinal|obesidade|hipoalergenic|urinary|struvite|diabetic|dermatolog|medicamentosa/))) {
     return porEspecie('Ração para Gatos > Nutrição Clínica', 'Ração para Cães > Nutrição Clínica');
   }
-  if (tem(/antipulga|carrapat|parasit|vermifug|anti.?inflamat|antibiot|antissept|pomada|colirio|otologic|analgesic|sarnicida|mosquicida|cicatriz|seringa|antialergic|anticoncepcional|antiemetic|vacina|dermatite/)) {
+  // coleiras antiparasitárias (por marca ou função) são medicamento, não acessório
+  if (tem(/antipulga|carrapat|parasit|vermifug|anti.?inflamat|antibiot|antissept|pomada|colirio|otologic|analgesic|sarnicida|mosquicida|cicatriz|seringa|antialergic|anticoncepcional|antiemetic|vacina|dermatite|frontmax|ectofend|exctofend|seresto|scalibor|leevre|suplement|vitamin|\bomega\b|probiotic|condroprotet/)) {
     return 'Medicamentos';
-  }
-  if (tem(/suplement|vitamin|\bomega\b|probiotic|condroprotet/)) {
-    return 'Medicamentos > Vitaminas e Suplementos';
   }
   if (tem(/comedouro|bebedouro|\bfonte\b|mamadeira|\bpote pet\b/)) {
     return 'Acessórios > Comedouros e Bebedouros';
@@ -65,9 +64,9 @@ export function classifyByName(nome: string): string | null {
   if (tem(/shampoo|xampu|sabonete|condicionador|colonia|perfume|talco|escova dental|creme dental|banho a seco|limpa (patas|orelhas|lagrima)|higieniza|rasqueadeira|neutralizador|desinfet/)) {
     return 'Higiene e Limpeza';
   }
-  // enfeites de pelo (adesivo/piercing/presilha) ficam junto dos laços
+  // laços e enfeites de pelo (adesivo/piercing/presilha) — sob Armarinho
   if (tem(/\blac(o|inho)s?\b|piercing|presilha|(adesivo|enfeite).*(pelo|hair|dog|pet)/)) {
-    return 'Acessórios > Laços';
+    return 'Armarinho > Laços';
   }
   if (tem(/\b(roupa|roupinha|vestido|camiseta|moletom|casaco|babador)\b/)) return 'Acessórios > Roupas';
   if (tem(/pelucia/)) return 'Brinquedos > Pelúcias';

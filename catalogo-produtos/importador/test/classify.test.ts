@@ -15,10 +15,15 @@ describe('classifyByName', () => {
     // mordedor com "osso" no nome é brinquedo, não petisco
     expect(classifyByName('OSSO MACIO TEXTURIZADO - Vermelho')).toBe('Brinquedos');
     // tapete gelado é cama; tapete higiênico é higiene
-    expect(classifyByName('TAPETE GELADO 50X90 - Osso')).toBe('Acessórios > Camas e Tapetes');
+    expect(classifyByName('TAPETE GELADO 50X90 - Osso')).toBe('Acessórios > Camas e Casinhas');
     expect(classifyByName('Tapete Higiênico Super Secão 30un')).toBe('Higiene e Limpeza > Fraldas e Tapetes Higiênicos');
     // coleira antipulgas é medicamento, coleira comum é acessório
     expect(classifyByName('Coleira Antipulgas Seresto Cães')).toBe('Medicamentos');
+    expect(classifyByName('COLEIRA ECTOFEND P AZUL')).toBe('Medicamentos');
+    expect(classifyByName('COLEIRA LEEVRE 48CM')).toBe('Medicamentos');
+    expect(classifyByName('Arranhador Para Gatos Com Plataforma')).toBe('Acessórios > Arranhadores');
+    expect(classifyByName('PROTETOR DE PESCOCO PET G')).toBe('Acessórios > Colares e Focinheiras');
+    expect(classifyByName('Suplemento Ograx Condroprotetor')).toBe('Medicamentos');
     expect(classifyByName('CONJ. COLEIRA BASIC G MARINHO')).toBe('Acessórios > Coleiras e Guias');
     // ração terapêutica é ração de prescrição, não medicamento
     expect(classifyByName('Ração Premier Nutrição Clínica Renal Gatos 1,5kg')).toBe('Ração para Gatos > Nutrição Clínica');
@@ -31,7 +36,7 @@ describe('classifyByName', () => {
     expect(classifyByName('GRADE PORTA PLUS TUBLINE 70 CM')).toBe('Acessórios > Portões e Grades');
     expect(classifyByName('PET GREEN GRADE HIGENICA')).toBe('Higiene e Limpeza > Areia Higiênica');
     // enfeite de pelo vai com os laços
-    expect(classifyByName('ADESIVO PIERCING HAIR DOG')).toBe('Acessórios > Laços');
+    expect(classifyByName('ADESIVO PIERCING HAIR DOG')).toBe('Armarinho > Laços');
   });
 
   it('prefere não chutar quando a espécie é indefinida', () => {
@@ -43,7 +48,7 @@ describe('classifyByName', () => {
 describe('classifyByStorePath', () => {
   it('traduz a árvore das lojas', () => {
     expect(classifyByStorePath('/Cachorros/Rações/Ração Seca/')).toBe('Ração para Cães');
-    expect(classifyByStorePath('/Gatos/Arranhadores e Brinquedos/Arranhadores/')).toBe('Brinquedos');
+    expect(classifyByStorePath('/Gatos/Arranhadores e Brinquedos/Arranhadores/')).toBe('Acessórios > Arranhadores');
     expect(classifyByStorePath('/Cachorro/Proteção e Adestramento/Colar Elizabetano/')).toBe('Acessórios > Colares e Focinheiras');
     expect(classifyByStorePath('/Cachorro/Acessórios para Transporte/Focinheira/')).toBe('Acessórios > Colares e Focinheiras');
     expect(classifyByStorePath('/Gatos/Rações/Ração Medicamentosa/')).toBe('Ração para Gatos > Nutrição Clínica');
