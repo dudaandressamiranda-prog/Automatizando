@@ -6,6 +6,7 @@
   "description": "Importa a planilha exportada do painel admin (CSV/Excel) para o Catálogo de Produtos no Supabase.",
   "scripts": {
     "import": "tsx src/import.ts",
+    "faltantes": "tsx src/faltantes.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

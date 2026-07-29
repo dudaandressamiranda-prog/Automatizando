@@ -13,7 +13,7 @@ function row(partial: Partial<ImportRow> & { name: string }): ImportRow {
     category: null,
     externalId: null,
     externalUrl: null,
-    photoUrl: null,
+    photoUrl: 'https://foto.exemplo/p.jpg', // regra: produto novo só entra com foto
     status: null,
     ...partial,
   };
@@ -27,7 +27,7 @@ function product(partial: Partial<ExistingProduct> & { id: string; name: string 
     category_id: null,
     source: 'site_admin',
     external_id: null,
-    photo_source_url: null,
+    photo_source_url: 'https://foto.exemplo/p.jpg', // igual ao row(): reimportação idêntica não gera mudança
     status: 'ativo',
     dedupe_key: dedupeKey(partial.name, partial.brand ?? null),
     ...partial,
@@ -174,5 +174,36 @@ describe('buildPlan', () => {
     expect(plan.updates).toHaveLength(1);
     expect(plan.updates[0]!.changes.categoryName).toBe('Promoções');
     expect(plan.newCategories).toEqual(['Promoções']);
+  });
+});
+
+describe('regra: produto novo só entra com foto', () => {
+  it('barra insert sem foto por padrão, mas atualiza produto existente normalmente', () => {
+    const existente = product({ id: 'p1', name: 'Ração A', barcode: '7891111111111' });
+    const plan = buildPlan(
+      [
+        row({ name: 'Ração A', barcode: '7891111111111', brand: 'ACME', photoUrl: null }), // update: passa
+        row({ name: 'Produto Novo Sem Foto', barcode: '7892222222222', photoUrl: null }),  // insert: barrado
+        row({ name: 'Produto Novo Com Foto', barcode: '7893333333333' }),                  // insert: entra
+      ],
+      [existente],
+      [],
+      'erp',
+    );
+    expect(plan.inserts.map((i) => i.name)).toEqual(['Produto Novo Com Foto']);
+    expect(plan.noPhotoSkipped).toBe(1);
+    expect(plan.updates).toHaveLength(1);
+  });
+
+  it('--incluir-sem-foto (requirePhoto: false) deixa entrar', () => {
+    const plan = buildPlan(
+      [row({ name: 'Sem Foto Mesmo', barcode: '7894444444444', photoUrl: null })],
+      [],
+      [],
+      'erp',
+      { requirePhoto: false },
+    );
+    expect(plan.inserts).toHaveLength(1);
+    expect(plan.noPhotoSkipped).toBe(0);
   });
 });

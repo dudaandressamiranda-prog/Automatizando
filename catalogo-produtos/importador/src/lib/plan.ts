@@ -45,7 +45,13 @@ export interface Plan {
   inserts: ProductInsert[];
   updates: ProductUpdate[];
   unchanged: number;
+  noPhotoSkipped: number; // linhas novas sem foto, barradas (política: catálogo só com foto)
   warnings: string[];
+}
+
+export interface PlanOptions {
+  /** Produto novo só entra se tiver foto (padrão). Reimportações de produtos já cadastrados atualizam normalmente. */
+  requirePhoto?: boolean;
 }
 
 /**
@@ -65,8 +71,11 @@ export function buildPlan(
   existingProducts: ExistingProduct[],
   existingCategories: ExistingCategory[],
   source: string,
+  options: PlanOptions = {},
 ): Plan {
+  const requirePhoto = options.requirePhoto ?? true;
   const warnings: string[] = [];
+  let noPhotoSkipped = 0;
 
   const byExternal = new Map<string, ExistingProduct>();
   const byBarcode = new Map<string, ExistingProduct>();
@@ -150,6 +159,10 @@ export function buildPlan(
     }
 
     if (!match) {
+      if (requirePhoto && !row.photoUrl) {
+        noPhotoSkipped++;
+        continue;
+      }
       inserts.push({
         name: row.name,
         barcode: row.barcode,
@@ -202,6 +215,7 @@ export function buildPlan(
     inserts,
     updates,
     unchanged,
+    noPhotoSkipped,
     warnings,
   };
 }

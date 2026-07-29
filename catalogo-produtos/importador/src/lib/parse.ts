@@ -45,7 +45,7 @@ export interface ParseResult {
  *  - nome com cara de anúncio: "2 x ...", "Kit ...", "3 Pacotes ...",
  *    "Combo ..." → pulado com aviso (para conferência no dry-run).
  */
-const KIT_NAME =
+export const KIT_NAME =
   /(^\s*\d+\s*x\s)|(^\s*kit\b)|(^\s*\d+\s+(pacotes?|unidades?|pares?|caixas?|frascos?)\b)|(\bcombo\b)/i;
 
 function cell(record: Record<string, unknown>, col: string | undefined): string | null {
@@ -183,8 +183,10 @@ async function readXlsx(filePath: string): Promise<{ headers: string[]; records:
   return { headers: headers.filter(Boolean), records };
 }
 
-/** Lê CSV ou Excel e devolve as linhas prontas para o plano de importação. */
-export async function parseFile(filePath: string, overrides: ColumnMap = {}): Promise<ParseResult> {
+/** Lê a planilha crua (todas as linhas, sem regra nenhuma) — usada também pelo relatório de faltantes. */
+export async function readSpreadsheet(
+  filePath: string,
+): Promise<{ headers: string[]; records: Record<string, unknown>[] }> {
   const ext = path.extname(filePath).toLowerCase();
   const raw =
     ext === '.csv' || ext === '.tsv'
@@ -193,6 +195,12 @@ export async function parseFile(filePath: string, overrides: ColumnMap = {}): Pr
         ? await readXlsx(filePath)
         : null;
   if (!raw) throw new Error(`Extensão não suportada: "${ext}". Use .csv ou .xlsx.`);
+  return raw;
+}
+
+/** Lê CSV ou Excel e devolve as linhas prontas para o plano de importação. */
+export async function parseFile(filePath: string, overrides: ColumnMap = {}): Promise<ParseResult> {
+  const raw = await readSpreadsheet(filePath);
   return toImportRows(raw.headers, raw.records, overrides);
 }
 

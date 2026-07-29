@@ -8,6 +8,8 @@
  * Opções:
  *   --apply              grava no banco (sem isso, só mostra o que faria)
  *   --source=site_admin  origem dos registros (padrão: site_admin)
+ *   --incluir-sem-foto   importa também produtos novos sem foto
+ *                        (padrão: produto novo só entra se tiver foto)
  *   --map campo="Coluna" força o mapeamento de uma coluna
  *                        (campos: name, barcode, brand, supplier, category,
  *                         externalId, externalUrl, photoUrl, status)
@@ -26,11 +28,13 @@ function parseArgs(argv: string[]) {
   let file: string | undefined;
   let apply = false;
   let source = 'site_admin';
+  let requirePhoto = true;
   const overrides: ColumnMap = {};
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === '--apply') apply = true;
+    else if (arg === '--incluir-sem-foto') requirePhoto = false;
     else if (arg.startsWith('--source=')) source = arg.slice('--source='.length);
     else if (arg === '--map') {
       const pair = argv[++i];
@@ -49,11 +53,11 @@ function parseArgs(argv: string[]) {
   if (!VALID_SOURCES.includes(source)) {
     throw new Error(`--source inválido: ${source}. Válidos: ${VALID_SOURCES.join(', ')}`);
   }
-  return { file, apply, source, overrides };
+  return { file, apply, source, requirePhoto, overrides };
 }
 
 async function main() {
-  const { file, apply, source, overrides } = parseArgs(process.argv.slice(2));
+  const { file, apply, source, requirePhoto, overrides } = parseArgs(process.argv.slice(2));
 
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -77,7 +81,7 @@ async function main() {
   const existing = await fetchExisting(db);
   console.log(`  ${existing.products.length} produtos e ${existing.categories.length} categorias no banco.`);
 
-  const plan = buildPlan(parsed.rows, existing.products, existing.categories, source);
+  const plan = buildPlan(parsed.rows, existing.products, existing.categories, source, { requirePhoto });
 
   console.log('');
   console.log(`Plano (${apply ? 'APLICANDO' : 'simulação — use --apply para gravar'}):`);
@@ -85,6 +89,12 @@ async function main() {
   console.log(`  Produtos novos:        ${plan.inserts.length}`);
   console.log(`  Produtos atualizados:  ${plan.updates.length}`);
   console.log(`  Sem mudança:           ${plan.unchanged}`);
+  if (plan.noPhotoSkipped > 0) {
+    console.log(
+      `  Sem foto (barrados):   ${plan.noPhotoSkipped} — só entram com foto; ` +
+        `use "npm run faltantes" para listar, ou --incluir-sem-foto para forçar.`,
+    );
+  }
 
   const allWarnings = [...parsed.warnings, ...plan.warnings];
   if (allWarnings.length > 0) {

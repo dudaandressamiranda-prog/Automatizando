@@ -95,6 +95,24 @@ Rode sempre a simulação primeiro; o `--apply` só executa o plano exibido.
 > no resumo) e linhas cujo nome parece anúncio (com aviso, para conferir
 > no dry-run). Variações com código de barras próprio são produtos
 > normais e entram.
+>
+> **Produto novo só entra com foto:** linha sem URL de imagem não vira
+> produto novo (mas reimportação de produto já cadastrado atualiza
+> normalmente). Para forçar, use `--incluir-sem-foto`.
+
+### Relatório de faltantes
+
+Compara a planilha **completa** do ERP com o catálogo e lista o que está
+fora e por quê — é a lista de trabalho para ir alimentando aos poucos:
+
+```bash
+npm run faltantes -- ~/Downloads/produtos.csv
+```
+
+Sai um resumo no terminal e um `faltantes.csv` (abre no Excel) ao lado
+da planilha, ordenado por prioridade: aptos a importar → ativos sem
+foto → inativos → kits. Cada linha traz nome, código de barras, ID do
+ERP e o motivo de estar fora.
 
 ## Passo 3 — O app (`app/`)
 
