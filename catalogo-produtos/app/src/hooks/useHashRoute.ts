@@ -3,12 +3,14 @@ import { useCallback, useEffect, useState } from 'react';
 /**
  * Rotas por hash, para o botão "voltar" do celular funcionar sem
  * precisar de um router completo:
- *   #/         lista / busca
+ *   #/         início: busca + categorias
+ *   #/c/<nome> categoria (nome do grupo, URL-encoded)
  *   #/novo     cadastro (aceita ?barcode=... vindo do leitor)
  *   #/p/<id>   edição de um produto
  */
 export type Route =
   | { page: 'list' }
+  | { page: 'category'; group: string }
   | { page: 'new'; barcode?: string }
   | { page: 'product'; id: string };
 
@@ -18,8 +20,10 @@ function parseHash(hash: string): Route {
     const barcode = new URLSearchParams(query ?? '').get('barcode') ?? undefined;
     return { page: 'new', barcode };
   }
-  const m = path?.match(/^\/p\/(.+)$/);
-  if (m) return { page: 'product', id: m[1]! };
+  const p = path?.match(/^\/p\/(.+)$/);
+  if (p) return { page: 'product', id: p[1]! };
+  const c = path?.match(/^\/c\/(.+)$/);
+  if (c) return { page: 'category', group: decodeURIComponent(c[1]!) };
   return { page: 'list' };
 }
 

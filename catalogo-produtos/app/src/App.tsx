@@ -2,9 +2,10 @@ import type { Session } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 import { useHashRoute } from './hooks/useHashRoute';
 import { supabase } from './lib/supabase';
+import { CategoryPage } from './pages/CategoryPage';
+import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { ProductForm } from './pages/ProductForm';
-import { ProductList } from './pages/ProductList';
 
 export function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -38,7 +39,8 @@ export function App() {
         </button>
       </header>
 
-      {route.page === 'list' && <ProductList navigate={navigate} />}
+      {route.page === 'list' && <Home navigate={navigate} />}
+      {route.page === 'category' && <CategoryPage group={route.group} />}
       {route.page === 'new' && <ProductForm navigate={navigate} initialBarcode={route.barcode} />}
       {route.page === 'product' && <ProductForm navigate={navigate} productId={route.id} />}
     </div>

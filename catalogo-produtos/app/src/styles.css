@@ -75,6 +75,134 @@ main { padding: 0 1rem; }
   margin-bottom: 0.75rem;
 }
 
+.section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 1.1rem 0 0.6rem;
+}
+.tiny { font-size: 0.72rem; }
+
+/* -- grade de categorias (foto redonda + nome) ---------------------------- */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.2rem, 1fr));
+  gap: 0.6rem;
+}
+.cat-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.7rem 0.4rem 0.55rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  text-decoration: none;
+  color: inherit;
+  text-align: center;
+  cursor: pointer;
+  font: inherit;
+}
+.cat-tile:active { background: #f0fdf4; }
+.cat-tile.active { border-color: var(--green-light); background: #f0fdf4; }
+.cat-photo {
+  position: relative;
+  width: 3.6rem;
+  height: 3.6rem;
+  border-radius: 50%;
+  background: #f3f4f6;
+  border: 2px solid #dcfce7;
+  display: grid;
+  place-items: center;
+  font-size: 1.3rem;
+  overflow: hidden;
+}
+.cat-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #fff;
+}
+.cat-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.15;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* -- cards de produto ----------------------------------------------------- */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 0.6rem;
+}
+.pcard {
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+}
+.pcard:active { border-color: var(--green-light); }
+.pcard-img {
+  position: relative;
+  aspect-ratio: 1;
+  background: #f3f4f6;
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
+}
+.pcard-img img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #fff;
+}
+.pcard-badge { position: absolute; top: 0.4rem; left: 0.4rem; }
+.pcard-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0.6rem 0.6rem;
+}
+.pcard-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* -- cabeçalho de página interna ------------------------------------------ */
+.page-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.9rem 0 0.4rem;
+  flex-wrap: wrap;
+}
+.page-head h2 { margin: 0; font-size: 1.15rem; color: var(--green); }
+.back {
+  color: var(--green-light);
+  text-decoration: none;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.subcats { margin-bottom: 0.9rem; }
+
 .product-list { list-style: none; margin: 0; padding: 0; }
 .product-row {
   display: flex;
