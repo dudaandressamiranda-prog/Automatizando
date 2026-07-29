@@ -88,6 +88,13 @@ Rode sempre a simulação primeiro; o `--apply` só executa o plano exibido.
 > "x" na frente ou letras extras — então linhas com o mesmo GTIN/EAN
 > são o mesmo produto físico, e o importador mantém só uma. A coluna
 > SKU é ignorada de propósito.
+>
+> **Kits ficam fora:** kits/combos de marketplace ("2 x ...", "Kit ...",
+> "3 Pacotes ...") não são produtos do catálogo. O importador pula
+> linhas com tipo "K" na coluna "Tipo do produto" (sem alarde, só conta
+> no resumo) e linhas cujo nome parece anúncio (com aviso, para conferir
+> no dry-run). Variações com código de barras próprio são produtos
+> normais e entram.
 
 ## Passo 3 — O app (`app/`)
 

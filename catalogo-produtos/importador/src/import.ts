@@ -65,6 +65,9 @@ async function main() {
   console.log(`Lendo ${file}...`);
   const parsed = await parseFile(file, overrides);
   console.log(`  ${parsed.rows.length} linhas válidas.`);
+  if (parsed.kitsSkipped > 0) {
+    console.log(`  Kits/pacotes de anúncio ignorados: ${parsed.kitsSkipped} (só produtos únicos entram no catálogo).`);
+  }
   console.log(`  Colunas reconhecidas: ${Object.entries(parsed.columnMap).map(([f, c]) => `${f}="${c}"`).join(', ')}`);
   if (parsed.unmatchedHeaders.length > 0) {
     console.log(`  Colunas ignoradas: ${parsed.unmatchedHeaders.join(', ')}`);

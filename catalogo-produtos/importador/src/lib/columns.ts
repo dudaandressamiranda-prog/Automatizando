@@ -10,7 +10,8 @@ export type Field =
   | 'externalId'
   | 'externalUrl'
   | 'photoUrl'
-  | 'status';
+  | 'status'
+  | 'kind';
 
 /**
  * Cabeçalhos (normalizados) reconhecidos automaticamente.
@@ -26,6 +27,7 @@ const AUTO: Array<[Field, string[]]> = [
   ['externalUrl', ['url', 'link', 'link do produto']],
   ['photoUrl', ['url imagem 1', 'url da imagem', 'url imagem', 'imagem 1', 'imagem', 'foto', 'url da foto', 'link da imagem']],
   ['status', ['situacao', 'status']],
+  ['kind', ['tipo do produto', 'tipo do item', 'tipo']],
 ];
 
 export type ColumnMap = Partial<Record<Field, string>>;

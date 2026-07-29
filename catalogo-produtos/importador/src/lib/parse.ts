@@ -35,7 +35,18 @@ export interface ParseResult {
   warnings: string[];
   columnMap: ColumnMap;
   unmatchedHeaders: string[];
+  kitsSkipped: number;
 }
+
+/**
+ * Kits/combos de marketplace não entram no catálogo — aqui é só o
+ * cadastro único de cada produto físico. Duas defesas:
+ *  - coluna de tipo do ERP (Tiny/Olist): valor "K" = kit → pulado;
+ *  - nome com cara de anúncio: "2 x ...", "Kit ...", "3 Pacotes ...",
+ *    "Combo ..." → pulado com aviso (para conferência no dry-run).
+ */
+const KIT_NAME =
+  /(^\s*\d+\s*x\s)|(^\s*kit\b)|(^\s*\d+\s+(pacotes?|unidades?|pares?|caixas?|frascos?)\b)|(\bcombo\b)/i;
 
 function cell(record: Record<string, unknown>, col: string | undefined): string | null {
   if (!col) return null;
@@ -61,12 +72,24 @@ export function toImportRows(
 
   const rows: ImportRow[] = [];
   const warnings: string[] = [];
+  let kitsSkipped = 0;
 
   records.forEach((record, i) => {
     const line = i + 2; // +1 do cabeçalho, +1 porque planilha começa em 1
     const name = cell(record, map.name);
     if (!name) {
       warnings.push(`Linha ${line}: sem nome de produto — ignorada.`);
+      return;
+    }
+
+    const kind = cell(record, map.kind);
+    if (kind && norm(kind) === 'k') {
+      kitsSkipped++;
+      return;
+    }
+    if (KIT_NAME.test(name)) {
+      warnings.push(`Linha ${line} ("${name}"): parece kit/pacote de anúncio — ignorada.`);
+      kitsSkipped++;
       return;
     }
 
@@ -108,7 +131,7 @@ export function toImportRows(
     });
   });
 
-  return { rows, warnings, columnMap: map, unmatchedHeaders: unmatched };
+  return { rows, warnings, columnMap: map, unmatchedHeaders: unmatched, kitsSkipped };
 }
 
 async function readCsv(filePath: string): Promise<{ headers: string[]; records: Record<string, unknown>[] }> {
