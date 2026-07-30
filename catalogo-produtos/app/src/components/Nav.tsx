@@ -27,6 +27,7 @@ const ICONE: Record<string, string> = {
   Acessórios: '🎽',
   Armarinho: '🎀',
   Sementes: '🌱',
+  'Coleiras e Guias': '🦮',
 };
 
 export function Nav({ route, onNavigate, onSignOut, email, admin, store, onSwitchStore }: Props) {
