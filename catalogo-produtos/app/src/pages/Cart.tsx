@@ -3,6 +3,7 @@ import {
   createCart, deleteCart, getItems, listCarts, removeItem, useActiveCart,
   type Cart as CartT, type CartItemRow,
 } from '../lib/cart';
+import { photoSrc, useSignedUrls } from '../lib/photos';
 import { storeLabel, type StoreId } from '../lib/store';
 
 interface Props {
@@ -57,6 +58,7 @@ export function Cart({ store, email }: Props) {
   }
 
   const active = carts.find((c) => c.id === activeId) ?? null;
+  const signed = useSignedUrls(items);
 
   return (
     <main className="content">
@@ -108,18 +110,27 @@ export function Cart({ store, email }: Props) {
               Carrinho vazio. Abra uma categoria, marque as bolinhas e salve.
             </p>
           ) : (
-            <ul className="cart-list">
-              {items.map((i) => (
-                <li key={i.id} className="cart-row">
-                  <a href={`#/p/${i.product_id}`} className="cart-name">{i.name}</a>
-                  {i.barcode && <span className="mono tiny muted">{i.barcode}</span>}
-                  <button
-                    className="cart-del"
-                    onClick={async () => { await removeItem(i.id); await reload(); }}
-                    aria-label="Remover"
-                  >✕</button>
-                </li>
-              ))}
+            <ul className="cart-grid">
+              {items.map((i) => {
+                const src = photoSrc(i, signed);
+                return (
+                  <li key={i.id} className="cart-card">
+                    <a href={`#/p/${i.product_id}`} className="cart-card-img">
+                      <span aria-hidden>🐾</span>
+                      {src && <img src={src} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
+                    </a>
+                    <div className="cart-card-body">
+                      <a href={`#/p/${i.product_id}`} className="cart-card-name">{i.name}</a>
+                      {i.barcode && <span className="mono tiny muted">{i.barcode}</span>}
+                    </div>
+                    <button
+                      className="cart-del"
+                      onClick={async () => { await removeItem(i.id); await reload(); }}
+                      aria-label="Remover"
+                    >✕</button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </>

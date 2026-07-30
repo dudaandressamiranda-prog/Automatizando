@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
 import { PHOTO_BUCKET, supabase } from './supabase';
-import type { ListProduct } from './types';
+
+/** Qualquer coisa com foto (produto da lista ou item de carrinho). */
+export interface Photoish {
+  photo_path: string | null;
+  photo_source_url: string | null;
+}
 
 /**
  * URLs assinadas (válidas por 1h) para as fotos que estão no bucket
  * privado — pedidas em lote, 1 chamada para a lista inteira.
  */
-export function useSignedUrls(products: ListProduct[]): Record<string, string> {
+export function useSignedUrls(products: Photoish[]): Record<string, string> {
   const [urls, setUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -36,7 +41,7 @@ export function useSignedUrls(products: ListProduct[]): Record<string, string> {
 }
 
 /** Melhor imagem disponível para um produto (bucket assinado > link externo). */
-export function photoSrc(p: ListProduct, signed: Record<string, string>): string | null {
+export function photoSrc(p: Photoish, signed: Record<string, string>): string | null {
   if (p.photo_path && signed[p.photo_path]) return signed[p.photo_path];
   return p.photo_source_url || null;
 }

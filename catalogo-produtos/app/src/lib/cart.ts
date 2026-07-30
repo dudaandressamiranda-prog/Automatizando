@@ -20,6 +20,8 @@ export interface CartItemRow {
   added_at: string;
   name: string;
   barcode: string | null;
+  photo_path: string | null;
+  photo_source_url: string | null;
 }
 
 export interface NewItem {
@@ -70,12 +72,14 @@ export async function deleteCart(id: string): Promise<void> {
 export async function getItems(cartId: string): Promise<CartItemRow[]> {
   const { data, error } = await supabase
     .from('cart_items')
-    .select('id, product_id, added_by, added_at, products(name, barcode)')
+    .select('id, product_id, added_by, added_at, products(name, barcode, photo_path, photo_source_url)')
     .eq('cart_id', cartId)
     .order('added_at', { ascending: true });
   if (error) throw error;
   return (data ?? []).map((r: Record<string, unknown>) => {
-    const prod = r.products as { name?: string; barcode?: string | null } | null;
+    const prod = r.products as
+      | { name?: string; barcode?: string | null; photo_path?: string | null; photo_source_url?: string | null }
+      | null;
     return {
       id: r.id as string,
       product_id: r.product_id as string,
@@ -83,6 +87,8 @@ export async function getItems(cartId: string): Promise<CartItemRow[]> {
       added_at: r.added_at as string,
       name: prod?.name ?? '(produto removido)',
       barcode: prod?.barcode ?? null,
+      photo_path: prod?.photo_path ?? null,
+      photo_source_url: prod?.photo_source_url ?? null,
     };
   });
 }
