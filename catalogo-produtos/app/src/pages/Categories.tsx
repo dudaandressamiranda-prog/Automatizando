@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { countByCategory, createCategory, deleteCategory, renameCategory, subPath, topLevel } from '../lib/catalog';
+import { norm } from '../lib/normalize';
 import { supabase } from '../lib/supabase';
 import type { Category } from '../lib/types';
+
+const partsOf = (name: string) => name.split('>').map((s) => s.trim());
 
 /**
  * Menu de categorias (admin): cria categoria nova (nível 1) ou subcategoria
@@ -39,6 +42,31 @@ export function Categories() {
     () => [...new Set(categories.map((c) => topLevel(c.name)))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
     [categories],
   );
+
+  // sugestões que dependem do que já foi digitado nos campos acima —
+  // evita duplicar categoria por erro de digitação
+  const subsExistentes = useMemo(() => {
+    const g = norm(grupo);
+    if (!g) return [];
+    const set = new Set<string>();
+    for (const c of categories) {
+      const ps = partsOf(c.name);
+      if (ps.length >= 2 && norm(ps[0]) === g) set.add(ps[1]!);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [categories, grupo]);
+
+  const subsubsExistentes = useMemo(() => {
+    const g = norm(grupo);
+    const s = norm(sub);
+    if (!g || !s) return [];
+    const set = new Set<string>();
+    for (const c of categories) {
+      const ps = partsOf(c.name);
+      if (ps.length >= 3 && norm(ps[0]) === g && norm(ps[1]) === s) set.add(ps[2]!);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [categories, grupo, sub]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Category[]>();
@@ -145,17 +173,25 @@ export function Categories() {
           {gruposExistentes.map((g) => <option key={g} value={g} />)}
         </datalist>
         <input
+          list="subs-existentes"
           placeholder="Subcategoria (opcional)"
           value={sub}
           onChange={(e) => { setSub(e.target.value); if (!e.target.value.trim()) setSubsub(''); }}
         />
+        <datalist id="subs-existentes">
+          {subsExistentes.map((s) => <option key={s} value={s} />)}
+        </datalist>
         <input
+          list="subsubs-existentes"
           placeholder="Mais um nível (opcional)"
           value={subsub}
           onChange={(e) => setSubsub(e.target.value)}
           disabled={!sub.trim()}
           title={sub.trim() ? undefined : 'Preencha a subcategoria primeiro'}
         />
+        <datalist id="subsubs-existentes">
+          {subsubsExistentes.map((s) => <option key={s} value={s} />)}
+        </datalist>
         <button className="primary" onClick={criar} disabled={busy || !grupo.trim()}>
           {busy ? 'Criando…' : 'Criar categoria'}
         </button>
