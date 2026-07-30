@@ -80,6 +80,17 @@ export function useCatalog() {
   return { products, categories, loading, error, reload };
 }
 
+/** Cria uma categoria nova (uso do admin). Nome duplicado vira erro amigável. */
+export async function createCategory(name: string): Promise<void> {
+  const clean = name.trim();
+  if (!clean) throw new Error('Nome da categoria não pode ser vazio.');
+  const { error } = await supabase.from('categories').insert({ name: clean });
+  if (error) {
+    if (error.code === '23505') throw new Error('Essa categoria já existe.');
+    throw new Error(error.message);
+  }
+}
+
 /**
  * Atribui uma categoria para vários produtos de uma vez (uso do admin, para
  * corrigir categorização em massa). Faz em lotes para não estourar o limite

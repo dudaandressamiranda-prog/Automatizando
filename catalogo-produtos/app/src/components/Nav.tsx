@@ -87,6 +87,13 @@ export function Nav({ route, onNavigate, onSignOut, email, admin, store, onSwitc
             <span className="nav-ico">➕</span> Cadastrar produto
           </a>
           <a
+            href="#/categorias"
+            className={`nav-item ${route.page === 'categories' ? 'active' : ''}`}
+            onClick={onNavigate}
+          >
+            <span className="nav-ico">🗂️</span> Criar categoria
+          </a>
+          <a
             href="#/revisao"
             className={`nav-item ${route.page === 'review' ? 'active' : ''}`}
             onClick={onNavigate}

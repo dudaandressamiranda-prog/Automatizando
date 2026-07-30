@@ -573,6 +573,8 @@ body {
 .perm-form select { padding: 0.65rem 0.9rem; border: 1px solid var(--border); border-radius: 0.6rem; font-size: 1rem; background: #fff; }
 .perm-list { list-style: none; margin: 0; padding: 0; }
 .perm-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 0.25rem; border-bottom: 1px solid var(--border); }
+.cat-group-row { flex-wrap: wrap; }
+.cat-group-row .perm-email { font-weight: 700; color: var(--green); flex: 0 0 auto; }
 .perm-email { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .perm-store { background: var(--green-soft); color: var(--green); }
 
