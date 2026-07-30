@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { handleAuthError } from './authError';
 import { supabase } from './supabase';
-import { LIST_COLUMNS, type Category, type ListProduct } from './types';
+import { LIST_COLUMNS, type Category, type ListProduct, type ProductStatus } from './types';
 
 /** O Supabase devolve no máximo 1000 linhas por requisição. */
 const PAGE = 1000;
@@ -144,6 +144,21 @@ export async function bulkSetCategory(ids: string[], categoryId: string): Promis
     const { error } = await supabase
       .from('products')
       .update({ category_id: categoryId })
+      .in('id', ids.slice(i, i + 80));
+    if (error) throw error;
+  }
+}
+
+/**
+ * Muda o status de vários produtos de uma vez (uso do admin, ex.: desativar
+ * em massa). Produto desativado some da vitrine mas continua salvo — dá
+ * pra reativar depois. Faz em lotes para não estourar o limite da requisição.
+ */
+export async function bulkSetStatus(ids: string[], status: ProductStatus): Promise<void> {
+  for (let i = 0; i < ids.length; i += 80) {
+    const { error } = await supabase
+      .from('products')
+      .update({ status })
       .in('id', ids.slice(i, i + 80));
     if (error) throw error;
   }

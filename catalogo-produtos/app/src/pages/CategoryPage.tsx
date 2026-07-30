@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CardGrid } from './Home';
-import { SEM_CATEGORIA, bulkSetCategory, subPath, topLevel, useCatalog } from '../lib/catalog';
+import { SEM_CATEGORIA, bulkSetCategory, bulkSetStatus, subPath, topLevel, useCatalog } from '../lib/catalog';
 import { availableBrands, productHasBrand } from '../lib/brands';
 import { useCartSaver } from '../lib/cart';
 import { norm } from '../lib/normalize';
@@ -97,6 +97,25 @@ export function CategoryPage({ group, store, email, admin }: Props) {
     }
   }
 
+  async function desativarSelecionados() {
+    const ids = Object.keys(catPicked);
+    if (ids.length === 0) return;
+    const ok = confirm(
+      `Desativar ${ids.length} produto${ids.length === 1 ? '' : 's'}? Eles saem da vitrine, mas continuam salvos — dá pra reativar depois em "A revisar".`,
+    );
+    if (!ok) return;
+    setApplying(true);
+    try {
+      await bulkSetStatus(ids, 'desativado');
+      setCatPicked({});
+      setTargetCat('');
+      setCatMode(false);
+      reload();
+    } finally {
+      setApplying(false);
+    }
+  }
+
   const nPicked = Object.keys(picked).length;
   const nCatPicked = Object.keys(catPicked).length;
   const allCatsSorted = useMemo(
@@ -175,7 +194,7 @@ export function CategoryPage({ group, store, email, admin }: Props) {
 
       {catMode && (
         <div className="notice">
-          Modo de categorização em massa: toque nos produtos para selecionar e escolha a categoria de destino lá embaixo.
+          Modo de categorização em massa: toque nos produtos para selecionar e, lá embaixo, mude a categoria deles ou desative-os de uma vez.
         </div>
       )}
 
@@ -260,6 +279,9 @@ export function CategoryPage({ group, store, email, admin }: Props) {
           </select>
           <button className="selbar-save" onClick={aplicarCategoria} disabled={applying || !targetCat}>
             {applying ? 'Aplicando…' : 'Aplicar'}
+          </button>
+          <button className="selbar-danger" onClick={desativarSelecionados} disabled={applying}>
+            Desativar
           </button>
         </div>
       )}
