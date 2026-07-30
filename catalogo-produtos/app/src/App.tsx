@@ -102,7 +102,9 @@ export function App() {
 
       <div className="main">
         {(blocked || route.page === 'list') && <Home navigate={navigate} />}
-        {!blocked && route.page === 'category' && <CategoryPage group={route.group} store={active} email={email} admin={admin} />}
+        {!blocked && route.page === 'category' && (
+          <CategoryPage group={route.group} initialSub={route.sub ?? null} store={active} email={email} admin={admin} />
+        )}
         {!blocked && route.page === 'cart' && <Cart store={active} email={email} />}
         {!blocked && route.page === 'cartsAdmin' && <CartsAdmin email={email} />}
         {!blocked && route.page === 'permissions' && <Permissions />}

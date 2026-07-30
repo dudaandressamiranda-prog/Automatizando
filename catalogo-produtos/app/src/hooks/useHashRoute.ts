@@ -12,7 +12,7 @@ import { useCallback, useEffect, useState } from 'react';
  */
 export type Route =
   | { page: 'list' }
-  | { page: 'category'; group: string }
+  | { page: 'category'; group: string; sub?: string }
   | { page: 'cart' }
   | { page: 'cartsAdmin' }
   | { page: 'permissions' }
@@ -37,7 +37,10 @@ function parseHash(hash: string): Route {
   const p = path?.match(/^\/p\/(.+)$/);
   if (p) return { page: 'product', id: p[1]! };
   const c = path?.match(/^\/c\/(.+)$/);
-  if (c) return { page: 'category', group: decodeURIComponent(c[1]!) };
+  if (c) {
+    const sub = new URLSearchParams(query ?? '').get('sub') ?? undefined;
+    return { page: 'category', group: decodeURIComponent(c[1]!), sub };
+  }
   return { page: 'list' };
 }
 

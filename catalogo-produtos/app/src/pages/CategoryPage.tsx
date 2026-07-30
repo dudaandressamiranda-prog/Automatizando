@@ -10,21 +10,30 @@ import type { StoreId } from '../lib/store';
 
 interface Props {
   group: string; // 1º nível ("Acessórios") ou SEM_CATEGORIA
+  initialSub?: string | null; // veio de um link direto de subcategoria (menu lateral)
   store: StoreId | null;
   email: string | null;
   admin: boolean;
 }
 
-export function CategoryPage({ group, store, email, admin }: Props) {
+export function CategoryPage({ group, initialSub, store, email, admin }: Props) {
   const { products, categories, loading, error, reload } = useCatalog();
   const signed = useSignedUrls(products);
   const { save } = useCartSaver(store, email);
   const [saving, setSaving] = useState(false);
-  const [sub, setSub] = useState<string | null>(null); // id da categoria filtrada
+  const [sub, setSub] = useState<string | null>(initialSub ?? null); // id da categoria filtrada
+  // veio de um link direto pra subcategoria: mostra só ela, sem o grid de todas
+  const [hideTiles, setHideTiles] = useState(Boolean(initialSub));
   const [showSearch, setShowSearch] = useState(false);
   const [q, setQ] = useState('');
   const [brand, setBrand] = useState<string | null>(null);
   const [picked, setPicked] = useState<Record<string, { name: string; barcode: string | null }>>({});
+
+  // troca de categoria pelo menu (mesma instância do componente, só props mudam)
+  useEffect(() => {
+    setSub(initialSub ?? null);
+    setHideTiles(Boolean(initialSub));
+  }, [group, initialSub]);
 
   // modo "categorizar em massa" — só admin, para corrigir cadastros errados
   const [catMode, setCatMode] = useState(false);
@@ -226,7 +235,13 @@ export function CategoryPage({ group, store, email, admin }: Props) {
       {error && <p className="error">{error}</p>}
       {loading && <p className="muted center-msg">Carregando…</p>}
 
-      {subTiles.length > 0 && (
+      {subTiles.length > 0 && hideTiles && (
+        <button className="link-muted cat-show-subs" onClick={() => setHideTiles(false)}>
+          Ver todas as subcategorias
+        </button>
+      )}
+
+      {subTiles.length > 0 && !hideTiles && (
         <div className="cat-grid subcats">
           <button className={`cat-tile ${sub === null ? 'active' : ''}`} onClick={() => setSub(null)}>
             <span className="cat-photo"><span aria-hidden>✳️</span></span>
