@@ -17,12 +17,15 @@ export async function fetchExisting(db: SupabaseClient): Promise<{
     categories.push(...(data ?? []));
   }
 
-  // paginação — a base pode passar de 1000 produtos (limite padrão do PostgREST)
+  // Paginação — a base passa de 1000 produtos (limite padrão do PostgREST).
+  // Ordena por id, não por created_at: import em lote grava vários produtos no
+  // mesmo instante, e com empate no critério a ordem entre páginas varia,
+  // fazendo produtos sumirem da lista e virarem "novos" (erro de EAN duplicado).
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db
       .from('products')
       .select('id, name, barcode, brand, supplier, category_id, source, external_id, photo_source_url, status, dedupe_key')
-      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
       .range(from, from + 999);
     if (error) throw new Error(`Erro lendo produtos: ${error.message}`);
     products.push(...(data ?? []));

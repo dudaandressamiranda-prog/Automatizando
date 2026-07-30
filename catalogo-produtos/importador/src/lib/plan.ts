@@ -207,10 +207,18 @@ export function buildPlan(
     const changes: ProductUpdate['changes'] = {};
     if (row.name && row.name !== match.name) changes.name = row.name;
     if (row.barcode && row.barcode !== match.barcode) {
+      const dono = byBarcode.get(row.barcode);
       if (match.barcode && matchedBy !== 'barcode') {
         warnings.push(
           `Linha ${row.line} ("${row.name}"): código da planilha (${row.barcode}) difere do cadastrado ` +
             `(${match.barcode}) — código NÃO alterado, confira manualmente.`,
+        );
+      } else if (dono && dono.id !== match.id) {
+        // O EAN já pertence a outro produto (tipicamente a variação "filho"
+        // do mesmo item). Gravar aqui violaria a unicidade do código.
+        warnings.push(
+          `Linha ${row.line} ("${row.name}"): código ${row.barcode} já pertence a "${dono.name}" ` +
+            `— código NÃO atribuído, confira se são o mesmo produto.`,
         );
       } else if (!match.barcode) {
         changes.barcode = row.barcode;

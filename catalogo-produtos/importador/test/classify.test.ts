@@ -14,14 +14,14 @@ describe('classifyByName', () => {
   it('não cai nos falsos amigos', () => {
     // mordedor com "osso" no nome é brinquedo, não petisco
     expect(classifyByName('OSSO MACIO TEXTURIZADO - Vermelho')).toBe('Brinquedos');
-    // tapete gelado é cama; tapete higiênico é higiene
-    expect(classifyByName('TAPETE GELADO 50X90 - Osso')).toBe('Acessórios > Camas e Casinhas');
+    // tapete/cama gelada tem categoria própria; tapete higiênico é higiene
+    expect(classifyByName('TAPETE GELADO 50X90 - Osso')).toBe('Acessórios > Camas e Tapetes Geladas');
     expect(classifyByName('Tapete Higiênico Super Secão 30un')).toBe('Higiene e Limpeza > Fraldas e Tapetes Higiênicos');
     // coleira antipulgas é medicamento, coleira comum é acessório
     expect(classifyByName('Coleira Antipulgas Seresto Cães')).toBe('Medicamentos');
     expect(classifyByName('COLEIRA ECTOFEND P AZUL')).toBe('Medicamentos');
     expect(classifyByName('COLEIRA LEEVRE 48CM')).toBe('Medicamentos');
-    expect(classifyByName('Arranhador Para Gatos Com Plataforma')).toBe('Acessórios > Arranhadores');
+    expect(classifyByName('Arranhador Para Gatos Com Plataforma')).toBe('Brinquedos > Arranhadores');
     expect(classifyByName('PROTETOR DE PESCOCO PET G')).toBe('Acessórios > Colares e Focinheiras');
     expect(classifyByName('Suplemento Ograx Condroprotetor')).toBe('Medicamentos');
     expect(classifyByName('CONJ. COLEIRA BASIC G MARINHO')).toBe('Acessórios > Coleiras e Guias');
@@ -32,7 +32,7 @@ describe('classifyByName', () => {
     expect(classifyByName('Ração Úmida Royal Canin Lata Urinary Cães')).toBe('Ração para Cães > Ração Úmida');
     expect(classifyByName('PED SACHE JUNIOR CARNE Cães')).toBe('Ração para Cães > Ração Úmida');
     // osso sintético é brinquedo, osso comestível é petisco
-    expect(classifyByName('OSSO SILICONE BONINHO GD BIFE Cães')).toBe('Brinquedos');
+    expect(classifyByName('OSSO SILICONE BONINHO GD BIFE Cães')).toBe('Brinquedos > Mordedores');
     expect(classifyByName('Osso Defumado Natural Cães')).toBe('Ração para Cães > Petiscos para Cães');
     // granulado sanitário é areia
     expect(classifyByName('Granulado Sanitário Katbom Capim Limão')).toBe('Higiene e Limpeza > Areia Higiênica');
