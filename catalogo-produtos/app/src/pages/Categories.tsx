@@ -56,17 +56,16 @@ export function Categories() {
     return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }, [categories, grupo]);
 
+  // 3º nível sugere de TODAS as categorias, não só da combinação atual —
+  // nomes como "Filhotes" costumam valer para vários grupos diferentes.
   const subsubsExistentes = useMemo(() => {
-    const g = norm(grupo);
-    const s = norm(sub);
-    if (!g || !s) return [];
     const set = new Set<string>();
     for (const c of categories) {
       const ps = partsOf(c.name);
-      if (ps.length >= 3 && norm(ps[0]) === g && norm(ps[1]) === s) set.add(ps[2]!);
+      if (ps.length >= 3) set.add(ps[2]!);
     }
     return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  }, [categories, grupo, sub]);
+  }, [categories]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Category[]>();
