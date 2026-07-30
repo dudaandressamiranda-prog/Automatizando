@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { ProductCard } from '../components/ProductCard';
+import { topRequested } from '../lib/cart';
 import { SEM_CATEGORIA, topLevel, useCatalog } from '../lib/catalog';
 import { APP_NAME, APP_TAGLINE } from '../lib/config';
 import { cleanBarcode, norm } from '../lib/normalize';
@@ -64,6 +65,18 @@ export function Home({ navigate }: Props) {
         .slice(0, 8),
     [products],
   );
+
+  // Destaques = produtos mais pedidos nos carrinhos; recentes como reserva
+  const [topIds, setTopIds] = useState<string[] | null>(null);
+  useEffect(() => { topRequested(12).then(setTopIds); }, []);
+  const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
+  const featured = useMemo(() => {
+    const top = (topIds ?? [])
+      .map((id) => byId.get(id))
+      .filter((p): p is typeof products[number] => Boolean(p));
+    return top.length > 0 ? top : recent;
+  }, [topIds, byId, recent, products]);
+  const featuredTitle = featured !== recent ? '✨ Mais pedidos' : '✨ Destaques';
 
   function onScan(code: string) {
     setScanning(false);
@@ -149,10 +162,10 @@ export function Home({ navigate }: Props) {
               </div>
             </>
           )}
-          {recent.length > 0 && (
+          {featured.length > 0 && (
             <>
-              <h2 className="section-title">✨ Destaques</h2>
-              <CardGrid products={recent} signed={signed} />
+              <h2 className="section-title">{featuredTitle}</h2>
+              <CardGrid products={featured} signed={signed} />
             </>
           )}
         </>

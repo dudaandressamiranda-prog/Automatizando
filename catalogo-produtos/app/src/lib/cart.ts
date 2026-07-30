@@ -144,6 +144,25 @@ export async function setItemStatus(
   if (error) throw error;
 }
 
+/**
+ * Produtos mais adicionados aos carrinhos (mais pedidos), do mais para o
+ * menos. Conta as ocorrências em cart_items — o RLS já limita ao escopo do
+ * usuário (funcionário vê a própria loja; admin vê tudo). Devolve os
+ * product_id em ordem de popularidade.
+ */
+export async function topRequested(limit = 12): Promise<string[]> {
+  const { data, error } = await supabase.from('cart_items').select('product_id').limit(5000);
+  if (error || !data) return [];
+  const count = new Map<string, number>();
+  for (const r of data as { product_id: string }[]) {
+    count.set(r.product_id, (count.get(r.product_id) ?? 0) + 1);
+  }
+  return [...count.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id]) => id);
+}
+
 // ---- carrinho "ativo" no aparelho (preferência de UI) ---------------------
 
 export function useActiveCart(store: StoreId | null) {
