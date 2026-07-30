@@ -14,6 +14,7 @@ export type Route =
   | { page: 'list' }
   | { page: 'category'; group: string }
   | { page: 'cart' }
+  | { page: 'cartsAdmin' }
   | { page: 'review' }
   | { page: 'logs' }
   | { page: 'new'; barcode?: string }
@@ -26,6 +27,7 @@ function parseHash(hash: string): Route {
     return { page: 'new', barcode };
   }
   if (path === '/carrinho') return { page: 'cart' };
+  if (path === '/carrinhos-lojas') return { page: 'cartsAdmin' };
   if (path === '/revisao') return { page: 'review' };
   if (path === '/logs') return { page: 'logs' };
   const p = path?.match(/^\/p\/(.+)$/);

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CardGrid } from './Home';
 import { SEM_CATEGORIA, subLevel, topLevel, useCatalog } from '../lib/catalog';
 import { availableBrands, productHasBrand } from '../lib/brands';
-import { useCart } from '../lib/cart';
+import { useCartSaver } from '../lib/cart';
 import { norm } from '../lib/normalize';
 import { photoSrc, useSignedUrls } from '../lib/photos';
 import { setPending } from '../lib/pending';
@@ -11,12 +11,14 @@ import type { StoreId } from '../lib/store';
 interface Props {
   group: string; // 1º nível ("Acessórios") ou SEM_CATEGORIA
   store: StoreId | null;
+  email: string | null;
 }
 
-export function CategoryPage({ group, store }: Props) {
+export function CategoryPage({ group, store, email }: Props) {
   const { products, categories, loading, error } = useCatalog();
   const signed = useSignedUrls(products);
-  const cart = useCart(store);
+  const { save } = useCartSaver(store, email);
+  const [saving, setSaving] = useState(false);
   const [sub, setSub] = useState<string | null>(null); // id da categoria filtrada
   const [showSearch, setShowSearch] = useState(false);
   const [q, setQ] = useState('');
@@ -46,11 +48,16 @@ export function CategoryPage({ group, store }: Props) {
     });
   }
 
-  function salvar() {
+  async function salvar() {
     const items = Object.entries(picked).map(([id, v]) => ({ id, name: v.name, barcode: v.barcode }));
-    cart.addMany(items);
-    setPicked({});
-    setPending(null);
+    setSaving(true);
+    try {
+      await save(items);
+      setPicked({});
+      setPending(null);
+    } finally {
+      setSaving(false);
+    }
   }
 
   const nPicked = Object.keys(picked).length;
@@ -180,14 +187,16 @@ export function CategoryPage({ group, store }: Props) {
         products={scoped}
         signed={signed}
         selectable={Boolean(store)}
-        isSelected={(id) => Boolean(picked[id]) || cart.has(id)}
+        isSelected={(id) => Boolean(picked[id])}
         onToggle={toggle}
       />
 
       {nPicked > 0 && (
         <div className="selbar">
           <span>{nPicked} selecionado{nPicked === 1 ? '' : 's'}</span>
-          <button className="selbar-save" onClick={salvar}>Salvar no carrinho</button>
+          <button className="selbar-save" onClick={salvar} disabled={saving}>
+            {saving ? 'Salvando…' : 'Salvar no carrinho'}
+          </button>
         </div>
       )}
     </main>

@@ -7,6 +7,7 @@ import { isAdmin } from './lib/admin';
 import { useActiveStore } from './lib/store';
 import { supabase } from './lib/supabase';
 import { Cart } from './pages/Cart';
+import { CartsAdmin } from './pages/CartsAdmin';
 import { CategoryPage } from './pages/CategoryPage';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
@@ -48,7 +49,9 @@ export function App() {
   }
 
   const admin = isAdmin(session.user.email);
-  const adminOnly = route.page === 'new' || route.page === 'review' || route.page === 'logs';
+  const email = session.user.email ?? null;
+  const adminOnly =
+    route.page === 'new' || route.page === 'review' || route.page === 'logs' || route.page === 'cartsAdmin';
   const blocked = adminOnly && !admin;
 
   return (
@@ -73,15 +76,16 @@ export function App() {
 
       <div className="main">
         {(blocked || route.page === 'list') && <Home navigate={navigate} />}
-        {!blocked && route.page === 'category' && <CategoryPage group={route.group} store={active} />}
-        {!blocked && route.page === 'cart' && <Cart store={active} />}
+        {!blocked && route.page === 'category' && <CategoryPage group={route.group} store={active} email={email} />}
+        {!blocked && route.page === 'cart' && <Cart store={active} email={email} />}
+        {!blocked && route.page === 'cartsAdmin' && <CartsAdmin />}
         {!blocked && route.page === 'review' && <Review />}
         {!blocked && route.page === 'logs' && <Logs />}
         {!blocked && route.page === 'new' && <ProductForm navigate={navigate} initialBarcode={route.barcode} />}
         {route.page === 'product' && <ProductForm navigate={navigate} productId={route.id} />}
       </div>
 
-      <SaveGuard store={active} />
+      <SaveGuard store={active} email={email} />
     </div>
   );
 }

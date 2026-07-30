@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { CartItem } from './cart';
+import type { NewItem } from './cart';
 
 /**
  * Seleção "em aberto" dentro de uma categoria: os itens que a pessoa
@@ -9,7 +9,7 @@ import type { CartItem } from './cart';
  */
 export interface Pending {
   categoria: string;
-  items: CartItem[];
+  items: NewItem[];
 }
 
 let current: Pending | null = null;

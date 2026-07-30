@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { topLevel } from '../lib/catalog';
-import { useCart } from '../lib/cart';
 import { storeLabel, type StoreId } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import type { Route } from '../hooks/useHashRoute';
@@ -32,7 +31,6 @@ const ICONE: Record<string, string> = {
 
 export function Nav({ route, onNavigate, onSignOut, email, admin, store, onSwitchStore }: Props) {
   const [groups, setGroups] = useState<string[]>([]);
-  const { items } = useCart(store);
 
   useEffect(() => {
     supabase
@@ -61,13 +59,19 @@ export function Nav({ route, onNavigate, onSignOut, email, admin, store, onSwitc
         <span className="nav-ico">🏠</span> Início
       </a>
       <a href="#/carrinho" className={`nav-item ${route.page === 'cart' ? 'active' : ''}`} onClick={onNavigate}>
-        <span className="nav-ico">🛒</span> Carrinho
-        {items.length > 0 && <span className="nav-badge">{items.length}</span>}
+        <span className="nav-ico">🛒</span> Carrinhos ({storeLabel(store).replace('Loja ', '')})
       </a>
 
       {admin && (
         <>
           <div className="nav-section">Administração</div>
+          <a
+            href="#/carrinhos-lojas"
+            className={`nav-item ${route.page === 'cartsAdmin' ? 'active' : ''}`}
+            onClick={onNavigate}
+          >
+            <span className="nav-ico">🛍️</span> Carrinhos (todas as lojas)
+          </a>
           <a
             href="#/novo"
             className={`nav-item ${route.page === 'new' ? 'active' : ''}`}

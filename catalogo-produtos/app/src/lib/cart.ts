@@ -1,71 +1,154 @@
 import { useCallback, useEffect, useState } from 'react';
+import { supabase } from './supabase';
 import type { StoreId } from './store';
 
-/** Item do carrinho — o mínimo para exibir e depois exportar a lista. */
-export interface CartItem {
+/** Um carrinho (lista) de uma loja. */
+export interface Cart {
   id: string;
+  store: StoreId;
+  name: string;
+  created_by: string | null;
+  status: 'aberto' | 'finalizado';
+  created_at: string;
+}
+
+/** Item de carrinho já com dados do produto para exibir. */
+export interface CartItemRow {
+  id: string;
+  product_id: string;
+  added_by: string | null;
+  added_at: string;
   name: string;
   barcode: string | null;
 }
 
-const key = (store: StoreId) => `catalogo.cart.${store}`;
-const EVT = 'catalogo:cart';
-
-function read(store: StoreId): CartItem[] {
-  try {
-    return JSON.parse(localStorage.getItem(key(store)) ?? '[]') as CartItem[];
-  } catch {
-    return [];
-  }
+export interface NewItem {
+  id: string; // product_id
+  name: string;
+  barcode: string | null;
 }
-function write(store: StoreId, items: CartItem[]) {
-  localStorage.setItem(key(store), JSON.stringify(items));
-  window.dispatchEvent(new CustomEvent(EVT));
+
+const activeKey = (store: StoreId) => `catalogo.activeCart.${store}`;
+
+// ---- operações no banco (RLS cuida do acesso por loja) --------------------
+
+export async function listCarts(store: StoreId): Promise<Cart[]> {
+  const { data, error } = await supabase
+    .from('carts')
+    .select('id, store, name, created_by, status, created_at')
+    .eq('store', store)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Cart[];
+}
+
+/** Todos os carrinhos das duas lojas (uso do admin). */
+export async function listAllCarts(): Promise<Cart[]> {
+  const { data, error } = await supabase
+    .from('carts')
+    .select('id, store, name, created_by, status, created_at')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Cart[];
+}
+
+export async function createCart(store: StoreId, name: string, email: string | null): Promise<Cart> {
+  const { data, error } = await supabase
+    .from('carts')
+    .insert({ store, name: name.trim(), created_by: email })
+    .select('id, store, name, created_by, status, created_at')
+    .single();
+  if (error) throw error;
+  return data as Cart;
+}
+
+export async function deleteCart(id: string): Promise<void> {
+  const { error } = await supabase.from('carts').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function getItems(cartId: string): Promise<CartItemRow[]> {
+  const { data, error } = await supabase
+    .from('cart_items')
+    .select('id, product_id, added_by, added_at, products(name, barcode)')
+    .eq('cart_id', cartId)
+    .order('added_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((r: Record<string, unknown>) => {
+    const prod = r.products as { name?: string; barcode?: string | null } | null;
+    return {
+      id: r.id as string,
+      product_id: r.product_id as string,
+      added_by: (r.added_by as string | null) ?? null,
+      added_at: r.added_at as string,
+      name: prod?.name ?? '(produto removido)',
+      barcode: prod?.barcode ?? null,
+    };
+  });
+}
+
+export async function addItems(cartId: string, items: NewItem[], email: string | null): Promise<void> {
+  if (items.length === 0) return;
+  const rows = items.map((i) => ({ cart_id: cartId, product_id: i.id, added_by: email }));
+  // ignoreDuplicates: remarcar um produto já no carrinho não gera erro
+  const { error } = await supabase.from('cart_items').upsert(rows, {
+    onConflict: 'cart_id,product_id',
+    ignoreDuplicates: true,
+  });
+  if (error) throw error;
+}
+
+export async function removeItem(itemId: string): Promise<void> {
+  const { error } = await supabase.from('cart_items').delete().eq('id', itemId);
+  if (error) throw error;
+}
+
+// ---- carrinho "ativo" no aparelho (preferência de UI) ---------------------
+
+export function useActiveCart(store: StoreId | null) {
+  const [id, setId] = useState<string | null>(() =>
+    store ? localStorage.getItem(activeKey(store)) : null,
+  );
+
+  useEffect(() => {
+    setId(store ? localStorage.getItem(activeKey(store)) : null);
+  }, [store]);
+
+  const set = useCallback(
+    (cartId: string | null) => {
+      if (!store) return;
+      if (cartId) localStorage.setItem(activeKey(store), cartId);
+      else localStorage.removeItem(activeKey(store));
+      setId(cartId);
+    },
+    [store],
+  );
+
+  return { activeId: id, setActive: set };
 }
 
 /**
- * Carrinho da loja ativa, guardado no aparelho (localStorage). Cada loja
- * tem sua chave, então o carrinho do Centro não se mistura com o do
- * Eldorado no mesmo dispositivo.
+ * Salva itens no carrinho ATIVO da loja. Se ainda não há carrinho ativo,
+ * cria um automaticamente ("Carrinho de <data>"). Usado tanto pelo botão
+ * de salvar da categoria quanto pelo pop-up ao sair.
  */
-export function useCart(store: StoreId | null) {
-  const [items, setItems] = useState<CartItem[]>(() => (store ? read(store) : []));
+export function useCartSaver(store: StoreId | null, email: string | null) {
+  const { activeId, setActive } = useActiveCart(store);
 
-  useEffect(() => {
-    if (!store) return;
-    const sync = () => setItems(read(store));
-    sync();
-    window.addEventListener(EVT, sync);
-    window.addEventListener('storage', sync); // outras abas
-    return () => {
-      window.removeEventListener(EVT, sync);
-      window.removeEventListener('storage', sync);
-    };
-  }, [store]);
-
-  const has = useCallback((id: string) => items.some((i) => i.id === id), [items]);
-
-  const addMany = useCallback(
-    (novos: CartItem[]) => {
-      if (!store) return;
-      const map = new Map(read(store).map((i) => [i.id, i]));
-      for (const n of novos) map.set(n.id, n);
-      write(store, [...map.values()]);
+  const save = useCallback(
+    async (items: NewItem[]): Promise<void> => {
+      if (!store || items.length === 0) return;
+      let cid = activeId;
+      if (!cid) {
+        const nome = `Carrinho de ${new Date().toLocaleDateString('pt-BR')}`;
+        const c = await createCart(store, nome, email);
+        cid = c.id;
+        setActive(cid);
+      }
+      await addItems(cid, items, email);
     },
-    [store],
+    [store, email, activeId, setActive],
   );
 
-  const remove = useCallback(
-    (id: string) => {
-      if (!store) return;
-      write(store, read(store).filter((i) => i.id !== id));
-    },
-    [store],
-  );
-
-  const clear = useCallback(() => {
-    if (store) write(store, []);
-  }, [store]);
-
-  return { items, has, addMany, remove, clear };
+  return { save, activeId, setActive };
 }

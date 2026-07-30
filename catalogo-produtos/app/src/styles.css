@@ -455,6 +455,20 @@ body {
 }
 .cart-name { flex: 1; min-width: 0; overflow-wrap: anywhere; text-decoration: none; color: inherit; font-weight: 500; }
 .cart-del { background: none; border: none; color: var(--danger); font-size: 1.1rem; cursor: pointer; flex-shrink: 0; }
+.cart-new { display: flex; gap: 0.6rem; margin: 0.75rem 0; }
+.cart-new input {
+  flex: 1; padding: 0.65rem 0.9rem; border: 1px solid var(--border);
+  border-radius: 0.6rem; font-size: 1rem; background: var(--card);
+}
+.cart-tabs { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 1rem; }
+
+.admin-cart { border: 1px solid var(--border); border-radius: 0.6rem; margin-bottom: 0.5rem; background: var(--card); }
+.admin-cart-head {
+  width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 0.6rem;
+  padding: 0.7rem 0.9rem; background: none; border: none; cursor: pointer; text-align: left;
+}
+.admin-cart-name { font-weight: 600; }
+.admin-cart-items { padding: 0 0.9rem 0.6rem; }
 
 .mais { display: block; width: 100%; margin: 0.9rem 0; }
 

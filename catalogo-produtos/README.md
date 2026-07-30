@@ -194,18 +194,28 @@ login vem de `user_metadata.store` no Supabase (`"centro"` ou
 (ex.: o admin) escolhe a loja numa tela após o login; a escolha fica no
 aparelho e pode ser trocada pelo menu.
 
-**Carrinho** (lista de compras/pedido): cada produto tem uma bolinha de
-seleção. Marcando itens numa categoria e saindo, um pop-up pergunta se
-quer salvar no carrinho — a seleção vai se acumulando pelas categorias.
-O carrinho é **por aparelho e por loja** (guardado no navegador, chave
-separada para cada loja), então o do Centro não se mistura com o do
-Eldorado no mesmo dispositivo. A página Carrinho lista tudo e permite
-copiar a lista ou esvaziar.
+**Carrinhos** (listas de compra/pedido): ficam no banco (tabelas `carts`
+e `cart_items`, migration `20260730000002_carrinhos.sql`). Cada loja tem
+vários carrinhos nomeados; cada item guarda quem adicionou e quando. Nas
+categorias, a bolinha marca produtos e, ao sair, um pop-up pergunta se
+salva no carrinho ativo — acumulando pelas categorias.
 
-> Como é guardado no aparelho, o carrinho não é compartilhado entre
-> funcionários nem entre dispositivos. Para um carrinho único por loja
-> (todos veem o mesmo), seria uma tabela no Supabase com RLS por loja —
-> evolução possível quando quiser.
+Acesso por RLS, a partir dos metadados do login:
+- funcionário (`user_metadata.store = 'centro'|'eldorado'`) vê e edita só
+  os carrinhos da sua loja;
+- admin (`user_metadata.role = 'admin'`) vê os das duas lojas, na página
+  "Carrinhos (todas as lojas)".
+
+### Configurar os logins (Supabase → Authentication → Users)
+
+Para cada usuário, em **User Metadata** (Raw user meta data), defina:
+- **Você (dona):** `{ "role": "admin" }`
+- **Funcionário do Centro:** `{ "store": "centro" }`
+- **Funcionário do Eldorado:** `{ "store": "eldorado" }`
+
+O mesmo email deve estar em `VITE_ADMIN_EMAILS` (no Vercel) para ver o
+menu de administração. Sem `store` nem `role`, o login cai na tela de
+escolher loja e não enxerga carrinho de ninguém (o RLS barra).
 
 ## Área administrativa
 
