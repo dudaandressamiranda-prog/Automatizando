@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CardGrid } from './Home';
-import { SEM_CATEGORIA, bulkSetCategory, bulkSetStatus, subPath, topLevel, useCatalog } from '../lib/catalog';
+import { SEM_CATEGORIA, bulkSetCategory, bulkSetStatus, topLevel, useCatalog } from '../lib/catalog';
 import { availableBrands, productHasBrand } from '../lib/brands';
 import { useCartSaver } from '../lib/cart';
 import { norm } from '../lib/normalize';
-import { photoSrc, useSignedUrls } from '../lib/photos';
+import { useSignedUrls } from '../lib/photos';
 import { setPending } from '../lib/pending';
 import type { StoreId } from '../lib/store';
 
@@ -22,8 +22,6 @@ export function CategoryPage({ group, initialSub, store, email, admin }: Props) 
   const { save } = useCartSaver(store, email);
   const [saving, setSaving] = useState(false);
   const [sub, setSub] = useState<string | null>(initialSub ?? null); // id da categoria filtrada
-  // veio de um link direto pra subcategoria: mostra só ela, sem o grid de todas
-  const [hideTiles, setHideTiles] = useState(Boolean(initialSub));
   const [showSearch, setShowSearch] = useState(false);
   const [q, setQ] = useState('');
   const [brand, setBrand] = useState<string | null>(null);
@@ -32,7 +30,6 @@ export function CategoryPage({ group, initialSub, store, email, admin }: Props) 
   // troca de categoria pelo menu (mesma instância do componente, só props mudam)
   useEffect(() => {
     setSub(initialSub ?? null);
-    setHideTiles(Boolean(initialSub));
   }, [group, initialSub]);
 
   // modo "categorizar em massa" — só admin, para corrigir cadastros errados
@@ -162,21 +159,6 @@ export function CategoryPage({ group, initialSub, store, email, admin }: Props) 
     });
   }, [scopedBase, q, brand, brands]);
 
-  /** Subcategorias com foto — só quando o grupo tem mais de uma. */
-  const subTiles = useMemo(() => {
-    if (isOthers || groupCats.length <= 1) return [];
-    return groupCats.map((c) => {
-      const inCat = products.filter((p) => p.category_id === c.id);
-      const withPhoto = inCat.find((p) => photoSrc(p, signed));
-      return {
-        id: c.id,
-        label: subPath(c.name) ?? c.name,
-        count: inCat.length,
-        photo: withPhoto ? photoSrc(withPhoto, signed) : null,
-      };
-    }).sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
-  }, [isOthers, groupCats, products, signed]);
-
   return (
     <main className={nPicked > 0 || nCatPicked > 0 ? 'has-selbar' : ''}>
       <div className="page-head">
@@ -234,42 +216,6 @@ export function CategoryPage({ group, initialSub, store, email, admin }: Props) 
 
       {error && <p className="error">{error}</p>}
       {loading && <p className="muted center-msg">Carregando…</p>}
-
-      {subTiles.length > 0 && hideTiles && (
-        <button className="link-muted cat-show-subs" onClick={() => setHideTiles(false)}>
-          Ver todas as subcategorias
-        </button>
-      )}
-
-      {subTiles.length > 0 && !hideTiles && (
-        <div className="cat-grid subcats">
-          <button className={`cat-tile ${sub === null ? 'active' : ''}`} onClick={() => setSub(null)}>
-            <span className="cat-photo"><span aria-hidden>✳️</span></span>
-            <span className="cat-name">Tudo</span>
-          </button>
-          {subTiles.map((t) => (
-            <button
-              key={t.id}
-              className={`cat-tile ${sub === t.id ? 'active' : ''}`}
-              onClick={() => setSub(sub === t.id ? null : t.id)}
-            >
-              <span className="cat-photo">
-                <span aria-hidden>🐾</span>
-                {t.photo && (
-                  <img
-                    src={t.photo}
-                    alt=""
-                    loading="lazy"
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                  />
-                )}
-              </span>
-              <span className="cat-name">{t.label}</span>
-              <span className="tiny muted">{t.count}</span>
-            </button>
-          ))}
-        </div>
-      )}
 
       {!loading && scoped.length === 0 && !error && (
         <p className="muted center-msg">Nenhum produto nesta categoria.</p>
