@@ -93,12 +93,16 @@ async function main() {
   const inCatalogBarcodes = new Set(existing.products.map((p) => p.barcode).filter(Boolean));
   const inCatalogIds = new Set(existing.products.map((p) => p.external_id).filter(Boolean));
 
-  // alvo: ativo (ou sem situação), sem foto na planilha, com EAN, fora do catálogo
+  // Alvo: ativo (ou sem situação), COM estoque em alguma loja, sem foto na
+  // planilha, com EAN, fora do catálogo. O filtro de estoque acompanha a
+  // regra do importador — sem ele o robô gastaria horas procurando foto de
+  // cadastro parado, que seria recusado na hora de gravar.
   const ignorados = loadIgnorados();
   const alvo = parsed.rows.filter(
     (r) =>
       !isIgnorado(ignorados, r) &&
       (!r.status || r.status === 'ativo') &&
+      !(r.stock !== null && r.stock <= 0) &&
       !r.photoUrl &&
       r.barcode &&
       !inCatalogBarcodes.has(r.barcode) &&
