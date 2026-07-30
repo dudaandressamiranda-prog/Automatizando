@@ -42,7 +42,7 @@ export function CartItemCard({ item, src, editable, onChange, onRemove }: Props)
         {b && <span className={`rep-badge ${b.cls}`}>{b.text}</span>}
       </a>
       <div className="cart-card-body">
-        <a href={`#/p/${item.product_id}`} className="cart-card-name">{item.name}</a>
+        <a href={`#/p/${item.product_id}`} className="cart-card-name" title={item.name}>{item.name}</a>
         {item.barcode && <span className="mono tiny muted">{item.barcode}</span>}
 
         {editable ? (

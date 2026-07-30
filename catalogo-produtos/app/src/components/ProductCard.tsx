@@ -42,7 +42,7 @@ export function ProductCard({ product: p, src, selectable, selected, onToggle }:
         )}
       </div>
       <div className="pcard-body">
-        <span className="pcard-name">{p.name}</span>
+        <span className="pcard-name" title={p.name}>{p.name}</span>
         {p.brand && <span className="muted small">{p.brand}</span>}
         {p.barcode && <span className="mono tiny muted">{p.barcode}</span>}
       </div>
