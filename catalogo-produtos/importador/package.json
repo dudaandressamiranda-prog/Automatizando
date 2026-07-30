@@ -10,6 +10,7 @@
     "fotos": "tsx src/fotos.ts",
     "consolidar": "tsx src/consolidar.ts",
     "regras": "tsx src/regras.ts",
+    "medicamentos": "tsx src/medicamentos.ts",
     "recuperar-ean": "tsx src/recuperar-ean.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
