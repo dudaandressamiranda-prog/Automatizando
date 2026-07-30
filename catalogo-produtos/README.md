@@ -238,6 +238,21 @@ o usuário não é admin.
 > os demais. Posso implementar essa migration quando você chegar nessa
 > etapa.
 
+## A fazer (próxima sessão)
+
+**Consolidar produtos "pai" sem EAN na lista de revisão.** Muitos itens
+desativados por falta de código de barras são, na verdade, o cadastro
+"pai" (genérico, sem EAN) cujas variações "filho" — com EAN — já estão no
+catálogo. Ex.: "Emedron" sem EAN na revisão, enquanto "Emedron 25mg",
+"Emedron 50mg" etc. já existem com código. Esses pais são redundantes.
+
+Plano: script que, para cada produto sem EAN na revisão, procura no
+catálogo (produtos ativos com EAN) variações cujo nome comece pela mesma
+raiz — e confirma pela internet/foto quando o nome for ambíguo. Onde
+houver variações já cadastradas, o pai vira redundante e sai da revisão
+(descartado/consolidado). Gerar relatório para aprovação antes de remover.
+Deve eliminar boa parte da lista de revisão.
+
 ## Decisões sobre a estrutura proposta
 
 A base é a que você propôs, com estes ajustes (nada travado — dá para
