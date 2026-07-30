@@ -573,8 +573,13 @@ body {
 .perm-form select { padding: 0.65rem 0.9rem; border: 1px solid var(--border); border-radius: 0.6rem; font-size: 1rem; background: #fff; }
 .perm-list { list-style: none; margin: 0; padding: 0; }
 .perm-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 0.25rem; border-bottom: 1px solid var(--border); }
-.cat-group-row { flex-wrap: wrap; }
-.cat-group-row .perm-email { font-weight: 700; color: var(--green); flex: 0 0 auto; }
+
+.cat-group { margin-bottom: 1.1rem; }
+.cat-group-title { margin: 0.9rem 0 0.2rem; font-size: 0.95rem; color: var(--green); }
+.cat-row .perm-email { flex: 1; min-width: 0; }
+.cat-edit-input { flex: 1; min-width: 8rem; padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 0.5rem; font-size: 0.95rem; }
+.cat-icon-btn { background: none; border: none; cursor: pointer; font-size: 1rem; flex-shrink: 0; }
+.cat-icon-btn:disabled, .cart-del:disabled { opacity: 0.5; cursor: not-allowed; }
 .perm-email { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .perm-store { background: var(--green-soft); color: var(--green); }
 

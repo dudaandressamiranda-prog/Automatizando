@@ -91,6 +91,43 @@ export async function createCategory(name: string): Promise<void> {
   }
 }
 
+/** Renomeia uma categoria (uso do admin). Nome duplicado vira erro amigável. */
+export async function renameCategory(id: string, name: string): Promise<void> {
+  const clean = name.trim();
+  if (!clean) throw new Error('Nome da categoria não pode ser vazio.');
+  const { error } = await supabase.from('categories').update({ name: clean }).eq('id', id);
+  if (error) {
+    if (error.code === '23505') throw new Error('Já existe uma categoria com esse nome.');
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * Exclui uma categoria (uso do admin). Produtos que estavam nela ficam sem
+ * categoria (caem em "Outros produtos") — não são apagados.
+ */
+export async function deleteCategory(id: string): Promise<void> {
+  const { error } = await supabase.from('categories').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+/** Conta quantos produtos existem em cada categoria (todas, não só ativas). */
+export async function countByCategory(): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('products')
+      .select('category_id')
+      .range(from, from + PAGE - 1);
+    if (error) break;
+    for (const r of (data ?? []) as { category_id: string | null }[]) {
+      if (r.category_id) counts.set(r.category_id, (counts.get(r.category_id) ?? 0) + 1);
+    }
+    if (!data || data.length < PAGE) break;
+  }
+  return counts;
+}
+
 /**
  * Atribui uma categoria para vários produtos de uma vez (uso do admin, para
  * corrigir categorização em massa). Faz em lotes para não estourar o limite
