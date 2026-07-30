@@ -206,16 +206,19 @@ Acesso por RLS, a partir dos metadados do login:
 - admin (`user_metadata.role = 'admin'`) vê os das duas lojas, na página
   "Carrinhos (todas as lojas)".
 
-### Configurar os logins (Supabase → Authentication → Users)
+### Configurar os acessos
 
-Para cada usuário, em **User Metadata** (Raw user meta data), defina:
-- **Você (dona):** `{ "role": "admin" }`
-- **Funcionário do Centro:** `{ "store": "centro" }`
-- **Funcionário do Eldorado:** `{ "store": "eldorado" }`
+1. **Login (email/senha):** crie no painel do Supabase em
+   **Authentication → Users → Add user** (marque *Auto Confirm*).
+2. **Admin (você):** `{ "role": "admin" }` no User Metadata do seu
+   usuário, e o mesmo email em `VITE_ADMIN_EMAILS` (no Vercel).
+3. **Loja do funcionário:** definida **pelo app**, no menu
+   **Funcionários e lojas** (admin) — digita o email e escolhe a loja. Não
+   precisa mexer em SQL nem metadata. A loja fica na tabela `store_members`
+   e o funcionário entra **travado** nessa loja (não escolhe nem troca).
 
-O mesmo email deve estar em `VITE_ADMIN_EMAILS` (no Vercel) para ver o
-menu de administração. Sem `store` nem `role`, o login cai na tela de
-escolher loja e não enxerga carrinho de ninguém (o RLS barra).
+Funcionário sem loja vinculada vê um aviso pedindo para o responsável
+liberar, e não acessa carrinho nenhum (o RLS barra).
 
 ## Área administrativa
 

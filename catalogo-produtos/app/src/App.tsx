@@ -12,6 +12,7 @@ import { CategoryPage } from './pages/CategoryPage';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { Logs } from './pages/Logs';
+import { Permissions } from './pages/Permissions';
 import { ProductForm } from './pages/ProductForm';
 import { Review } from './pages/Review';
 import { StorePicker } from './pages/StorePicker';
@@ -21,7 +22,8 @@ export function App() {
   const [ready, setReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { route, navigate } = useHashRoute();
-  const { active, choose, clear, canSwitch } = useActiveStore(session);
+  const admin = isAdmin(session?.user.email);
+  const { active, loading: storeLoading, choose, clear, canSwitch } = useActiveStore(session, admin);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -37,21 +39,43 @@ export function App() {
   if (!ready) return <div className="center-msg">Carregando…</div>;
   if (!session) return <Login />;
 
-  // sem loja definida (ex.: admin) → escolhe em qual loja vai atuar
-  if (!active) {
+  const email = session.user.email ?? null;
+
+  // descobrindo a loja do funcionário na tabela de permissões
+  if (storeLoading) return <div className="center-msg">Carregando…</div>;
+
+  // admin sem loja escolhida → escolhe em qual loja vai atuar
+  if (!active && admin) {
     return (
       <StorePicker
         onChoose={choose}
-        email={session.user.email ?? undefined}
+        email={email ?? undefined}
         onSignOut={() => supabase.auth.signOut()}
       />
     );
   }
 
-  const admin = isAdmin(session.user.email);
-  const email = session.user.email ?? null;
+  // funcionário sem loja atribuída → não opera até o admin liberar
+  if (!active) {
+    return (
+      <div className="store-pick">
+        <div className="store-pick-inner">
+          <h1><span className="brand-mark">🐾</span> Catálogo</h1>
+          <p className="muted">
+            Seu acesso ainda não está vinculado a uma loja. Peça ao responsável
+            para liberar em <strong>Funcionários e lojas</strong>.
+          </p>
+          <button className="link-muted" onClick={() => supabase.auth.signOut()}>
+            Sair {email ? `(${email})` : ''}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const adminOnly =
-    route.page === 'new' || route.page === 'review' || route.page === 'logs' || route.page === 'cartsAdmin';
+    route.page === 'new' || route.page === 'review' || route.page === 'logs' ||
+    route.page === 'cartsAdmin' || route.page === 'permissions';
   const blocked = adminOnly && !admin;
 
   return (
@@ -79,6 +103,7 @@ export function App() {
         {!blocked && route.page === 'category' && <CategoryPage group={route.group} store={active} email={email} />}
         {!blocked && route.page === 'cart' && <Cart store={active} email={email} />}
         {!blocked && route.page === 'cartsAdmin' && <CartsAdmin email={email} />}
+        {!blocked && route.page === 'permissions' && <Permissions />}
         {!blocked && route.page === 'review' && <Review />}
         {!blocked && route.page === 'logs' && <Logs />}
         {!blocked && route.page === 'new' && <ProductForm navigate={navigate} initialBarcode={route.barcode} />}

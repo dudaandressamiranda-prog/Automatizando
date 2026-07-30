@@ -73,6 +73,13 @@ export function Nav({ route, onNavigate, onSignOut, email, admin, store, onSwitc
             <span className="nav-ico">🛍️</span> Carrinhos (todas as lojas)
           </a>
           <a
+            href="#/funcionarios"
+            className={`nav-item ${route.page === 'permissions' ? 'active' : ''}`}
+            onClick={onNavigate}
+          >
+            <span className="nav-ico">👥</span> Funcionários e lojas
+          </a>
+          <a
             href="#/novo"
             className={`nav-item ${route.page === 'new' ? 'active' : ''}`}
             onClick={onNavigate}

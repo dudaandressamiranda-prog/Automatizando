@@ -516,6 +516,15 @@ body {
 .rep-pill.rep-no { background: #fee2e2; color: #991b1b; }
 .rep-pill.rep-pend { background: #f3f4f6; color: var(--muted); }
 
+/* ===== permissões (funcionários e lojas) =============================== */
+.perm-form { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0 1rem; }
+.perm-form input { flex: 1; min-width: 12rem; padding: 0.65rem 0.9rem; border: 1px solid var(--border); border-radius: 0.6rem; font-size: 1rem; }
+.perm-form select { padding: 0.65rem 0.9rem; border: 1px solid var(--border); border-radius: 0.6rem; font-size: 1rem; background: #fff; }
+.perm-list { list-style: none; margin: 0; padding: 0; }
+.perm-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 0.25rem; border-bottom: 1px solid var(--border); }
+.perm-email { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.perm-store { background: var(--green-soft); color: var(--green); }
+
 .mais { display: block; width: 100%; margin: 0.9rem 0; }
 
 .product-list { list-style: none; margin: 0; padding: 0; }
