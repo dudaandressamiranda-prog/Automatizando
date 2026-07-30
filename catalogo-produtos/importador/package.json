@@ -9,6 +9,7 @@
     "faltantes": "tsx src/faltantes.ts",
     "fotos": "tsx src/fotos.ts",
     "consolidar": "tsx src/consolidar.ts",
+    "regras": "tsx src/regras.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

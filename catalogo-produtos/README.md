@@ -260,6 +260,21 @@ npm run consolidar -- --apply # remove só os FORTE (backup em .csv)
 
 Rode sempre sem `--apply` primeiro e confira o CSV.
 
+### Cadastro completo para ficar ativo (`npm run regras`)
+
+Regra do catálogo: produto só fica **ativo** com foto **e** código de
+barras. Quem estiver ativo faltando um dos dois é desativado — some da
+vitrine e cai em **A revisar** no app, onde dá para completar o cadastro
+e reativar. Nada é apagado, só muda o status.
+
+```bash
+npm run regras            # lista o que está irregular (não altera nada)
+npm run regras -- --apply # desativa (backup em regras-desativados.csv)
+```
+
+Vale rodar depois de cada importação, já que a planilha do ERP traz
+cadastros incompletos.
+
 ## Decisões sobre a estrutura proposta
 
 A base é a que você propôs, com estes ajustes (nada travado — dá para
