@@ -246,6 +246,7 @@ export function CategoryPage({ group, store, email, admin }: Props) {
         selectable={catMode || Boolean(store)}
         isSelected={(id) => (catMode ? Boolean(catPicked[id]) : Boolean(picked[id]))}
         onToggle={catMode ? toggleCat : toggle}
+        blockNav={catMode}
       />
 
       {catMode && nCatPicked > 0 && (

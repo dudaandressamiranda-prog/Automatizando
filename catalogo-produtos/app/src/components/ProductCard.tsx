@@ -4,29 +4,21 @@ import { STATUS_LABEL } from '../lib/types';
 interface Props {
   product: ListProduct;
   src: string | null;
-  /** Bolinha de seleção (para montar o carrinho ou categorizar em massa). */
+  /** Mostra a bolinha de seleção (montar carrinho ou categorizar em massa). */
   selectable?: boolean;
   selected?: boolean;
   onToggle?: (id: string) => void;
+  /**
+   * Categorização em massa: o card inteiro vira o alvo do clique (mais fácil
+   * de acertar) e não abre o produto — só a seleção. Nos outros modos o
+   * clique fora da bolinha continua abrindo o produto normalmente.
+   */
+  blockNav?: boolean;
 }
 
-export function ProductCard({ product: p, src, selectable, selected, onToggle }: Props) {
-  const inner = (
+export function ProductCard({ product: p, src, selectable, selected, onToggle, blockNav }: Props) {
+  const media = (
     <>
-      {selectable && (
-        <button
-          type="button"
-          className={`pcard-pick ${selected ? 'on' : ''}`}
-          aria-label={selected ? 'Remover da seleção' : 'Selecionar'}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onToggle?.(p.id);
-          }}
-        >
-          {selected ? '✓' : ''}
-        </button>
-      )}
       <div className="pcard-img">
         <span aria-hidden>🐾</span>
         {src && (
@@ -49,16 +41,40 @@ export function ProductCard({ product: p, src, selectable, selected, onToggle }:
     </>
   );
 
-  // Em modo de seleção, só a bolinha reage a clique — o resto do card fica
-  // inerte de propósito, pra um toque errado não abrir o produto sem querer
-  // e derrubar a seleção que já estava feita.
-  if (selectable) {
-    return <div className={`pcard ${selected ? 'pcard-selected' : ''}`}>{inner}</div>;
+  if (blockNav) {
+    return (
+      <div
+        className={`pcard pcard-block ${selected ? 'pcard-selected' : ''}`}
+        role="button"
+        tabIndex={0}
+        onClick={() => onToggle?.(p.id)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onToggle?.(p.id); }}
+      >
+        <span className={`pcard-pick ${selected ? 'on' : ''}`} aria-hidden="true">
+          {selected ? '✓' : ''}
+        </span>
+        {media}
+      </div>
+    );
   }
 
   return (
-    <a href={`#/p/${p.id}`} className="pcard">
-      {inner}
+    <a href={`#/p/${p.id}`} className={`pcard ${selected ? 'pcard-selected' : ''}`}>
+      {selectable && (
+        <button
+          type="button"
+          className={`pcard-pick ${selected ? 'on' : ''}`}
+          aria-label={selected ? 'Remover da seleção' : 'Selecionar'}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggle?.(p.id);
+          }}
+        >
+          {selected ? '✓' : ''}
+        </button>
+      )}
+      {media}
     </a>
   );
 }

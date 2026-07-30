@@ -189,9 +189,10 @@ interface GridProps {
   selectable?: boolean;
   isSelected?: (id: string) => boolean;
   onToggle?: (id: string) => void;
+  blockNav?: boolean;
 }
 
-export function CardGrid({ products, signed, selectable, isSelected, onToggle }: GridProps) {
+export function CardGrid({ products, signed, selectable, isSelected, onToggle, blockNav }: GridProps) {
   const [limite, setLimite] = useState(PAGINA);
   const chave = products.length > 0 ? products[0]!.id : '';
 
@@ -210,6 +211,7 @@ export function CardGrid({ products, signed, selectable, isSelected, onToggle }:
             selectable={selectable}
             selected={isSelected?.(p.id)}
             onToggle={onToggle}
+            blockNav={blockNav}
           />
         ))}
       </div>
