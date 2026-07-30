@@ -16,6 +16,7 @@ function row(partial: Partial<ImportRow> & { name: string }): ImportRow {
     photoUrl: 'https://foto.exemplo/p.jpg', // regra: produto novo só entra com foto
     status: null,
     stock: null,
+    storeStock: null,
     ...partial,
   };
 }
@@ -155,6 +156,42 @@ describe('buildPlan', () => {
     );
     expect(plan.inserts).toHaveLength(1);
     expect(plan.warnings[0]).toMatch(/mesmo código de barras/);
+  });
+
+  it('estoque na loja física reativa produto que o ERP marcou inativo', () => {
+    // Caso real: areia Pipicat está "Inativo/0" no Tiny (a loja online não
+    // vende) e tem 134 unidades no Eldorado. O catálogo serve o balcão.
+    const existing = [product({ id: 'p1', name: 'Areia Pipicat 4kg', barcode: '7891111111111', status: 'desativado' })];
+    const plan = buildPlan(
+      [row({ name: 'Areia Pipicat 4kg', barcode: '7891111111111', status: 'desativado', stock: 0, storeStock: 134 })],
+      existing,
+      [],
+      'site_admin',
+    );
+    expect(plan.updates).toHaveLength(1);
+    expect(plan.updates[0]!.changes.status).toBe('ativo');
+  });
+
+  it('sem estoque nas lojas, a situação do ERP continua valendo', () => {
+    const existing = [product({ id: 'p1', name: 'Ração X', barcode: '7891111111111', status: 'ativo' })];
+    const plan = buildPlan(
+      [row({ name: 'Ração X', barcode: '7891111111111', status: 'desativado', stock: 0, storeStock: 0 })],
+      existing,
+      [],
+      'site_admin',
+    );
+    expect(plan.updates[0]!.changes.status).toBe('desativado');
+  });
+
+  it('produto novo inativo no ERP entra se tiver saldo na loja física', () => {
+    const plan = buildPlan(
+      [row({ name: 'Areia Pipicat 4kg', barcode: '7891111111111', status: 'desativado', stock: 0, storeStock: 55 })],
+      [],
+      [],
+      'site_admin',
+    );
+    expect(plan.inserts).toHaveLength(1);
+    expect(plan.inactiveSkipped).toBe(0);
   });
 
   it('código repetido no arquivo: vale a ficha ativa com saldo, não a primeira', () => {

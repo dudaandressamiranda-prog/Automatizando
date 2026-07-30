@@ -223,11 +223,17 @@ export function buildPlan(
     }
 
     if (!match) {
-      if (requireActive && row.status && row.status !== 'ativo') {
+      // "na prateleira" vale mais que a situação do ERP: o Tiny inativa o
+      // que a loja online não vende, mesmo com o produto girando no balcão.
+      const naPrateleira = row.storeStock !== null && row.storeStock > 0;
+      if (requireActive && row.status && row.status !== 'ativo' && !naPrateleira) {
         inactiveSkipped++;
         continue;
       }
-      if (requireStock && row.stock !== null && row.stock <= 0) {
+      // quando a planilha separa por depósito, o saldo que conta é o das
+      // lojas; o "Total" inclui o depósito da loja online
+      const saldo = row.storeStock ?? row.stock;
+      if (requireStock && saldo !== null && saldo <= 0) {
         noStockSkipped++;
         continue;
       }
@@ -283,7 +289,21 @@ export function buildPlan(
     if (row.externalId && !match.external_id) changes.external_id = row.externalId;
     if (row.externalUrl) changes.external_url = row.externalUrl;
     if (row.photoUrl && row.photoUrl !== match.photo_source_url) changes.photo_source_url = row.photoUrl;
-    if (row.status && row.status !== match.status) changes.status = row.status;
+
+    /*
+     * Situação: a planilha que sabe do estoque das lojas manda mais do que a
+     * situação do ERP. O Tiny marca "Inativo" o que a loja ONLINE não vende,
+     * mas o catálogo serve o balcão — a areia Pipicat está inativa e zerada
+     * no Tiny e tem 134 unidades no Eldorado. Ter peça na prateleira é prova
+     * de que o produto existe e vende, então reativa.
+     */
+    const naPrateleira = row.storeStock !== null && row.storeStock > 0;
+    if (naPrateleira && match.status === 'desativado') {
+      changes.status = 'ativo';
+    } else if (row.status && row.status !== match.status) {
+      // sem informação de prateleira, segue a situação da planilha
+      if (!(row.status !== 'ativo' && naPrateleira)) changes.status = row.status;
+    }
 
     if (Object.keys(changes).length === 0) {
       unchanged++;

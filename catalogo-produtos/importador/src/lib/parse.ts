@@ -4,7 +4,7 @@ import Papa from 'papaparse';
 import ExcelJS from 'exceljs';
 import { mapCategory } from './catmap.js';
 import { classifyByName } from './classify.js';
-import { type ColumnMap, type Field, detectColumns } from './columns.js';
+import { type ColumnMap, type Field, detectColumns, detectStoreColumns } from './columns.js';
 import { cleanBarcode, isValidEan, norm } from './normalize.js';
 
 export type RowStatus = 'ativo' | 'desativado' | 'descontinuado';
@@ -21,8 +21,15 @@ export interface ImportRow {
   externalUrl: string | null;
   photoUrl: string | null;
   status: RowStatus | null;
-  /** Estoque somado das lojas, quando a planilha traz. null = planilha não informa. */
+  /** Estoque total da planilha, quando ela traz. null = planilha não informa. */
   stock: number | null;
+  /**
+   * Estoque só das LOJAS FÍSICAS, quando a planilha separa por depósito.
+   * É o número que importa para este catálogo: o Tiny (loja online) não
+   * vende tudo o que as lojas vendem, então "zerado/inativo no Tiny" não
+   * significa que a loja não tem o produto na prateleira.
+   */
+  storeStock: number | null;
 }
 
 /** Nomes genéricos demais para virar produto de catálogo. */
@@ -42,6 +49,8 @@ export interface ParseResult {
   rows: ImportRow[];
   warnings: string[];
   columnMap: ColumnMap;
+  /** Colunas de estoque das lojas físicas (vazio se a planilha não separa). */
+  storeColumns: string[];
   unmatchedHeaders: string[];
   kitsSkipped: number;
   genericSkipped: number;
@@ -78,6 +87,7 @@ export function toImportRows(
         `Use --map name="Nome da Coluna" para indicar manualmente.`,
     );
   }
+  const storeColumns = detectStoreColumns(headers);
 
   const rows: ImportRow[] = [];
   const warnings: string[] = [];
@@ -124,11 +134,16 @@ export function toImportRows(
       if (alt.ok && alt.value && isValidEan(alt.value)) barcode = alt.value;
     }
 
-    let stock: number | null = null;
-    if (map.stock) {
-      const raw = record[map.stock];
+    const numero = (raw: unknown): number | null => {
       const n = typeof raw === 'number' ? raw : Number(String(raw ?? '').replace(',', '.'));
-      stock = Number.isFinite(n) ? n : null;
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const stock = map.stock ? numero(record[map.stock]) : null;
+
+    let storeStock: number | null = null;
+    if (storeColumns.length > 0) {
+      storeStock = storeColumns.reduce((soma, col) => soma + (numero(record[col]) ?? 0), 0);
     }
 
     let photoUrl = cell(record, map.photoUrl);
@@ -159,10 +174,11 @@ export function toImportRows(
       photoUrl,
       status,
       stock,
+      storeStock,
     });
   });
 
-  return { rows, warnings, columnMap: map, unmatchedHeaders: unmatched, kitsSkipped, genericSkipped };
+  return { rows, warnings, columnMap: map, storeColumns, unmatchedHeaders: unmatched, kitsSkipped, genericSkipped };
 }
 
 async function readCsv(filePath: string): Promise<{ headers: string[]; records: Record<string, unknown>[] }> {
