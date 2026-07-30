@@ -162,7 +162,15 @@ const PAGINA = 60;
  * Mostra os produtos em cards, de 60 em 60 — uma categoria grande tem
  * centenas de itens e renderizar tudo de uma vez trava o celular.
  */
-export function CardGrid({ products, signed }: { products: ListProduct[]; signed: Record<string, string> }) {
+interface GridProps {
+  products: ListProduct[];
+  signed: Record<string, string>;
+  selectable?: boolean;
+  isSelected?: (id: string) => boolean;
+  onToggle?: (id: string) => void;
+}
+
+export function CardGrid({ products, signed, selectable, isSelected, onToggle }: GridProps) {
   const [limite, setLimite] = useState(PAGINA);
   const chave = products.length > 0 ? products[0]!.id : '';
 
@@ -174,7 +182,14 @@ export function CardGrid({ products, signed }: { products: ListProduct[]; signed
     <>
       <div className="card-grid">
         {visiveis.map((p) => (
-          <ProductCard key={p.id} product={p} src={photoSrc(p, signed)} />
+          <ProductCard
+            key={p.id}
+            product={p}
+            src={photoSrc(p, signed)}
+            selectable={selectable}
+            selected={isSelected?.(p.id)}
+            onToggle={onToggle}
+          />
         ))}
       </div>
       {products.length > limite && (

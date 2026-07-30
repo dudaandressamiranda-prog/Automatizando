@@ -13,6 +13,7 @@ import { useCallback, useEffect, useState } from 'react';
 export type Route =
   | { page: 'list' }
   | { page: 'category'; group: string }
+  | { page: 'cart' }
   | { page: 'review' }
   | { page: 'logs' }
   | { page: 'new'; barcode?: string }
@@ -24,6 +25,7 @@ function parseHash(hash: string): Route {
     const barcode = new URLSearchParams(query ?? '').get('barcode') ?? undefined;
     return { page: 'new', barcode };
   }
+  if (path === '/carrinho') return { page: 'cart' };
   if (path === '/revisao') return { page: 'review' };
   if (path === '/logs') return { page: 'logs' };
   const p = path?.match(/^\/p\/(.+)$/);

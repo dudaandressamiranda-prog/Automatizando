@@ -4,11 +4,29 @@ import { STATUS_LABEL } from '../lib/types';
 interface Props {
   product: ListProduct;
   src: string | null;
+  /** Bolinha de seleção (para montar o carrinho). */
+  selectable?: boolean;
+  selected?: boolean;
+  onToggle?: (id: string) => void;
 }
 
-export function ProductCard({ product: p, src }: Props) {
+export function ProductCard({ product: p, src, selectable, selected, onToggle }: Props) {
   return (
-    <a href={`#/p/${p.id}`} className="pcard">
+    <a href={`#/p/${p.id}`} className={`pcard ${selected ? 'pcard-selected' : ''}`}>
+      {selectable && (
+        <button
+          type="button"
+          className={`pcard-pick ${selected ? 'on' : ''}`}
+          aria-label={selected ? 'Remover da seleção' : 'Selecionar'}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggle?.(p.id);
+          }}
+        >
+          {selected ? '✓' : ''}
+        </button>
+      )}
       <div className="pcard-img">
         <span aria-hidden>🐾</span>
         {src && (

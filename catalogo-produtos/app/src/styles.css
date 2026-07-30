@@ -378,6 +378,84 @@ body {
 .chip:hover { border-color: var(--green-light); }
 .chip.active { background: var(--green); border-color: var(--green); color: #fff; font-weight: 600; }
 
+/* ===== loja ativa + carrinho no menu ==================================== */
+.nav-store {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.5rem; padding: 0.5rem 0.9rem 0.7rem; margin-bottom: 0.3rem;
+  border-bottom: 1px solid var(--border);
+}
+.nav-store-name { font-weight: 800; color: var(--green); font-size: 0.95rem; }
+.nav-store-switch {
+  background: none; border: 1px solid var(--border); border-radius: 999px;
+  font-size: 0.72rem; padding: 0.15rem 0.6rem; color: var(--muted); cursor: pointer;
+}
+.nav-badge {
+  margin-left: auto; background: var(--green-light); color: #fff;
+  border-radius: 999px; font-size: 0.72rem; font-weight: 700;
+  min-width: 1.3rem; text-align: center; padding: 0.05rem 0.4rem;
+}
+
+/* ===== bolinha de seleção no card ====================================== */
+.pcard { position: relative; }
+.pcard-selected { border-color: var(--green-light); box-shadow: 0 0 0 2px var(--green-soft); }
+.pcard-pick {
+  position: absolute; top: 0.45rem; right: 0.45rem; z-index: 2;
+  width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  border: 2px solid var(--green-light); background: rgb(255 255 255 / 0.9);
+  color: #fff; font-size: 0.9rem; font-weight: 700; line-height: 1;
+  display: grid; place-items: center; cursor: pointer; padding: 0;
+}
+.pcard-pick.on { background: var(--green-light); }
+
+/* barra de seleção fixa embaixo */
+.has-selbar { padding-bottom: 5.5rem; }
+.selbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.8rem 1.2rem; background: var(--green); color: #fff;
+  box-shadow: 0 -2px 10px rgb(0 0 0 / 0.2);
+}
+@media (min-width: 900px) { .selbar { left: var(--sidebar-w); } }
+.selbar-save {
+  background: #fff; color: var(--green); border: none; border-radius: 0.6rem;
+  padding: 0.55rem 1.1rem; font-weight: 700; cursor: pointer;
+}
+
+/* ===== modal (pop-up salvar) =========================================== */
+.modal-scrim { inset: 0; display: grid; place-items: center; padding: 1rem; z-index: 40; }
+.modal {
+  background: var(--card); border-radius: 0.9rem; padding: 1.4rem;
+  max-width: 400px; width: 100%; box-shadow: 0 12px 40px rgb(0 0 0 / 0.3);
+}
+.modal h3 { margin: 0 0 0.6rem; color: var(--green); }
+.modal p { margin: 0 0 1.2rem; }
+.modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; }
+
+/* ===== tela de escolha de loja ======================================== */
+.store-pick { min-height: 100dvh; display: grid; place-items: center; padding: 1.5rem; }
+.store-pick-inner { text-align: center; max-width: 420px; width: 100%; }
+.store-pick-inner h1 { color: var(--green); margin: 0 0 0.3rem; }
+.store-btns { display: grid; gap: 1rem; margin: 1.5rem 0; }
+.store-btn {
+  display: flex; align-items: center; gap: 1rem; justify-content: center;
+  padding: 1.5rem; font-size: 1.2rem; font-weight: 700;
+  background: var(--card); border: 2px solid var(--border); border-radius: 1rem;
+  cursor: pointer; color: var(--text);
+}
+.store-btn:hover { border-color: var(--green-light); background: var(--green-soft); }
+.store-emoji { font-size: 2rem; }
+.link-muted { background: none; border: none; color: var(--muted); cursor: pointer; text-decoration: underline; }
+
+/* ===== página do carrinho ============================================= */
+.cart-actions { display: flex; gap: 0.6rem; margin: 0.5rem 0 1rem; }
+.cart-list { list-style: none; margin: 0; padding: 0; }
+.cart-row {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.6rem 0.25rem; border-bottom: 1px solid var(--border);
+}
+.cart-name { flex: 1; min-width: 0; overflow-wrap: anywhere; text-decoration: none; color: inherit; font-weight: 500; }
+.cart-del { background: none; border: none; color: var(--danger); font-size: 1.1rem; cursor: pointer; flex-shrink: 0; }
+
 .mais { display: block; width: 100%; margin: 0.9rem 0; }
 
 .product-list { list-style: none; margin: 0; padding: 0; }

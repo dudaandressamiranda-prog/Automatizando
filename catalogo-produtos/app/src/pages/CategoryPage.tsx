@@ -1,23 +1,59 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CardGrid } from './Home';
 import { SEM_CATEGORIA, subLevel, topLevel, useCatalog } from '../lib/catalog';
 import { availableBrands, productHasBrand } from '../lib/brands';
+import { useCart } from '../lib/cart';
 import { norm } from '../lib/normalize';
 import { photoSrc, useSignedUrls } from '../lib/photos';
+import { setPending } from '../lib/pending';
+import type { StoreId } from '../lib/store';
 
 interface Props {
   group: string; // 1º nível ("Acessórios") ou SEM_CATEGORIA
+  store: StoreId | null;
 }
 
-export function CategoryPage({ group }: Props) {
+export function CategoryPage({ group, store }: Props) {
   const { products, categories, loading, error } = useCatalog();
   const signed = useSignedUrls(products);
+  const cart = useCart(store);
   const [sub, setSub] = useState<string | null>(null); // id da categoria filtrada
   const [showSearch, setShowSearch] = useState(false);
   const [q, setQ] = useState('');
   const [brand, setBrand] = useState<string | null>(null);
+  const [picked, setPicked] = useState<Record<string, { name: string; barcode: string | null }>>({});
 
   const isOthers = group === SEM_CATEGORIA;
+  const title = group === SEM_CATEGORIA ? 'Outros produtos' : group;
+
+  // mantém o módulo de "seleção pendente" em dia (para o pop-up ao sair)
+  useEffect(() => {
+    const items = Object.entries(picked).map(([id, v]) => ({ id, name: v.name, barcode: v.barcode }));
+    setPending(store ? { categoria: title, items } : null);
+  }, [picked, store, title]);
+
+  // ao desmontar (saiu da categoria), não deixa lixo se já foi salvo
+  useEffect(() => () => { /* pending é resolvido pelo SaveGuard no App */ }, []);
+
+  function toggle(id: string) {
+    const p = products.find((x) => x.id === id);
+    if (!p) return;
+    setPicked((cur) => {
+      const next = { ...cur };
+      if (next[id]) delete next[id];
+      else next[id] = { name: p.name, barcode: p.barcode };
+      return next;
+    });
+  }
+
+  function salvar() {
+    const items = Object.entries(picked).map(([id, v]) => ({ id, name: v.name, barcode: v.barcode }));
+    cart.addMany(items);
+    setPicked({});
+    setPending(null);
+  }
+
+  const nPicked = Object.keys(picked).length;
   const groupCats = useMemo(
     () => categories.filter((c) => norm(topLevel(c.name)) === norm(group)),
     [categories, group],
@@ -64,10 +100,8 @@ export function CategoryPage({ group }: Props) {
     }).sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
   }, [isOthers, groupCats, products, signed]);
 
-  const title = isOthers ? 'Outros produtos' : group;
-
   return (
-    <main>
+    <main className={nPicked > 0 ? 'has-selbar' : ''}>
       <div className="page-head">
         <a href="#/" className="back">‹ Início</a>
         <h2>{title}</h2>
@@ -142,9 +176,20 @@ export function CategoryPage({ group }: Props) {
       {!loading && scoped.length === 0 && !error && (
         <p className="muted center-msg">Nenhum produto nesta categoria.</p>
       )}
-      <CardGrid products={scoped} signed={signed} />
+      <CardGrid
+        products={scoped}
+        signed={signed}
+        selectable={Boolean(store)}
+        isSelected={(id) => Boolean(picked[id]) || cart.has(id)}
+        onToggle={toggle}
+      />
 
-      <a href="#/novo" className="fab" title="Cadastrar produto">+</a>
+      {nPicked > 0 && (
+        <div className="selbar">
+          <span>{nPicked} selecionado{nPicked === 1 ? '' : 's'}</span>
+          <button className="selbar-save" onClick={salvar}>Salvar no carrinho</button>
+        </div>
+      )}
     </main>
   );
 }

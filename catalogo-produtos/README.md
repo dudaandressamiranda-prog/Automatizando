@@ -186,6 +186,27 @@ HTTPS): qualquer host de site estático serve — Vercel, Netlify ou
 Cloudflare Pages. Build com `npm run build` (sai em `app/dist/`),
 configurando as duas variáveis `VITE_*` no painel do host.
 
+## Lojas e carrinho
+
+O catálogo atende duas lojas (**Centro** e **Eldorado**). A loja de cada
+login vem de `user_metadata.store` no Supabase (`"centro"` ou
+`"eldorado"`) — defina no cadastro do usuário. Quem não tem loja fixa
+(ex.: o admin) escolhe a loja numa tela após o login; a escolha fica no
+aparelho e pode ser trocada pelo menu.
+
+**Carrinho** (lista de compras/pedido): cada produto tem uma bolinha de
+seleção. Marcando itens numa categoria e saindo, um pop-up pergunta se
+quer salvar no carrinho — a seleção vai se acumulando pelas categorias.
+O carrinho é **por aparelho e por loja** (guardado no navegador, chave
+separada para cada loja), então o do Centro não se mistura com o do
+Eldorado no mesmo dispositivo. A página Carrinho lista tudo e permite
+copiar a lista ou esvaziar.
+
+> Como é guardado no aparelho, o carrinho não é compartilhado entre
+> funcionários nem entre dispositivos. Para um carrinho único por loja
+> (todos veem o mesmo), seria uma tabela no Supabase com RLS por loja —
+> evolução possível quando quiser.
+
 ## Área administrativa
 
 A barra lateral do app tem uma seção **Administração** (Cadastrar produto,
