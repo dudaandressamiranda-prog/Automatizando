@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { handleAuthError } from './authError';
 import { supabase } from './supabase';
 import { LIST_COLUMNS, type Category, type ListProduct } from './types';
 
@@ -35,6 +36,7 @@ export function useCatalog() {
       const cats = await supabase.from('categories').select('id, name').order('name');
       if (!alive) return;
       if (cats.error) {
+        if (handleAuthError(cats.error.message)) return; // sessão inválida → volta ao login
         setError(`Erro carregando categorias: ${cats.error.message}`);
         setLoading(false);
         return;
@@ -54,6 +56,7 @@ export function useCatalog() {
           .range(from, from + PAGE - 1);
         if (!alive) return;
         if (err) {
+          if (handleAuthError(err.message)) return;
           setError(`Erro carregando o catálogo: ${err.message}`);
           break;
         }
