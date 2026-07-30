@@ -79,10 +79,15 @@ Eldorado.
 
 Quem sabe da prateleira é a planilha do painel, que separa o estoque por
 depósito ("🐾 Centro (CP)", "🏥 Eldorado (CV)", "📦 Tiny"). O importador
-soma só as **lojas físicas** — o depósito do Tiny fica de fora, inclusive
-na regra que barra produto novo sem estoque. Saldo em loja reativa o
-produto e o protege de ser desativado pela situação do ERP; por isso o
-painel vem por último, corrigindo o que veio do Tiny.
+soma as **lojas físicas** e usa esse saldo como prova de que o produto
+existe no balcão: ele reativa o produto e o protege de ser desativado
+pela situação do ERP. Por isso o painel vem por último, corrigindo o que
+veio do Tiny.
+
+Já a regra que barra produto **sem estoque** olha o **total**, somando o
+depósito da loja online — existe o caminho inverso, produto que só vende
+no e-commerce e fica zerado nas duas lojas físicas. Ele continua sendo
+produto do catálogo; só sai quando está zerado em todo lugar.
 
 ### Como o importador evita duplicar (reimportações)
 
@@ -282,17 +287,23 @@ npm run consolidar -- --apply # remove só os FORTE (backup em .csv)
 
 Rode sempre sem `--apply` primeiro e confira o CSV.
 
-### Cadastro completo para ficar ativo (`npm run regras`)
+### Foto obrigatória para ficar ativo (`npm run regras`)
 
-Regra do catálogo: produto só fica **ativo** com foto **e** código de
-barras. Quem estiver ativo faltando um dos dois é desativado — some da
-vitrine e cai em **A revisar** no app, onde dá para completar o cadastro
-e reativar. Nada é apagado, só muda o status.
+Regra do catálogo: produto **ativo precisa ter foto** — sem imagem
+ninguém reconhece o item na tela. Quem estiver ativo sem foto é
+desativado, some da vitrine e cai em **A revisar** no app. Nada é
+apagado, só muda o status.
+
+O código de barras é desejável, mas não derruba o produto: muito item que
+gira nas lojas ainda não tem EAN no cadastro, e tirá-lo da vitrine
+atrapalha mais do que ajuda. Use `--exigir-ean` quando quiser a regra
+estrita (foto **e** código).
 
 ```bash
 npm run regras                        # lista o que está irregular
 npm run regras -- --apply             # desativa (backup em regras-desativados.csv)
-npm run regras -- --reativar --apply  # devolve à vitrine quem se completou
+npm run regras -- --exigir-ean        # regra estrita: exige foto E código
+npm run regras -- --reativar --apply  # devolve à vitrine quem regularizou
 ```
 
 O `--reativar` só desfaz o que este script desativou (a lista sai do

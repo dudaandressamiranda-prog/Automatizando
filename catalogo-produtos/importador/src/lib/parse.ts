@@ -25,9 +25,13 @@ export interface ImportRow {
   stock: number | null;
   /**
    * Estoque só das LOJAS FÍSICAS, quando a planilha separa por depósito.
-   * É o número que importa para este catálogo: o Tiny (loja online) não
-   * vende tudo o que as lojas vendem, então "zerado/inativo no Tiny" não
-   * significa que a loja não tem o produto na prateleira.
+   * Serve para provar que o produto está na prateleira: o Tiny (loja online)
+   * não vende tudo o que as lojas vendem, então "inativo no Tiny" não pode
+   * desativar produto que o balcão tem em estoque.
+   *
+   * Não é o número que decide se o produto entra — para isso vale o `stock`
+   * total, porque também existe o caminho inverso: produto que só vende no
+   * e-commerce fica zerado nas duas lojas e nem por isso sai do catálogo.
    */
   storeStock: number | null;
 }

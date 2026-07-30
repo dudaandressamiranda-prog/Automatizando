@@ -1,21 +1,25 @@
 /**
- * Faz valer a regra do catálogo: produto só fica ATIVO com cadastro
- * completo — foto E código de barras. Quem estiver ativo sem um dos dois
- * é desativado, some da vitrine e vai parar em "A revisar" no app, onde dá
- * para completar o cadastro e reativar.
+ * Faz valer a regra do catálogo: produto ATIVO precisa ter FOTO. Sem foto
+ * ninguém reconhece o item na tela, então ele é desativado, some da vitrine
+ * e vai parar em "A revisar" no app, onde dá para completar o cadastro.
+ *
+ * O código de barras é desejável, mas não derruba o produto: muito item que
+ * gira nas lojas ainda não tem EAN no cadastro, e tirá-lo da vitrine
+ * atrapalha mais do que ajuda. Para exigir o EAN também, use `--exigir-ean`.
  *
  * Nada é apagado: só muda o status, e a lista do que mudou fica em CSV.
  *
  * O caminho de volta é o `--reativar`: quem ESTE script desativou e depois
- * ganhou foto e código volta para a vitrine. A lista de quem voltou a ser
- * elegível sai do próprio regras-desativados.csv, de propósito — produto
- * desativado por outro motivo (inativo no ERP, decisão manual na tela de
- * categorização) não pode ser revertido por engano.
+ * regularizou volta para a vitrine. A lista de quem voltou a ser elegível
+ * sai do próprio regras-desativados.csv, de propósito — produto desativado
+ * por outro motivo (inativo no ERP, decisão manual na tela de categorização)
+ * não pode ser revertido por engano.
  *
  * Uso:
- *   npm run regras                # só lista o que está irregular
- *   npm run regras -- --apply     # desativa (backup em regras-desativados.csv)
- *   npm run regras -- --reativar  # reativa quem ficou com cadastro completo
+ *   npm run regras                    # só lista o que está irregular
+ *   npm run regras -- --apply         # desativa (backup em .csv)
+ *   npm run regras -- --exigir-ean    # regra estrita: exige foto E código
+ *   npm run regras -- --reativar      # reativa quem regularizou
  */
 import 'dotenv/config';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -50,10 +54,12 @@ async function main() {
     if (!data || data.length < 1000) break;
   }
 
+  const exigirEan = process.argv.includes('--exigir-ean');
   const ativos = prods.filter((p) => p.status === 'ativo');
   const semFoto = (p: Prod) => !p.photo_path && !p.photo_source_url;
   const semEan = (p: Prod) => !p.barcode;
-  const irregulares = ativos.filter((p) => semFoto(p) || semEan(p));
+  const irregular = (p: Prod) => semFoto(p) || (exigirEan && semEan(p));
+  const irregulares = ativos.filter(irregular);
 
   // --reativar: desfaz a própria desativação quando o cadastro se completou.
   // Só considera quem está no regras-desativados.csv — produto desativado por
@@ -74,9 +80,9 @@ async function main() {
       );
     }
     const voltam = prods.filter(
-      (p) => p.status === 'desativado' && desativadosPorAqui.has(p.id) && !semFoto(p) && !semEan(p),
+      (p) => p.status === 'desativado' && desativadosPorAqui.has(p.id) && !irregular(p),
     );
-    console.log(`Desativados por este script que já completaram o cadastro: ${voltam.length}`);
+    console.log(`Desativados por este script que já regularizaram: ${voltam.length}`);
     for (const p of voltam) console.log(`  ${p.name}`);
     if (voltam.length === 0) return;
     if (!apply) {
@@ -98,14 +104,19 @@ async function main() {
   const motivo = (p: Prod) =>
     semFoto(p) && semEan(p) ? 'sem foto e sem código' : semFoto(p) ? 'sem foto' : 'sem código';
 
+  console.log(`Regra: produto ativo precisa de foto${exigirEan ? ' E código de barras' : ''}.`);
   console.log(`Ativos: ${ativos.length}`);
-  console.log(`Irregulares: ${irregulares.length}`);
+  console.log(`A desativar: ${irregulares.length}`);
   console.log(`  sem foto:              ${ativos.filter((p) => semFoto(p) && !semEan(p)).length}`);
-  console.log(`  sem código:            ${ativos.filter((p) => semEan(p) && !semFoto(p)).length}`);
   console.log(`  sem foto e sem código: ${ativos.filter((p) => semFoto(p) && semEan(p)).length}`);
+  const soSemEan = ativos.filter((p) => semEan(p) && !semFoto(p)).length;
+  console.log(
+    `  só sem código:         ${soSemEan}` +
+      (exigirEan ? '' : ' (mantidos ativos — têm foto; complete o EAN em "A revisar")'),
+  );
 
   if (irregulares.length === 0) {
-    console.log('\n✅ Catálogo em dia — todo produto ativo tem foto e código.');
+    console.log(`\n✅ Catálogo em dia — todo produto ativo tem foto${exigirEan ? ' e código' : ''}.`);
     return;
   }
 

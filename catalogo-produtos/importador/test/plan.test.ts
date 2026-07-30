@@ -185,13 +185,36 @@ describe('buildPlan', () => {
 
   it('produto novo inativo no ERP entra se tiver saldo na loja física', () => {
     const plan = buildPlan(
-      [row({ name: 'Areia Pipicat 4kg', barcode: '7891111111111', status: 'desativado', stock: 0, storeStock: 55 })],
+      [row({ name: 'Areia Pipicat 4kg', barcode: '7891111111111', status: 'desativado', stock: 55, storeStock: 55 })],
       [],
       [],
       'site_admin',
     );
     expect(plan.inserts).toHaveLength(1);
     expect(plan.inactiveSkipped).toBe(0);
+  });
+
+  it('produto que só vende no e-commerce entra, mesmo zerado nas lojas', () => {
+    // estoque só no depósito da loja online: total 5, lojas físicas 0
+    const plan = buildPlan(
+      [row({ name: 'Item só do site', barcode: '7891111111111', status: 'ativo', stock: 5, storeStock: 0 })],
+      [],
+      [],
+      'site_admin',
+    );
+    expect(plan.inserts).toHaveLength(1);
+    expect(plan.noStockSkipped).toBe(0);
+  });
+
+  it('zerado em todo lugar continua barrado', () => {
+    const plan = buildPlan(
+      [row({ name: 'Item parado', barcode: '7891111111111', status: 'ativo', stock: 0, storeStock: 0 })],
+      [],
+      [],
+      'site_admin',
+    );
+    expect(plan.inserts).toHaveLength(0);
+    expect(plan.noStockSkipped).toBe(1);
   });
 
   it('código repetido no arquivo: vale a ficha ativa com saldo, não a primeira', () => {

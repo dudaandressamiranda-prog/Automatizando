@@ -230,10 +230,10 @@ export function buildPlan(
         inactiveSkipped++;
         continue;
       }
-      // quando a planilha separa por depósito, o saldo que conta é o das
-      // lojas; o "Total" inclui o depósito da loja online
-      const saldo = row.storeStock ?? row.stock;
-      if (requireStock && saldo !== null && saldo <= 0) {
+      // Estoque zerado só barra quando está zerado em TODO lugar, somando a
+      // loja online: há produto que só vende no e-commerce e fica zerado nas
+      // duas lojas físicas — ele continua sendo produto do catálogo.
+      if (requireStock && row.stock !== null && row.stock <= 0) {
         noStockSkipped++;
         continue;
       }
