@@ -4,15 +4,15 @@ import { STATUS_LABEL } from '../lib/types';
 interface Props {
   product: ListProduct;
   src: string | null;
-  /** Bolinha de seleção (para montar o carrinho). */
+  /** Bolinha de seleção (para montar o carrinho ou categorizar em massa). */
   selectable?: boolean;
   selected?: boolean;
   onToggle?: (id: string) => void;
 }
 
 export function ProductCard({ product: p, src, selectable, selected, onToggle }: Props) {
-  return (
-    <a href={`#/p/${p.id}`} className={`pcard ${selected ? 'pcard-selected' : ''}`}>
+  const inner = (
+    <>
       {selectable && (
         <button
           type="button"
@@ -46,6 +46,19 @@ export function ProductCard({ product: p, src, selectable, selected, onToggle }:
         {p.brand && <span className="muted small">{p.brand}</span>}
         {p.barcode && <span className="mono tiny muted">{p.barcode}</span>}
       </div>
+    </>
+  );
+
+  // Em modo de seleção, só a bolinha reage a clique — o resto do card fica
+  // inerte de propósito, pra um toque errado não abrir o produto sem querer
+  // e derrubar a seleção que já estava feita.
+  if (selectable) {
+    return <div className={`pcard ${selected ? 'pcard-selected' : ''}`}>{inner}</div>;
+  }
+
+  return (
+    <a href={`#/p/${p.id}`} className="pcard">
+      {inner}
     </a>
   );
 }
