@@ -21,8 +21,9 @@ const LS_KEY = 'catalogo.activeStore';
  *
  * - Funcionário: loja FIXA vinda da tabela de permissões (store_members) —
  *   não escolhe nem troca, o que elimina o risco de errar a loja.
- * - Admin (isAdmin): sem loja fixa; escolhe qual loja operar (guardado no
- *   aparelho) e pode trocar quando quiser.
+ * - Admin (isAdmin): atende as duas lojas, então nunca fica preso a uma. O
+ *   app abre já numa delas (a última usada) e a troca é um clique no menu,
+ *   sem tela de escolha barrando a entrada.
  */
 export function useActiveStore(session: Session | null, isAdmin: boolean) {
   const email = session?.user.email ?? null;
@@ -50,7 +51,9 @@ export function useActiveStore(session: Session | null, isAdmin: boolean) {
     return () => { alive = false; };
   }, [email, isAdmin]);
 
-  const active: StoreId | null = fixed ?? (isAdmin ? chosen : null);
+  // admin sem preferência salva entra pela primeira loja em vez de parar
+  // numa tela de escolha — ele transita entre as duas o tempo todo
+  const active: StoreId | null = fixed ?? (isAdmin ? (chosen ?? STORES[0].id) : null);
 
   useEffect(() => {
     if (fixed) localStorage.setItem(LS_KEY, fixed);

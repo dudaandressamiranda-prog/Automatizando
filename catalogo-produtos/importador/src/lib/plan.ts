@@ -65,6 +65,24 @@ export interface PlanOptions {
 }
 
 /**
+ * Nota de "capricho" do nome, usada só para desempatar fichas que dividem o
+ * mesmo código de barras. O nome vencedor é o que o cliente vê na tela, então
+ * entre dois cadastros igualmente válidos vale o mais bem escrito.
+ *
+ * Os sinais são os do próprio ERP: cadastro feito com pressa sai TODO EM
+ * CAIXA ALTA e cheio de abreviação ("CONJ. PEITORAL H E GUIA G MARINE"),
+ * enquanto o cadastro caprichado vem com acentuação e palavras inteiras
+ * ("Conjunto Peitoral H e Guia G Marine").
+ */
+export function qualidadeNome(nome: string): number {
+  let nota = 0;
+  if (nome !== nome.toUpperCase()) nota += 2; // tem minúscula: não é caixa alta
+  if (/[áàâãéêíóôõúüç]/i.test(nome)) nota += 1; // acentuação preservada
+  if (!/\b[A-Za-z]{2,6}\.(\s|$)/.test(nome)) nota += 1; // sem abreviação com ponto
+  return nota;
+}
+
+/**
  * Decide o que fazer com cada linha da planilha, sem tocar no banco.
  *
  * Ordem de casamento com produtos existentes:
@@ -127,7 +145,16 @@ export function buildPlan(
   for (const row of rows) {
     if (!row.barcode) continue;
     const atual = melhorPorBarcode.get(row.barcode);
-    if (!atual || vivacidade(row) > vivacidade(atual)) melhorPorBarcode.set(row.barcode, row);
+    if (!atual) {
+      melhorPorBarcode.set(row.barcode, row);
+      continue;
+    }
+    const dif = vivacidade(row) - vivacidade(atual);
+    // Empatadas na "vivacidade", ganha a que está melhor escrita — é o
+    // nome que vai aparecer para o cliente na tela.
+    if (dif > 0 || (dif === 0 && qualidadeNome(row.name) > qualidadeNome(atual.name))) {
+      melhorPorBarcode.set(row.barcode, row);
+    }
   }
 
   const inserts: ProductInsert[] = [];

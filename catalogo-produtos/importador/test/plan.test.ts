@@ -175,6 +175,34 @@ describe('buildPlan', () => {
     expect(plan.warnings[0]).toMatch(/mais viva no ERP/);
   });
 
+  it('código repetido e fichas igualmente vivas: ganha o nome melhor escrito', () => {
+    const plan = buildPlan(
+      [
+        row({ name: 'CONJ. PEITORAL H E GUIA G MARINE', barcode: '7891111111111', status: 'ativo', stock: 4 }),
+        row({ name: 'Conjunto Peitoral H e Guia G Marine', barcode: '7891111111111', status: 'ativo', stock: 4 }),
+      ],
+      [],
+      [],
+      'erp',
+    );
+    expect(plan.inserts).toHaveLength(1);
+    expect(plan.inserts[0]!.name).toBe('Conjunto Peitoral H e Guia G Marine');
+  });
+
+  it('nome melhor escrito não passa por cima da ficha mais viva', () => {
+    const plan = buildPlan(
+      [
+        row({ name: 'Conjunto Peitoral H e Guia G Marine', barcode: '7891111111111', status: 'desativado', stock: 0 }),
+        row({ name: 'CONJ. PEITORAL H E GUIA G MARINE', barcode: '7891111111111', status: 'ativo', stock: 4 }),
+      ],
+      [],
+      [],
+      'erp',
+    );
+    expect(plan.inserts).toHaveLength(1);
+    expect(plan.inserts[0]!.name).toBe('CONJ. PEITORAL H E GUIA G MARINE');
+  });
+
   it('código repetido e produto no banco desativado: a ficha viva reativa', () => {
     const existing = [product({ id: 'p1', name: 'Guia Marine G', barcode: '7891111111111', status: 'desativado' })];
     const plan = buildPlan(

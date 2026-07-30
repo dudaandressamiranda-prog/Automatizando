@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { subPath, topLevel } from '../lib/catalog';
 import { iconFor } from '../lib/categoryIcons';
-import { storeLabel, type StoreId } from '../lib/store';
+import { STORES, storeLabel, type StoreId } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import type { Route } from '../hooks/useHashRoute';
 
@@ -12,7 +12,8 @@ interface Props {
   email?: string;
   admin: boolean;
   store: StoreId;
-  onSwitchStore?: () => void; // trocar de loja (só quem não tem loja fixa)
+  /** Trocar de loja a qualquer momento — só quem atende as duas (admin). */
+  onChooseStore?: (id: StoreId) => void;
 }
 
 interface Cat {
@@ -20,9 +21,10 @@ interface Cat {
   name: string;
 }
 
-export function Nav({ route, onNavigate, onSignOut, email, admin, store, onSwitchStore }: Props) {
+export function Nav({ route, onNavigate, onSignOut, email, admin, store, onChooseStore }: Props) {
   const [cats, setCats] = useState<Cat[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [cartOpen, setCartOpen] = useState(false);
 
   useEffect(() => {
     supabase
@@ -71,19 +73,68 @@ export function Nav({ route, onNavigate, onSignOut, email, admin, store, onSwitc
 
   return (
     <nav className="nav">
-      <div className="nav-store">
-        <span className="nav-store-name">{storeLabel(store)}</span>
-        {onSwitchStore && (
-          <button className="nav-store-switch" onClick={onSwitchStore}>trocar</button>
-        )}
-      </div>
+      {onChooseStore ? (
+        // atende as duas lojas: as duas ficam sempre a um clique
+        <div className="nav-stores">
+          {STORES.map((s) => (
+            <button
+              key={s.id}
+              className={`nav-store-btn ${store === s.id ? 'on' : ''}`}
+              onClick={() => onChooseStore(s.id)}
+              aria-pressed={store === s.id}
+            >
+              <span aria-hidden>{s.emoji}</span> {s.label.replace('Loja ', '')}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="nav-store">
+          <span className="nav-store-name">{storeLabel(store)}</span>
+        </div>
+      )}
 
       <a href="#/" className={`nav-item ${route.page === 'list' ? 'active' : ''}`} onClick={onNavigate}>
         <span className="nav-ico">🏠</span> Início
       </a>
-      <a href="#/carrinho" className={`nav-item ${route.page === 'cart' ? 'active' : ''}`} onClick={onNavigate}>
-        <span className="nav-ico">🛒</span> Carrinhos ({storeLabel(store).replace('Loja ', '')})
-      </a>
+
+      {onChooseStore ? (
+        <div className="nav-cat-group">
+          <div className={`nav-item nav-cat-row ${route.page === 'cart' ? 'active' : ''}`}>
+            <a
+              href="#/carrinho"
+              className="nav-cat-link"
+              onClick={() => { setCartOpen(true); onNavigate(); }}
+            >
+              <span className="nav-ico">🛒</span> Carrinhos
+            </a>
+            <button
+              className="nav-expand"
+              onClick={(e) => { e.preventDefault(); setCartOpen((v) => !v); }}
+              aria-label={cartOpen ? 'Recolher lojas' : 'Ver as duas lojas'}
+            >
+              {cartOpen ? '▾' : '▸'}
+            </button>
+          </div>
+          {cartOpen && (
+            <div className="nav-subs">
+              {STORES.map((s) => (
+                <a
+                  key={s.id}
+                  href="#/carrinho"
+                  className={`nav-subitem ${route.page === 'cart' && store === s.id ? 'active' : ''}`}
+                  onClick={() => { onChooseStore(s.id); onNavigate(); }}
+                >
+                  {s.emoji} {s.label.replace('Loja ', '')}
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <a href="#/carrinho" className={`nav-item ${route.page === 'cart' ? 'active' : ''}`} onClick={onNavigate}>
+          <span className="nav-ico">🛒</span> Carrinhos
+        </a>
+      )}
 
       {admin && (
         <>

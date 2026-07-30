@@ -17,7 +17,6 @@ import { Logs } from './pages/Logs';
 import { Permissions } from './pages/Permissions';
 import { ProductForm } from './pages/ProductForm';
 import { Review } from './pages/Review';
-import { StorePicker } from './pages/StorePicker';
 
 export function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -25,7 +24,7 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { route, navigate } = useHashRoute();
   const admin = isAdmin(session?.user.email);
-  const { active, loading: storeLoading, choose, clear, canSwitch } = useActiveStore(session, admin);
+  const { active, loading: storeLoading, choose, canSwitch } = useActiveStore(session, admin);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -46,18 +45,8 @@ export function App() {
   // descobrindo a loja do funcionário na tabela de permissões
   if (storeLoading) return <div className="center-msg">Carregando…</div>;
 
-  // admin sem loja escolhida → escolhe em qual loja vai atuar
-  if (!active && admin) {
-    return (
-      <StorePicker
-        onChoose={choose}
-        email={email ?? undefined}
-        onSignOut={() => supabase.auth.signOut()}
-      />
-    );
-  }
-
   // funcionário sem loja atribuída → não opera até o admin liberar
+  // (o admin nunca cai aqui: atende as duas lojas e já entra numa delas)
   if (!active) {
     return (
       <div className="store-pick">
@@ -96,7 +85,7 @@ export function App() {
           email={session.user.email ?? undefined}
           admin={admin}
           store={active}
-          onSwitchStore={canSwitch ? clear : undefined}
+          onChooseStore={canSwitch ? choose : undefined}
         />
       </aside>
 

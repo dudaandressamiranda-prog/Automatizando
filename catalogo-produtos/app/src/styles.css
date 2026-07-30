@@ -206,7 +206,7 @@ body {
 .hero {
   background: linear-gradient(135deg, var(--green) 0%, var(--green-light) 100%);
   color: #fff;
-  padding: 2.2rem 1.5rem 2.6rem;
+  padding: 1.8rem 1.5rem 2.1rem;
   margin-bottom: 1.2rem;
 }
 .hero-inner { max-width: 720px; margin: 0 auto; text-align: center; }
@@ -224,7 +224,7 @@ body {
 .home .section-title, .home .cat-grid, .home .card-grid,
 .home .notice, .home .center-msg, .home .mais { margin-left: 1rem; margin-right: 1rem; }
 @media (min-width: 900px) {
-  .hero { padding: 2.6rem 2rem 3rem; border-radius: 0 0 1.2rem 1.2rem; }
+  .hero { padding: 2.1rem 2rem 2.4rem; border-radius: 0 0 1.2rem 1.2rem; }
   .home .section-title, .home .cat-grid, .home .card-grid,
   .home .notice, .home .center-msg, .home .mais { margin-left: 2rem; margin-right: 2rem; }
 }
@@ -286,8 +286,10 @@ body {
 /* -- grade de categorias (foto redonda + nome) ---------------------------- */
 .cat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(6.2rem, 1fr));
-  gap: 0.6rem;
+  /* largura que acomoda nomes de duas palavras ("Comedouros e Bebedouros")
+     sem quebrar em três linhas e desalinhar a fileira */
+  grid-template-columns: repeat(auto-fill, minmax(7.2rem, 1fr));
+  gap: 0.7rem;
 }
 .cat-tile {
   display: flex;
@@ -330,11 +332,23 @@ body {
   background: #fff;
 }
 .cat-name {
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  line-height: 1.15;
+  line-height: 1.2;
   overflow-wrap: break-word;
   hyphens: auto;
+  /* reserva duas linhas: fileira fica alinhada mesmo com nomes curtos */
+  min-height: 2.4em;
+  display: flex;
+  align-items: center;
+}
+/* contagem de produtos da categoria */
+.cat-tile > .tiny.muted {
+  background: var(--green-soft);
+  color: var(--green);
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  font-weight: 700;
 }
 
 /* -- cards de produto ----------------------------------------------------- */
@@ -447,9 +461,22 @@ body {
   border-bottom: 1px solid var(--border);
 }
 .nav-store-name { font-weight: 800; color: var(--green); font-size: 0.95rem; }
-.nav-store-switch {
-  background: none; border: 1px solid var(--border); border-radius: 999px;
-  font-size: 0.72rem; padding: 0.15rem 0.6rem; color: var(--muted); cursor: pointer;
+
+/* seletor das duas lojas (quem atende as duas troca sem sair da tela) */
+.nav-stores {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem;
+  padding: 0.4rem 0.6rem 0.7rem; margin-bottom: 0.3rem;
+  border-bottom: 1px solid var(--border);
+}
+.nav-store-btn {
+  display: flex; align-items: center; justify-content: center; gap: 0.3rem;
+  padding: 0.45rem 0.3rem; border-radius: 0.55rem; cursor: pointer;
+  border: 1px solid var(--border); background: var(--card);
+  font-size: 0.85rem; font-weight: 600; color: var(--muted);
+}
+.nav-store-btn:hover { border-color: var(--green-light); }
+.nav-store-btn.on {
+  background: var(--green); border-color: var(--green); color: #fff;
 }
 .nav-badge {
   margin-left: auto; background: var(--green-light); color: #fff;
@@ -507,19 +534,10 @@ body {
 .modal p { margin: 0 0 1.2rem; }
 .modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; }
 
-/* ===== tela de escolha de loja ======================================== */
+/* ===== aviso de funcionário sem loja liberada ========================== */
 .store-pick { min-height: 100dvh; display: grid; place-items: center; padding: 1.5rem; }
 .store-pick-inner { text-align: center; max-width: 420px; width: 100%; }
 .store-pick-inner h1 { color: var(--green); margin: 0 0 0.3rem; }
-.store-btns { display: grid; gap: 1rem; margin: 1.5rem 0; }
-.store-btn {
-  display: flex; align-items: center; gap: 1rem; justify-content: center;
-  padding: 1.5rem; font-size: 1.2rem; font-weight: 700;
-  background: var(--card); border: 2px solid var(--border); border-radius: 1rem;
-  cursor: pointer; color: var(--text);
-}
-.store-btn:hover { border-color: var(--green-light); background: var(--green-soft); }
-.store-emoji { font-size: 2rem; }
 .link-muted { background: none; border: none; color: var(--muted); cursor: pointer; text-decoration: underline; }
 .cat-show-subs { display: block; margin: 0.2rem 0 0.9rem; font-size: 0.85rem; }
 
