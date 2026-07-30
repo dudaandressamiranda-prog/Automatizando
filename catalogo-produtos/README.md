@@ -238,20 +238,27 @@ o usuário não é admin.
 > os demais. Posso implementar essa migration quando você chegar nessa
 > etapa.
 
-## A fazer (próxima sessão)
+### Consolidar produtos "pai" sem EAN (`npm run consolidar`)
 
-**Consolidar produtos "pai" sem EAN na lista de revisão.** Muitos itens
-desativados por falta de código de barras são, na verdade, o cadastro
-"pai" (genérico, sem EAN) cujas variações "filho" — com EAN — já estão no
-catálogo. Ex.: "Emedron" sem EAN na revisão, enquanto "Emedron 25mg",
-"Emedron 50mg" etc. já existem com código. Esses pais são redundantes.
+Muitos itens sem código de barras na revisão são o cadastro "pai"
+(genérico) cujas variações "filho" — com EAN — já estão no catálogo
+(ex.: "Emedron" sem código, enquanto "Emedron 25mg/50mg" já existem). O
+relatório os identifica com cautela, em três grupos:
 
-Plano: script que, para cada produto sem EAN na revisão, procura no
-catálogo (produtos ativos com EAN) variações cujo nome comece pela mesma
-raiz — e confirma pela internet/foto quando o nome for ambíguo. Onde
-houver variações já cadastradas, o pai vira redundante e sai da revisão
-(descartado/consolidado). Gerar relatório para aprovação antes de remover.
-Deve eliminar boa parte da lista de revisão.
+- **FORTE** — nome genérico puro (sem cor/tamanho/dose) **e** as variações
+  têm códigos diferentes entre si: cada uma tem seu EAN, então o pai sem
+  código é supérfluo. Candidato seguro a remover.
+- **EAN único na família** — o fornecedor usa um só código para todas as
+  cores; as versões sem código são variações **reais**. Não mexe.
+- **Variação (cor/tamanho no nome)** — apresentação específica, produto
+  real. Não mexe.
+
+```bash
+npm run consolidar            # gera consolidar.csv (não altera nada)
+npm run consolidar -- --apply # remove só os FORTE (backup em .csv)
+```
+
+Rode sempre sem `--apply` primeiro e confira o CSV.
 
 ## Decisões sobre a estrutura proposta
 
