@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { ProductCard } from '../components/ProductCard';
 import { SEM_CATEGORIA, topLevel, useCatalog } from '../lib/catalog';
+import { APP_NAME, APP_TAGLINE } from '../lib/config';
 import { cleanBarcode, norm } from '../lib/normalize';
 import { photoSrc, useSignedUrls } from '../lib/photos';
 import type { ListProduct } from '../lib/types';
@@ -76,18 +77,24 @@ export function Home({ navigate }: Props) {
   }
 
   return (
-    <main>
-      <div className="searchbar">
-        <input
-          type="search"
-          placeholder="Nome, marca ou código de barras…"
-          value={q}
-          onChange={(e) => { setQ(e.target.value); setScanMiss(null); }}
-        />
-        <button className="secondary" onClick={() => setScanning(true)} title="Ler código de barras">
-          📷
-        </button>
-      </div>
+    <main className="home">
+      {/* Banner de destaque com busca em evidência */}
+      <section className="hero">
+        <div className="hero-inner">
+          <img src="/icon.png" alt="" className="hero-logo" />
+          <h1 className="hero-title">{APP_NAME}</h1>
+          <p className="hero-tagline">{APP_TAGLINE}</p>
+          <div className="hero-search">
+            <input
+              type="search"
+              placeholder="Buscar por nome, marca ou código de barras…"
+              value={q}
+              onChange={(e) => { setQ(e.target.value); setScanMiss(null); }}
+            />
+            <button onClick={() => setScanning(true)} title="Ler código de barras">📷</button>
+          </div>
+        </div>
+      </section>
 
       {scanning && (
         <Suspense fallback={<p className="muted">Abrindo câmera…</p>}>
@@ -144,7 +151,7 @@ export function Home({ navigate }: Props) {
           )}
           {recent.length > 0 && (
             <>
-              <h2 className="section-title">Mexidos por último</h2>
+              <h2 className="section-title">✨ Destaques</h2>
               <CardGrid products={recent} signed={signed} />
             </>
           )}

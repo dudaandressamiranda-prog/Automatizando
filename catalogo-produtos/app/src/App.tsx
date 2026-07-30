@@ -4,6 +4,7 @@ import { Nav } from './components/Nav';
 import { SaveGuard } from './components/SaveGuard';
 import { useHashRoute } from './hooks/useHashRoute';
 import { isAdmin } from './lib/admin';
+import { APP_NAME } from './lib/config';
 import { useActiveStore } from './lib/store';
 import { supabase } from './lib/supabase';
 import { Cart } from './pages/Cart';
@@ -60,7 +61,7 @@ export function App() {
     return (
       <div className="store-pick">
         <div className="store-pick-inner">
-          <h1><span className="brand-mark">🐾</span> Catálogo</h1>
+          <img src="/logo.png" alt={APP_NAME} className="store-logo" />
           <p className="muted">
             Seu acesso ainda não está vinculado a uma loja. Peça ao responsável
             para liberar em <strong>Funcionários e lojas</strong>.
@@ -82,7 +83,7 @@ export function App() {
     <div className="shell">
       <header className="topbar">
         <button className="menu-btn" onClick={() => setMenuOpen((v) => !v)} aria-label="Menu">☰</button>
-        <a href="#/" className="brand"><span className="brand-mark">🐾</span> Catálogo</a>
+        <a href="#/" className="brand"><img src="/icon.png" alt="" className="brand-logo" /> {APP_NAME}</a>
       </header>
 
       {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} />}
