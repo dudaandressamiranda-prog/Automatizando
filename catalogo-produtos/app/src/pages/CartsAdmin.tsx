@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getItems, listAllCarts, type Cart, type CartItemRow } from '../lib/cart';
+import { CartItemCard } from '../components/CartItemCard';
+import { getItems, listAllCarts, setItemStatus, type Cart, type CartItemRow } from '../lib/cart';
 import { photoSrc, useSignedUrls } from '../lib/photos';
 import { STORES, storeLabel } from '../lib/store';
+
+interface Props {
+  email: string | null;
+}
 
 function quando(iso: string): string {
   return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
 /** Visão do admin: todos os carrinhos das duas lojas, com os itens de cada um. */
-export function CartsAdmin() {
+export function CartsAdmin({ email }: Props) {
   const [carts, setCarts] = useState<Cart[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +38,21 @@ export function CartsAdmin() {
 
   const signed = useSignedUrls(useMemo(() => Object.values(items).flat(), [items]));
 
+  async function mudarStatus(cartId: string, item: CartItemRow, status: CartItemRow['status'], reason: CartItemRow['reason']) {
+    setItems((cur) => ({
+      ...cur,
+      [cartId]: (cur[cartId] ?? []).map((x) => (x.id === item.id ? { ...x, status, reason } : x)),
+    }));
+    await setItemStatus(item.id, status, reason, email);
+  }
+
+  function resumo(rows: CartItemRow[] | undefined): string {
+    if (!rows || rows.length === 0) return '';
+    const rep = rows.filter((r) => r.status === 'reposto').length;
+    const nao = rows.filter((r) => r.status === 'nao_reposto').length;
+    return `${rep} repostos · ${nao} não · ${rows.length - rep - nao} pend.`;
+  }
+
   return (
     <main className="content">
       <div className="page-head">
@@ -55,27 +75,20 @@ export function CartsAdmin() {
                 <button className="admin-cart-head" onClick={() => toggle(c.id)}>
                   <span className="admin-cart-name">{open === c.id ? '▾' : '▸'} {c.name}</span>
                   <span className="muted small">
-                    {c.created_by ?? '—'} · {quando(c.created_at)}
+                    {resumo(items[c.id]) || c.created_by || '—'} · {quando(c.created_at)}
                   </span>
                 </button>
                 {open === c.id && (
                   <ul className="cart-grid admin-cart-items">
-                    {(items[c.id] ?? []).map((i) => {
-                      const src = photoSrc(i, signed);
-                      return (
-                        <li key={i.id} className="cart-card">
-                          <a href={`#/p/${i.product_id}`} className="cart-card-img">
-                            <span aria-hidden>🐾</span>
-                            {src && <img src={src} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
-                          </a>
-                          <div className="cart-card-body">
-                            <a href={`#/p/${i.product_id}`} className="cart-card-name">{i.name}</a>
-                            {i.barcode && <span className="mono tiny muted">{i.barcode}</span>}
-                            {i.added_by && <span className="tiny muted">{i.added_by}</span>}
-                          </div>
-                        </li>
-                      );
-                    })}
+                    {(items[c.id] ?? []).map((i) => (
+                      <CartItemCard
+                        key={i.id}
+                        item={i}
+                        src={photoSrc(i, signed)}
+                        editable
+                        onChange={(st, rs) => mudarStatus(c.id, i, st, rs)}
+                      />
+                    ))}
                     {(items[c.id] ?? []).length === 0 && <li className="muted small">Vazio.</li>}
                   </ul>
                 )}

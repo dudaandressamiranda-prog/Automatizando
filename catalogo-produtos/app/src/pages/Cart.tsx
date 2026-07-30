@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import { CartItemCard } from '../components/CartItemCard';
 import {
-  createCart, deleteCart, getItems, listCarts, removeItem, useActiveCart,
+  createCart, deleteCart, getItems, listCarts, removeItem, setItemStatus, useActiveCart,
   type Cart as CartT, type CartItemRow,
 } from '../lib/cart';
 import { photoSrc, useSignedUrls } from '../lib/photos';
@@ -59,6 +60,15 @@ export function Cart({ store, email }: Props) {
 
   const active = carts.find((c) => c.id === activeId) ?? null;
   const signed = useSignedUrls(items);
+  const nRepostos = items.filter((i) => i.status === 'reposto').length;
+  const nNao = items.filter((i) => i.status === 'nao_reposto').length;
+  const nPend = items.length - nRepostos - nNao;
+
+  async function mudarStatus(i: CartItemRow, status: CartItemRow['status'], reason: CartItemRow['reason']) {
+    // atualização otimista para a UI responder na hora
+    setItems((cur) => cur.map((x) => (x.id === i.id ? { ...x, status, reason } : x)));
+    await setItemStatus(i.id, status, reason, email);
+  }
 
   return (
     <main className="content">
@@ -99,38 +109,37 @@ export function Cart({ store, email }: Props) {
           <div className="cart-actions">
             <span className="muted small">
               {items.length} {items.length === 1 ? 'item' : 'itens'}
-              {active.created_by ? ` · criado por ${active.created_by}` : ''}
+              {active.created_by ? ` · por ${active.created_by}` : ''}
             </span>
             <span style={{ flex: 1 }} />
             <button className="secondary" onClick={copiar} disabled={items.length === 0}>📋 Copiar</button>
             <button className="danger" onClick={() => excluir(active.id)}>Excluir carrinho</button>
           </div>
+
+          {items.length > 0 && (
+            <div className="rep-summary">
+              <span className="rep-pill rep-ok">✓ {nRepostos} repostos</span>
+              <span className="rep-pill rep-no">{nNao} não repostos</span>
+              <span className="rep-pill rep-pend">{nPend} pendentes</span>
+            </div>
+          )}
+
           {items.length === 0 ? (
             <p className="muted center-msg">
               Carrinho vazio. Abra uma categoria, marque as bolinhas e salve.
             </p>
           ) : (
             <ul className="cart-grid">
-              {items.map((i) => {
-                const src = photoSrc(i, signed);
-                return (
-                  <li key={i.id} className="cart-card">
-                    <a href={`#/p/${i.product_id}`} className="cart-card-img">
-                      <span aria-hidden>🐾</span>
-                      {src && <img src={src} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
-                    </a>
-                    <div className="cart-card-body">
-                      <a href={`#/p/${i.product_id}`} className="cart-card-name">{i.name}</a>
-                      {i.barcode && <span className="mono tiny muted">{i.barcode}</span>}
-                    </div>
-                    <button
-                      className="cart-del"
-                      onClick={async () => { await removeItem(i.id); await reload(); }}
-                      aria-label="Remover"
-                    >✕</button>
-                  </li>
-                );
-              })}
+              {items.map((i) => (
+                <CartItemCard
+                  key={i.id}
+                  item={i}
+                  src={photoSrc(i, signed)}
+                  editable
+                  onChange={(st, rs) => mudarStatus(i, st, rs)}
+                  onRemove={async () => { await removeItem(i.id); await reload(); }}
+                />
+              ))}
             </ul>
           )}
         </>

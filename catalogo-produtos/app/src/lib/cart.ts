@@ -12,12 +12,25 @@ export interface Cart {
   created_at: string;
 }
 
+export type ItemStatus = 'pendente' | 'reposto' | 'nao_reposto';
+export type ItemReason = 'fora_estoque' | 'descontinuado' | 'aguardando';
+
+/** Rótulos das situações de reposição (usados na UI). */
+export const REASON_LABEL: Record<ItemReason, string> = {
+  fora_estoque: 'Fora de estoque',
+  descontinuado: 'Não trabalhamos mais',
+  aguardando: 'Aguardando reposição',
+};
+
 /** Item de carrinho já com dados do produto para exibir. */
 export interface CartItemRow {
   id: string;
   product_id: string;
   added_by: string | null;
   added_at: string;
+  status: ItemStatus;
+  reason: ItemReason | null;
+  resolved_by: string | null;
   name: string;
   barcode: string | null;
   photo_path: string | null;
@@ -72,7 +85,7 @@ export async function deleteCart(id: string): Promise<void> {
 export async function getItems(cartId: string): Promise<CartItemRow[]> {
   const { data, error } = await supabase
     .from('cart_items')
-    .select('id, product_id, added_by, added_at, products(name, barcode, photo_path, photo_source_url)')
+    .select('id, product_id, added_by, added_at, status, reason, resolved_by, products(name, barcode, photo_path, photo_source_url)')
     .eq('cart_id', cartId)
     .order('added_at', { ascending: true });
   if (error) throw error;
@@ -85,6 +98,9 @@ export async function getItems(cartId: string): Promise<CartItemRow[]> {
       product_id: r.product_id as string,
       added_by: (r.added_by as string | null) ?? null,
       added_at: r.added_at as string,
+      status: ((r.status as ItemStatus | null) ?? 'pendente'),
+      reason: (r.reason as ItemReason | null) ?? null,
+      resolved_by: (r.resolved_by as string | null) ?? null,
       name: prod?.name ?? '(produto removido)',
       barcode: prod?.barcode ?? null,
       photo_path: prod?.photo_path ?? null,
@@ -106,6 +122,25 @@ export async function addItems(cartId: string, items: NewItem[], email: string |
 
 export async function removeItem(itemId: string): Promise<void> {
   const { error } = await supabase.from('cart_items').delete().eq('id', itemId);
+  if (error) throw error;
+}
+
+/** Marca a reposição de um item: reposto, não reposto (com motivo) ou pendente. */
+export async function setItemStatus(
+  itemId: string,
+  status: ItemStatus,
+  reason: ItemReason | null,
+  email: string | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from('cart_items')
+    .update({
+      status,
+      reason: status === 'nao_reposto' ? reason : null,
+      resolved_by: status === 'pendente' ? null : email,
+      resolved_at: status === 'pendente' ? null : new Date().toISOString(),
+    })
+    .eq('id', itemId);
   if (error) throw error;
 }
 

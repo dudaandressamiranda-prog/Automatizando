@@ -495,6 +495,27 @@ body {
   background: rgb(255 255 255 / 0.92); border: 1px solid var(--border); line-height: 1;
 }
 
+/* status de reposição */
+.cart-card.is-reposto { border-color: #16a34a; }
+.cart-card.is-naoreposto { opacity: 0.85; }
+.cart-card.is-naoreposto .cart-card-img { filter: grayscale(0.6); }
+.rep-badge {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+  font-size: 0.72rem; font-weight: 700; text-align: center; padding: 0.2rem;
+  color: #fff;
+}
+.rep-badge.rep-ok { background: rgb(22 163 74 / 0.92); }
+.rep-badge.rep-no { background: rgb(185 28 28 / 0.9); }
+.rep-select {
+  margin-top: 0.35rem; width: 100%; font-size: 0.8rem;
+  padding: 0.3rem 0.4rem; border: 1px solid var(--border); border-radius: 0.45rem; background: #fff;
+}
+.rep-summary { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.25rem 0 1rem; }
+.rep-pill { font-size: 0.8rem; font-weight: 600; padding: 0.25rem 0.7rem; border-radius: 999px; }
+.rep-pill.rep-ok { background: var(--green-soft); color: var(--green); }
+.rep-pill.rep-no { background: #fee2e2; color: #991b1b; }
+.rep-pill.rep-pend { background: #f3f4f6; color: var(--muted); }
+
 .mais { display: block; width: 100%; margin: 0.9rem 0; }
 
 .product-list { list-style: none; margin: 0; padding: 0; }

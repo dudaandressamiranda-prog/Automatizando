@@ -52,6 +52,15 @@ create table if not exists public.cart_items (
   qty         integer not null default 1 check (qty > 0),
   added_by    text,                 -- email de quem adicionou
   added_at    timestamptz not null default now(),
+
+  -- Reposição: quem separa a compra marca o que conseguiu repor e, para
+  -- o que não deu, o motivo. Assim quem montou o carrinho vê o resultado.
+  status      text not null default 'pendente'
+                check (status in ('pendente', 'reposto', 'nao_reposto')),
+  reason      text check (reason in ('fora_estoque', 'descontinuado', 'aguardando')),
+  resolved_by text,                 -- quem marcou o status
+  resolved_at timestamptz,
+
   unique (cart_id, product_id)
 );
 create index if not exists cart_items_cart_idx on public.cart_items (cart_id);

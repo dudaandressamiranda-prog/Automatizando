@@ -78,7 +78,7 @@ export function App() {
         {(blocked || route.page === 'list') && <Home navigate={navigate} />}
         {!blocked && route.page === 'category' && <CategoryPage group={route.group} store={active} email={email} />}
         {!blocked && route.page === 'cart' && <Cart store={active} email={email} />}
-        {!blocked && route.page === 'cartsAdmin' && <CartsAdmin />}
+        {!blocked && route.page === 'cartsAdmin' && <CartsAdmin email={email} />}
         {!blocked && route.page === 'review' && <Review />}
         {!blocked && route.page === 'logs' && <Logs />}
         {!blocked && route.page === 'new' && <ProductForm navigate={navigate} initialBarcode={route.barcode} />}
