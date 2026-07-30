@@ -62,6 +62,28 @@ for reconhecida:
 npm run import -- produtos.xlsx --map name="Descrição do Item" --map barcode="EAN13"
 ```
 
+### A ordem importa: ERP primeiro, painel depois
+
+Quando for importar as duas planilhas, rode **primeiro a do Tiny** e
+**depois a do painel**:
+
+```bash
+npm run import -- tiny.csv --apply --source=erp
+npm run import -- estoque.xlsx --apply --source=site_admin
+```
+
+O Tiny é a loja **online** e marca "Inativo/zerado" o que não vende pela
+internet — mesmo que o produto gire no balcão. A areia Pipicat, por
+exemplo, está inativa e zerada lá, com 19 unidades no Centro e 134 no
+Eldorado.
+
+Quem sabe da prateleira é a planilha do painel, que separa o estoque por
+depósito ("🐾 Centro (CP)", "🏥 Eldorado (CV)", "📦 Tiny"). O importador
+soma só as **lojas físicas** — o depósito do Tiny fica de fora, inclusive
+na regra que barra produto novo sem estoque. Saldo em loja reativa o
+produto e o protege de ser desativado pela situação do ERP; por isso o
+painel vem por último, corrigindo o que veio do Tiny.
+
 ### Como o importador evita duplicar (reimportações)
 
 Cada linha é casada com a base nesta ordem:
