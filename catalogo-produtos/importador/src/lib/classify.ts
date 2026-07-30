@@ -28,14 +28,19 @@ export function classifyByName(nome: string): string | null {
   const esp = especie(n);
   const porEspecie = (gato: string, cao: string) => (esp === 'gato' ? gato : cao);
 
-  // arranhador tem categoria própria (avaliado antes de "brinquedo")
-  if (tem(/arranhador|\bcat relax\b|super cat/)) return 'Acessórios > Arranhadores';
-  // osso de material sintético é brinquedo, não petisco (avaliado antes de "osso")
-  if (tem(/\bosso\b/) && tem(/silicone|plastic|nylon|borracha|vinil|resina|\btpr\b/)) return 'Brinquedos';
-  if (tem(/\b(brinquedo|mordedor)\b/)) {
-    return tem(/pelucia|boneca/) ? 'Brinquedos > Pelúcias' : 'Brinquedos';
+  // --- Brinquedos e subcategorias (antes de petiscos/camas) ---
+  if (tem(/arranhador|\bcat relax\b|super cat/)) return 'Brinquedos > Arranhadores';
+  if (tem(/catnip|varinha|\bvara |cat dancer|cat laser|ratinho|abelhinha|libelula/)) return 'Brinquedos > Para Gatos';
+  if (tem(/pelucia|\bplush\b/)) return 'Brinquedos > Pelúcias';
+  // osso de material sintético é brinquedo (mordedor), não petisco
+  if (tem(/mordedor|odontopet/) || (tem(/\bosso\b|ossinho/) && tem(/silicone|plastic|nylon|borracha|vinil|resina|\btpr\b/))) {
+    return 'Brinquedos > Mordedores';
   }
-  if (tem(/tapete gelado|caminha|colchonete|\bcama\b|\bmanta\b|\bcobertor\b|casinha|dog house/)) {
+  if (tem(/\bbolinha\b|bola de tenis|push ball|duo ball|redondog/)) return 'Brinquedos > Bolas';
+  if (tem(/\bbrinquedo\b|\bcorda\b/)) return 'Brinquedos';
+  // camas geladas são categoria à parte
+  if (tem(/gelad/) && tem(/tapete|cama/)) return 'Acessórios > Camas e Tapetes Geladas';
+  if (tem(/caminha|colchonete|\bcama\b|\bmanta\b|\bcobertor\b|casinha|dog house/)) {
     return 'Acessórios > Camas e Casinhas';
   }
   if (tem(/tapete higienico|tapetim|\bfralda/)) {

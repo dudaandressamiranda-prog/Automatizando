@@ -345,6 +345,39 @@ body {
 }
 .subcats { margin-bottom: 0.9rem; }
 
+.search-toggle {
+  margin-left: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  font-size: 1.1rem;
+  padding: 0.4rem 0.7rem;
+  cursor: pointer;
+}
+.back-btn { background: none; border: none; cursor: pointer; padding: 0.6rem 0 0.2rem; font-size: 0.95rem; }
+
+.cat-search { margin: 0.25rem 0 1rem; }
+.cat-search input {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  font-size: 1rem;
+  background: var(--card);
+}
+.brand-chips { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.6rem; }
+.chip {
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--text);
+}
+.chip:hover { border-color: var(--green-light); }
+.chip.active { background: var(--green); border-color: var(--green); color: #fff; font-weight: 600; }
+
 .mais { display: block; width: 100%; margin: 0.9rem 0; }
 
 .product-list { list-style: none; margin: 0; padding: 0; }

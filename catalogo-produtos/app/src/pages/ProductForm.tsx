@@ -214,6 +214,13 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
 
   return (
     <main>
+      <button
+        type="button"
+        className="back back-btn"
+        onClick={() => (window.history.length > 1 ? window.history.back() : navigate('/'))}
+      >
+        ‹ Voltar
+      </button>
       <form onSubmit={onSubmit} className="card form">
         <h2>{editing ? 'Editar produto' : 'Novo produto'}</h2>
 

@@ -14,7 +14,7 @@ interface Props {
 /** Emoji por categoria de topo — dá um respiro visual à navegação. */
 const ICONE: Record<string, string> = {
   'Ração para Cães': '🦴',
-  'Ração para Gatos': '🐟',
+  'Ração para Gatos': '🐱',
   'Ração para Peixes': '🐠',
   'Ração para Roedores': '🐹',
   'Ração para Répteis': '🦎',

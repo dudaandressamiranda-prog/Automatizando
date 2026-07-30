@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { CardGrid } from './Home';
 import { SEM_CATEGORIA, subLevel, topLevel, useCatalog } from '../lib/catalog';
+import { availableBrands, productHasBrand } from '../lib/brands';
 import { norm } from '../lib/normalize';
 import { photoSrc, useSignedUrls } from '../lib/photos';
 
@@ -12,6 +13,9 @@ export function CategoryPage({ group }: Props) {
   const { products, categories, loading, error } = useCatalog();
   const signed = useSignedUrls(products);
   const [sub, setSub] = useState<string | null>(null); // id da categoria filtrada
+  const [showSearch, setShowSearch] = useState(false);
+  const [q, setQ] = useState('');
+  const [brand, setBrand] = useState<string | null>(null);
 
   const isOthers = group === SEM_CATEGORIA;
   const groupCats = useMemo(
@@ -20,7 +24,8 @@ export function CategoryPage({ group }: Props) {
   );
   const groupCatIds = useMemo(() => new Set(groupCats.map((c) => c.id)), [groupCats]);
 
-  const scoped = useMemo(
+  // produtos do grupo (respeitando a subcategoria selecionada)
+  const scopedBase = useMemo(
     () =>
       products.filter((p) =>
         isOthers
@@ -29,6 +34,20 @@ export function CategoryPage({ group }: Props) {
       ),
     [products, isOthers, categories, groupCatIds, sub],
   );
+
+  // marcas que existem neste grupo (chips de filtro), curadas por lib/brands
+  const brands = useMemo(() => availableBrands(scopedBase, group), [scopedBase, group]);
+
+  // aplica busca por texto e filtro de marca
+  const scoped = useMemo(() => {
+    const term = norm(q);
+    const marca = brands.find((m) => m.label === brand) ?? null;
+    return scopedBase.filter((p) => {
+      if (term && !norm(`${p.name} ${p.brand ?? ''}`).includes(term)) return false;
+      if (marca && !productHasBrand(p, marca)) return false;
+      return true;
+    });
+  }, [scopedBase, q, brand, brands]);
 
   /** Subcategorias com foto — só quando o grupo tem mais de uma. */
   const subTiles = useMemo(() => {
@@ -53,7 +72,39 @@ export function CategoryPage({ group }: Props) {
         <a href="#/" className="back">‹ Início</a>
         <h2>{title}</h2>
         <span className="muted small">{scoped.length} produto{scoped.length === 1 ? '' : 's'}</span>
+        <button
+          className="search-toggle"
+          onClick={() => { setShowSearch((v) => !v); if (showSearch) { setQ(''); setBrand(null); } }}
+          title="Pesquisar nesta categoria"
+        >
+          🔍
+        </button>
       </div>
+
+      {showSearch && (
+        <div className="cat-search">
+          <input
+            type="search"
+            placeholder={`Buscar em ${title}…`}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            autoFocus
+          />
+          {brands.length > 0 && (
+            <div className="brand-chips">
+              {brands.map((m) => (
+                <button
+                  key={m.label}
+                  className={`chip ${brand === m.label ? 'active' : ''}`}
+                  onClick={() => setBrand(brand === m.label ? null : m.label)}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {error && <p className="error">{error}</p>}
       {loading && <p className="muted center-msg">Carregando…</p>}
