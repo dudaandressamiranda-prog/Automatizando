@@ -157,6 +157,39 @@ describe('buildPlan', () => {
     expect(plan.warnings[0]).toMatch(/mesmo código de barras/);
   });
 
+  it('código repetido no arquivo: vale a ficha ativa com saldo, não a primeira', () => {
+    // Caso real do ERP: cadastro antigo (inativo, zerado) e cadastro em uso
+    // dividem o mesmo GTIN. Pegar a primeira linha desativava o produto vivo.
+    const existing = [product({ id: 'p1', name: 'Guia Marine G', barcode: '7891111111111', status: 'ativo' })];
+    const plan = buildPlan(
+      [
+        row({ name: 'CONJ. GUIA MARINE (antigo)', barcode: '7891111111111', status: 'desativado', stock: 0 }),
+        row({ name: 'Guia Marine G', barcode: '7891111111111', status: 'ativo', stock: 4 }),
+      ],
+      existing,
+      [],
+      'erp',
+    );
+    expect(plan.updates).toHaveLength(0); // nome e status já batem com a ficha viva
+    expect(plan.unchanged).toBe(1);
+    expect(plan.warnings[0]).toMatch(/mais viva no ERP/);
+  });
+
+  it('código repetido e produto no banco desativado: a ficha viva reativa', () => {
+    const existing = [product({ id: 'p1', name: 'Guia Marine G', barcode: '7891111111111', status: 'desativado' })];
+    const plan = buildPlan(
+      [
+        row({ name: 'CONJ. GUIA MARINE (antigo)', barcode: '7891111111111', status: 'desativado', stock: 0 }),
+        row({ name: 'Guia Marine G', barcode: '7891111111111', status: 'ativo', stock: 4 }),
+      ],
+      existing,
+      [],
+      'erp',
+    );
+    expect(plan.updates).toHaveLength(1);
+    expect(plan.updates[0]!.changes.status).toBe('ativo');
+  });
+
   it('categoria do ERP só preenche produto sem categoria (curadoria manual vence)', () => {
     const existing = [
       product({ id: 'p1', name: 'Ração A', barcode: '7891111111111', category_id: 'cat-1' }), // já tem

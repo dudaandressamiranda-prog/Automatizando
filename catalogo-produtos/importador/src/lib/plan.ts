@@ -107,9 +107,28 @@ export function buildPlan(
   const newCategories = new Map<string, string>(); // norm → nome original
 
   // Dentro da própria planilha também pode haver duplicata.
-  const seenBarcode = new Map<string, number>();
   const seenExternal = new Map<string, number>();
   const seenDedupe = new Map<string, number>();
+
+  /**
+   * O mesmo código de barras aparece em mais de uma ficha quando o ERP tem
+   * cadastro antigo e novo convivendo (ex.: "CONJ. PEITORAL H E GUIA G
+   * MARINE" inativo e "GUIA+PEITORAL H MARINE G" ativo com saldo, ambos com
+   * o mesmo GTIN). Vale a ficha viva — ativa e com estoque —, não a que
+   * aparecer primeiro na planilha, senão o produto entra desativado por
+   * causa de um cadastro que ninguém usa mais.
+   */
+  const vivacidade = (r: ImportRow): number => {
+    const ativo = r.status === 'ativo' ? 2 : r.status === null ? 1 : 0;
+    const saldo = r.stock !== null && r.stock > 0 ? 1 : 0;
+    return ativo * 2 + saldo;
+  };
+  const melhorPorBarcode = new Map<string, ImportRow>();
+  for (const row of rows) {
+    if (!row.barcode) continue;
+    const atual = melhorPorBarcode.get(row.barcode);
+    if (!atual || vivacidade(row) > vivacidade(atual)) melhorPorBarcode.set(row.barcode, row);
+  }
 
   const inserts: ProductInsert[] = [];
   const updates: ProductUpdate[] = [];
@@ -126,12 +145,14 @@ export function buildPlan(
       seenExternal.set(row.externalId, row.line);
     }
     if (row.barcode) {
-      const prev = seenBarcode.get(row.barcode);
-      if (prev !== undefined) {
-        warnings.push(`Linha ${row.line}: mesmo código de barras (${row.barcode}) da linha ${prev} — ignorada.`);
+      const melhor = melhorPorBarcode.get(row.barcode)!;
+      if (melhor !== row) {
+        warnings.push(
+          `Linha ${row.line}: mesmo código de barras (${row.barcode}) da linha ${melhor.line} — ` +
+            `usada a linha ${melhor.line}, que está mais viva no ERP.`,
+        );
         continue;
       }
-      seenBarcode.set(row.barcode, row.line);
     }
     if (!row.externalId && !row.barcode) {
       const key = dedupeKey(row.name, row.brand);
