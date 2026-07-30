@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { topLevel } from '../lib/catalog';
+import { iconFor } from '../lib/categoryIcons';
 import { storeLabel, type StoreId } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import type { Route } from '../hooks/useHashRoute';
@@ -13,22 +14,6 @@ interface Props {
   store: StoreId;
   onSwitchStore?: () => void; // trocar de loja (só quem não tem loja fixa)
 }
-
-/** Emoji por categoria de topo — dá um respiro visual à navegação. */
-const ICONE: Record<string, string> = {
-  'Ração para Cães': '🦴',
-  'Ração para Gatos': '🐱',
-  'Ração para Peixes': '🐠',
-  'Ração para Roedores': '🐹',
-  'Ração para Répteis': '🦎',
-  Medicamentos: '💊',
-  'Higiene e Limpeza': '🧴',
-  Brinquedos: '🧸',
-  Acessórios: '🎽',
-  Armarinho: '🎀',
-  Sementes: '🌱',
-  'Coleiras e Guias': '🦮',
-};
 
 export function Nav({ route, onNavigate, onSignOut, email, admin, store, onSwitchStore }: Props) {
   const [groups, setGroups] = useState<string[]>([]);
@@ -119,7 +104,7 @@ export function Nav({ route, onNavigate, onSignOut, email, admin, store, onSwitc
           className={`nav-item ${activeGroup === g ? 'active' : ''}`}
           onClick={onNavigate}
         >
-          <span className="nav-ico">{ICONE[g] ?? '📦'}</span> {g}
+          <span className="nav-ico">{iconFor(g)}</span> {g}
         </a>
       ))}
 

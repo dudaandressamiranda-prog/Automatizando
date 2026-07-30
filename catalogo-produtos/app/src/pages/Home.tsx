@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { ProductCard } from '../components/ProductCard';
 import { topRequested } from '../lib/cart';
 import { SEM_CATEGORIA, topLevel, useCatalog } from '../lib/catalog';
+import { iconFor } from '../lib/categoryIcons';
 import { APP_NAME, APP_TAGLINE } from '../lib/config';
 import { cleanBarcode, norm } from '../lib/normalize';
 import { photoSrc, useSignedUrls } from '../lib/photos';
@@ -145,7 +146,7 @@ export function Home({ navigate }: Props) {
                 {groups.map((g) => (
                   <a key={g.key} href={`#/c/${encodeURIComponent(g.key)}`} className="cat-tile">
                     <span className="cat-photo">
-                      <span aria-hidden>🐾</span>
+                      <span aria-hidden>{g.key === SEM_CATEGORIA ? '🐾' : iconFor(g.key)}</span>
                       {g.photo && (
                         <img
                           src={g.photo}
