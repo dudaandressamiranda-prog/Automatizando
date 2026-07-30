@@ -396,6 +396,8 @@ body {
   padding: 0.4rem 0.7rem;
   cursor: pointer;
 }
+.search-toggle + .search-toggle { margin-left: 0.4rem; }
+.search-toggle.active { background: var(--green); border-color: var(--green); }
 .back-btn { background: none; border: none; cursor: pointer; padding: 0.6rem 0 0.2rem; font-size: 0.95rem; }
 
 .cat-search { margin: 0.25rem 0 1rem; }
@@ -461,6 +463,11 @@ body {
 .selbar-save {
   background: #fff; color: var(--green); border: none; border-radius: 0.6rem;
   padding: 0.55rem 1.1rem; font-weight: 700; cursor: pointer;
+}
+.selbar-save:disabled { opacity: 0.6; cursor: not-allowed; }
+.selbar-cat select {
+  flex: 1; min-width: 0; padding: 0.5rem 0.6rem; border-radius: 0.5rem;
+  border: 1px solid var(--border); font-size: 0.9rem;
 }
 
 /* ===== modal (pop-up salvar) =========================================== */

@@ -28,9 +28,11 @@ export function useCatalog() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let alive = true;
+    setLoading(true);
 
     async function load() {
       const cats = await supabase.from('categories').select('id, name').order('name');
@@ -71,7 +73,24 @@ export function useCatalog() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [reloadKey]);
 
-  return { products, categories, loading, error };
+  const reload = () => setReloadKey((k) => k + 1);
+
+  return { products, categories, loading, error, reload };
+}
+
+/**
+ * Atribui uma categoria para vários produtos de uma vez (uso do admin, para
+ * corrigir categorização em massa). Faz em lotes para não estourar o limite
+ * de uma única requisição.
+ */
+export async function bulkSetCategory(ids: string[], categoryId: string): Promise<void> {
+  for (let i = 0; i < ids.length; i += 80) {
+    const { error } = await supabase
+      .from('products')
+      .update({ category_id: categoryId })
+      .in('id', ids.slice(i, i + 80));
+    if (error) throw error;
+  }
 }
