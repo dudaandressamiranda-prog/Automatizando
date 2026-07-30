@@ -164,6 +164,11 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
     setBusy(true);
     try {
       const catId = await resolveCategory();
+      // Mexeu na situação aqui na tela? A decisão passa a ser sua: os
+      // importadores respeitam status_manual e não a desfazem na próxima
+      // planilha. Só marca quando o status realmente mudou, para salvar
+      // uma correção de nome não travar o produto sem querer.
+      const mudouStatus = !editing || (product != null && status !== product.status);
       const fields = {
         name: cleanName,
         barcode: barcodeValue,
@@ -172,6 +177,7 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
         category_id: catId,
         status,
         notes: notes.trim() || null,
+        ...(mudouStatus ? { status_manual: true } : {}),
       };
 
       let id = productId;

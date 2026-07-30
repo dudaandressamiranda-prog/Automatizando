@@ -153,12 +153,15 @@ export async function bulkSetCategory(ids: string[], categoryId: string): Promis
  * Muda o status de vários produtos de uma vez (uso do admin, ex.: desativar
  * em massa). Produto desativado some da vitrine mas continua salvo — dá
  * pra reativar depois. Faz em lotes para não estourar o limite da requisição.
+ *
+ * Marca `status_manual`: decisão tomada aqui na tela é definitiva, e os
+ * scripts de importação não a desfazem na próxima planilha.
  */
 export async function bulkSetStatus(ids: string[], status: ProductStatus): Promise<void> {
   for (let i = 0; i < ids.length; i += 80) {
     const { error } = await supabase
       .from('products')
-      .update({ status })
+      .update({ status, status_manual: true })
       .in('id', ids.slice(i, i + 80));
     if (error) throw error;
   }

@@ -29,6 +29,7 @@ import Papa from 'papaparse';
 type Prod = {
   id: string;
   name: string;
+  status_manual: boolean;
   barcode: string | null;
   photo_path: string | null;
   photo_source_url: string | null;
@@ -46,7 +47,7 @@ async function main() {
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db
       .from('products')
-      .select('id, name, barcode, photo_path, photo_source_url, status')
+      .select('id, name, barcode, photo_path, photo_source_url, status, status_manual')
       .order('id')
       .range(from, from + 999);
     if (error) throw new Error(error.message);
@@ -59,7 +60,10 @@ async function main() {
   const semFoto = (p: Prod) => !p.photo_path && !p.photo_source_url;
   const semEan = (p: Prod) => !p.barcode;
   const irregular = (p: Prod) => semFoto(p) || (exigirEan && semEan(p));
-  const irregulares = ativos.filter(irregular);
+  // Quem foi ativado na mão fica de fora: a decisão é de quem olhou o
+  // produto, e não cabe ao script desfazê-la.
+  const irregulares = ativos.filter((p) => irregular(p) && !p.status_manual);
+  const travados = ativos.filter((p) => irregular(p) && p.status_manual).length;
 
   // --reativar: desfaz a própria desativação quando o cadastro se completou.
   // Só considera quem está no regras-desativados.csv — produto desativado por
@@ -80,7 +84,11 @@ async function main() {
       );
     }
     const voltam = prods.filter(
-      (p) => p.status === 'desativado' && desativadosPorAqui.has(p.id) && !irregular(p),
+      (p) =>
+        p.status === 'desativado' &&
+        desativadosPorAqui.has(p.id) &&
+        !irregular(p) &&
+        !p.status_manual, // desativado na mão depois: continua desativado
     );
     console.log(`Desativados por este script que já regularizaram: ${voltam.length}`);
     for (const p of voltam) console.log(`  ${p.name}`);
@@ -114,6 +122,9 @@ async function main() {
     `  só sem código:         ${soSemEan}` +
       (exigirEan ? '' : ' (mantidos ativos — têm foto; complete o EAN em "A revisar")'),
   );
+  if (travados > 0) {
+    console.log(`  ativados na mão:       ${travados} (irregulares, mas a decisão é sua — não mexo)`);
+  }
 
   if (irregulares.length === 0) {
     console.log(`\n✅ Catálogo em dia — todo produto ativo tem foto${exigirEan ? ' e código' : ''}.`);

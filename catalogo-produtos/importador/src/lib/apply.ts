@@ -24,7 +24,7 @@ export async function fetchExisting(db: SupabaseClient): Promise<{
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db
       .from('products')
-      .select('id, name, barcode, brand, supplier, category_id, source, external_id, photo_source_url, status, dedupe_key')
+      .select('id, name, barcode, brand, supplier, category_id, source, external_id, photo_source_url, status, status_manual, dedupe_key')
       .order('id', { ascending: true })
       .range(from, from + 999);
     if (error) throw new Error(`Erro lendo produtos: ${error.message}`);

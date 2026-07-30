@@ -31,6 +31,7 @@ function product(partial: Partial<ExistingProduct> & { id: string; name: string 
     external_id: null,
     photo_source_url: 'https://foto.exemplo/p.jpg', // igual ao row(): reimportação idêntica não gera mudança
     status: 'ativo',
+    status_manual: false,
     dedupe_key: dedupeKey(partial.name, partial.brand ?? null),
     ...partial,
   };
@@ -170,6 +171,49 @@ describe('buildPlan', () => {
     );
     expect(plan.updates).toHaveLength(1);
     expect(plan.updates[0]!.changes.status).toBe('ativo');
+  });
+
+  it('desativado na mão NÃO volta, nem com estoque na loja', () => {
+    // A curadoria feita na tela é definitiva: sem isso, toda importação
+    // ressuscitaria o que foi tirado da vitrine de propósito.
+    const existing = [
+      product({
+        id: 'p1',
+        name: 'Produto tirado da vitrine',
+        barcode: '7891111111111',
+        status: 'desativado',
+        status_manual: true,
+      }),
+    ];
+    const plan = buildPlan(
+      [row({ name: 'Produto tirado da vitrine', barcode: '7891111111111', status: 'ativo', stock: 90, storeStock: 90 })],
+      existing,
+      [],
+      'site_admin',
+    );
+    expect(plan.updates).toHaveLength(0);
+    expect(plan.unchanged).toBe(1);
+  });
+
+  it('trava do status não impede atualizar nome, marca e foto', () => {
+    const existing = [
+      product({
+        id: 'p1',
+        name: 'Nome antigo',
+        barcode: '7891111111111',
+        status: 'desativado',
+        status_manual: true,
+      }),
+    ];
+    const plan = buildPlan(
+      [row({ name: 'Nome novo', barcode: '7891111111111', brand: 'Marca', status: 'ativo', storeStock: 5 })],
+      existing,
+      [],
+      'site_admin',
+    );
+    expect(plan.updates[0]!.changes.name).toBe('Nome novo');
+    expect(plan.updates[0]!.changes.brand).toBe('Marca');
+    expect(plan.updates[0]!.changes.status).toBeUndefined();
   });
 
   it('sem estoque nas lojas, a situação do ERP continua valendo', () => {

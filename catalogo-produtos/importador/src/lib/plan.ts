@@ -13,6 +13,8 @@ export interface ExistingProduct {
   external_id: string | null;
   photo_source_url: string | null;
   status: string;
+  /** Situação definida por uma pessoa no app — o importador não encosta. */
+  status_manual?: boolean;
   dedupe_key: string;
 }
 
@@ -291,18 +293,26 @@ export function buildPlan(
     if (row.photoUrl && row.photoUrl !== match.photo_source_url) changes.photo_source_url = row.photoUrl;
 
     /*
-     * Situação: a planilha que sabe do estoque das lojas manda mais do que a
-     * situação do ERP. O Tiny marca "Inativo" o que a loja ONLINE não vende,
-     * mas o catálogo serve o balcão — a areia Pipicat está inativa e zerada
-     * no Tiny e tem 134 unidades no Eldorado. Ter peça na prateleira é prova
-     * de que o produto existe e vende, então reativa.
+     * Situação. Duas regras, nesta ordem:
+     *
+     * 1. Quem decidiu na mão manda. Produto com `status_manual` teve a
+     *    situação definida por uma pessoa na tela — desativar um item que
+     *    não se quer mais na vitrine é trabalho de curadoria, e planilha
+     *    nenhuma pode desfazer isso na importação seguinte.
+     *
+     * 2. Sem decisão humana, a planilha que sabe do estoque das lojas manda
+     *    mais do que a situação do ERP: o Tiny marca "Inativo" o que a loja
+     *    ONLINE não vende, mas o catálogo serve o balcão — a areia Pipicat
+     *    está inativa e zerada no Tiny e tem 134 unidades no Eldorado.
      */
-    const naPrateleira = row.storeStock !== null && row.storeStock > 0;
-    if (naPrateleira && match.status === 'desativado') {
-      changes.status = 'ativo';
-    } else if (row.status && row.status !== match.status) {
-      // sem informação de prateleira, segue a situação da planilha
-      if (!(row.status !== 'ativo' && naPrateleira)) changes.status = row.status;
+    if (!match.status_manual) {
+      const naPrateleira = row.storeStock !== null && row.storeStock > 0;
+      if (naPrateleira && match.status === 'desativado') {
+        changes.status = 'ativo';
+      } else if (row.status && row.status !== match.status) {
+        // sem informação de prateleira, segue a situação da planilha
+        if (!(row.status !== 'ativo' && naPrateleira)) changes.status = row.status;
+      }
     }
 
     if (Object.keys(changes).length === 0) {

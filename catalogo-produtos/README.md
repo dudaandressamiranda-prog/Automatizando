@@ -89,6 +89,20 @@ depósito da loja online — existe o caminho inverso, produto que só vende
 no e-commerce e fica zerado nas duas lojas físicas. Ele continua sendo
 produto do catálogo; só sai quando está zerado em todo lugar.
 
+### O que você decide na mão fica decidido
+
+Ativar ou desativar um produto **pela tela** grava `status_manual` nele. A
+partir daí nenhum script mexe na situação desse produto: nem a
+importação, nem o `npm run regras`. Sem essa trava, desativar um item na
+mão seria trabalho perdido — a próxima planilha com estoque o traria de
+volta para a vitrine sozinho.
+
+A trava é só da **situação**. Nome, marca, foto e categoria continuam
+sendo atualizados normalmente pelas planilhas.
+
+Vale para as duas telas que mexem em status: a edição do produto e a
+seleção em massa (🏷️ → Desativar).
+
 ### Como o importador evita duplicar (reimportações)
 
 Cada linha é casada com a base nesta ordem:
