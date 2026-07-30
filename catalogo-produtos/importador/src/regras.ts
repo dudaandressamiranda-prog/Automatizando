@@ -6,12 +6,19 @@
  *
  * Nada é apagado: só muda o status, e a lista do que mudou fica em CSV.
  *
+ * O caminho de volta é o `--reativar`: quem ESTE script desativou e depois
+ * ganhou foto e código volta para a vitrine. A lista de quem voltou a ser
+ * elegível sai do próprio regras-desativados.csv, de propósito — produto
+ * desativado por outro motivo (inativo no ERP, decisão manual na tela de
+ * categorização) não pode ser revertido por engano.
+ *
  * Uso:
- *   npm run regras            # só lista o que está irregular
- *   npm run regras -- --apply # desativa (com backup em regras-desativados.csv)
+ *   npm run regras                # só lista o que está irregular
+ *   npm run regras -- --apply     # desativa (backup em regras-desativados.csv)
+ *   npm run regras -- --reativar  # reativa quem ficou com cadastro completo
  */
 import 'dotenv/config';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { createClient } from '@supabase/supabase-js';
 import Papa from 'papaparse';
 
@@ -47,6 +54,46 @@ async function main() {
   const semFoto = (p: Prod) => !p.photo_path && !p.photo_source_url;
   const semEan = (p: Prod) => !p.barcode;
   const irregulares = ativos.filter((p) => semFoto(p) || semEan(p));
+
+  // --reativar: desfaz a própria desativação quando o cadastro se completou.
+  // Só considera quem está no regras-desativados.csv — produto desativado por
+  // outro motivo (inativo no ERP, decisão manual na tela) não é revertido.
+  if (process.argv.includes('--reativar')) {
+    let desativadosPorAqui: Set<string>;
+    try {
+      const csv = await readFile('regras-desativados.csv', 'utf8');
+      const parsed = Papa.parse<{ id: string }>(csv.replace(/^﻿/, ''), {
+        header: true,
+        delimiter: ';',
+        skipEmptyLines: true,
+      });
+      desativadosPorAqui = new Set(parsed.data.map((r) => r.id).filter(Boolean));
+    } catch {
+      throw new Error(
+        'Não achei regras-desativados.csv — a reativação só desfaz o que este script desativou.',
+      );
+    }
+    const voltam = prods.filter(
+      (p) => p.status === 'desativado' && desativadosPorAqui.has(p.id) && !semFoto(p) && !semEan(p),
+    );
+    console.log(`Desativados por este script que já completaram o cadastro: ${voltam.length}`);
+    for (const p of voltam) console.log(`  ${p.name}`);
+    if (voltam.length === 0) return;
+    if (!apply) {
+      console.log('\nNada foi alterado. Junte --apply para reativar.');
+      return;
+    }
+    const ids = voltam.map((p) => p.id);
+    for (let i = 0; i < ids.length; i += 80) {
+      const { error } = await db
+        .from('products')
+        .update({ status: 'ativo' })
+        .in('id', ids.slice(i, i + 80));
+      if (error) throw new Error(error.message);
+    }
+    console.log(`\n✅ ${ids.length} produtos reativados.`);
+    return;
+  }
 
   const motivo = (p: Prod) =>
     semFoto(p) && semEan(p) ? 'sem foto e sem código' : semFoto(p) ? 'sem foto' : 'sem código';

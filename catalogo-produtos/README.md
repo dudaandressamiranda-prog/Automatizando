@@ -268,12 +268,35 @@ vitrine e cai em **A revisar** no app, onde dá para completar o cadastro
 e reativar. Nada é apagado, só muda o status.
 
 ```bash
-npm run regras            # lista o que está irregular (não altera nada)
-npm run regras -- --apply # desativa (backup em regras-desativados.csv)
+npm run regras                        # lista o que está irregular
+npm run regras -- --apply             # desativa (backup em regras-desativados.csv)
+npm run regras -- --reativar --apply  # devolve à vitrine quem se completou
 ```
+
+O `--reativar` só desfaz o que este script desativou (a lista sai do
+próprio `regras-desativados.csv`) — produto desativado por outro motivo,
+como inativo no ERP ou decisão manual na tela, nunca é revertido sozinho.
 
 Vale rodar depois de cada importação, já que a planilha do ERP traz
 cadastros incompletos.
+
+### Recuperar EAN de outra planilha (`npm run recuperar-ean`)
+
+O ERP às vezes não tem o código de barras que a planilha do painel tem.
+Este script cruza os dois e preenche o que faltava:
+
+```bash
+npm run recuperar-ean -- planilha.xlsx           # relatório
+npm run recuperar-ean -- planilha.xlsx --apply   # grava os seguros
+```
+
+Só atribui quando os dois nomes têm exatamente as mesmas palavras (a
+pontuação pode diferir) **e** o casamento aponta para um único EAN. Isso é
+proposital: "MORDEDOR SUPER BOWL LED" não pode herdar o código de
+"MORDEDOR SUPER BOWL LED - Rosa", e um cadastro "pai" como o NexGard, que
+existe em 1 e em 3 comprimidos, não pode ficar com o EAN de uma das
+versões. O que sobra vai para `recuperar-ean-variacoes.csv`, para
+conferência manual.
 
 ## Decisões sobre a estrutura proposta
 
