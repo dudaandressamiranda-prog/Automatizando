@@ -18,6 +18,12 @@ export function subLevel(name: string): string | null {
   return i === -1 ? null : name.slice(i + 1).trim();
 }
 
+/** Tudo depois do 1º nível, formatado bonito ("Sub > SubSub" → "Sub › SubSub"). */
+export function subPath(name: string): string | null {
+  const sub = subLevel(name);
+  return sub ? sub.split('>').map((s) => s.trim()).join(' › ') : null;
+}
+
 /**
  * Carrega o catálogo inteiro (uma vez) — a base é pequena (centenas de
  * produtos), então buscar tudo e filtrar no aparelho é mais rápido do

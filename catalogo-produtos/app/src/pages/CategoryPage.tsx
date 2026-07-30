@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CardGrid } from './Home';
-import { SEM_CATEGORIA, bulkSetCategory, subLevel, topLevel, useCatalog } from '../lib/catalog';
+import { SEM_CATEGORIA, bulkSetCategory, subPath, topLevel, useCatalog } from '../lib/catalog';
 import { availableBrands, productHasBrand } from '../lib/brands';
 import { useCartSaver } from '../lib/cart';
 import { norm } from '../lib/normalize';
@@ -142,7 +142,7 @@ export function CategoryPage({ group, store, email, admin }: Props) {
       const withPhoto = inCat.find((p) => photoSrc(p, signed));
       return {
         id: c.id,
-        label: subLevel(c.name) ?? c.name,
+        label: subPath(c.name) ?? c.name,
         count: inCat.length,
         photo: withPhoto ? photoSrc(withPhoto, signed) : null,
       };

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { countByCategory, createCategory, deleteCategory, renameCategory, subLevel, topLevel } from '../lib/catalog';
+import { countByCategory, createCategory, deleteCategory, renameCategory, subPath, topLevel } from '../lib/catalog';
 import { supabase } from '../lib/supabase';
 import type { Category } from '../lib/types';
 
@@ -15,6 +15,7 @@ export function Categories() {
   const [error, setError] = useState<string | null>(null);
   const [grupo, setGrupo] = useState('');
   const [sub, setSub] = useState('');
+  const [subsub, setSubsub] = useState('');
   const [busy, setBusy] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -50,20 +51,22 @@ export function Categories() {
     return [...map.entries()]
       .map(([g, cats]) => [
         g,
-        cats.sort((a, b) => (subLevel(a.name) ?? '').localeCompare(subLevel(b.name) ?? '', 'pt-BR')),
+        cats.sort((a, b) => (subPath(a.name) ?? '').localeCompare(subPath(b.name) ?? '', 'pt-BR')),
       ] as const)
       .sort((a, b) => a[0].localeCompare(b[0], 'pt-BR'));
   }, [categories]);
 
   async function criar() {
     if (!grupo.trim()) return;
-    const nome = sub.trim() ? `${grupo.trim()} > ${sub.trim()}` : grupo.trim();
+    const partes = [grupo.trim(), sub.trim(), sub.trim() ? subsub.trim() : ''].filter(Boolean);
+    const nome = partes.join(' > ');
     setBusy(true);
     setError(null);
     try {
       await createCategory(nome);
       setGrupo('');
       setSub('');
+      setSubsub('');
       await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -123,11 +126,12 @@ export function Categories() {
         <h1>Categorias</h1>
       </div>
       <p className="muted review-hint">
-        Crie uma categoria nova ou uma subcategoria dentro de uma já existente
-        — nesse caso, digite o nome do grupo igual ao que já aparece na lista
-        abaixo (tem sugestão automática) e preencha a subcategoria. Cada
-        categoria também pode ser renomeada (✏️) ou excluída (✕) — excluir não
-        apaga os produtos, só tira a categoria deles.
+        Crie uma categoria nova, uma subcategoria ou até um terceiro nível
+        dentro de uma subcategoria (ex.: Ração para Cães {'>'} Ração Seca{' '}
+        {'>'} Filhotes) — digite o nome do grupo igual ao que já aparece na
+        lista abaixo (tem sugestão automática). Cada categoria também pode
+        ser renomeada (✏️) ou excluída (✕) — excluir não apaga os produtos,
+        só tira a categoria deles.
       </p>
 
       <div className="perm-form">
@@ -143,7 +147,14 @@ export function Categories() {
         <input
           placeholder="Subcategoria (opcional)"
           value={sub}
-          onChange={(e) => setSub(e.target.value)}
+          onChange={(e) => { setSub(e.target.value); if (!e.target.value.trim()) setSubsub(''); }}
+        />
+        <input
+          placeholder="Mais um nível (opcional)"
+          value={subsub}
+          onChange={(e) => setSubsub(e.target.value)}
+          disabled={!sub.trim()}
+          title={sub.trim() ? undefined : 'Preencha a subcategoria primeiro'}
         />
         <button className="primary" onClick={criar} disabled={busy || !grupo.trim()}>
           {busy ? 'Criando…' : 'Criar categoria'}
@@ -162,7 +173,7 @@ export function Categories() {
           <h3 className="cat-group-title">{g}</h3>
           <ul className="perm-list">
             {cats.map((c) => {
-              const label = subLevel(c.name) ?? '(categoria principal)';
+              const label = subPath(c.name) ?? '(categoria principal)';
               const n = counts.get(c.id) ?? 0;
               return (
                 <li key={c.id} className="perm-row cat-row">
