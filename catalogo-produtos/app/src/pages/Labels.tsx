@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { diagnosticar, imprimirZpl, nomeImpressora, type Diagnostico, type Impressora } from '../lib/browserprint';
 import { eanSvg, isValidEan13 } from '../lib/ean';
 import { eplCalibrar, gerarEpl, gerarEplTeste } from '../lib/epl';
 import { useCatalog } from '../lib/catalog';
@@ -42,31 +41,7 @@ export function Labels() {
   // etiqueta pequena não tem altura para nome e código: o código vem antes
   const [mostrarNome, setMostrarNome] = useState(false);
   const [copiado, setCopiado] = useState(false);
-  const [zebras, setZebras] = useState<Impressora[]>([]);
-  const [zebraUid, setZebraUid] = useState('');
-  const [enviando, setEnviando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
-
-  const [procurando, setProcurando] = useState(true);
-  const [diag, setDiag] = useState<Diagnostico | null>(null);
-
-  /**
-   * Procura o Zebra Browser Print na máquina. Só com ele a etiqueta sai
-   * sem passar pela janela de impressão — navegador nenhum deixa uma
-   * página mandar para a impressora sozinha, por segurança.
-   */
-  function procurarImpressoras() {
-    setProcurando(true);
-    diagnosticar()
-      .then((d) => {
-        setDiag(d);
-        const ps = d.estado === 'ok' ? d.impressoras : [];
-        setZebras(ps);
-        if (ps[0]) setZebraUid(ps[0].uid);
-      })
-      .finally(() => setProcurando(false));
-  }
-  useEffect(procurarImpressoras, []);
 
   const formato = FORMATOS.find((f) => f.id === formatoId)!;
 
@@ -157,30 +132,10 @@ export function Labels() {
     setTimeout(() => setCopiado(false), 2000);
   }
 
-  /** Caminho de melhor qualidade: ZPL direto, a Zebra desenha o código. */
-  async function imprimirNaZebra(conteudo = zpl) {
-    const z = zebras.find((p) => p.uid === zebraUid);
-    if (!z) return;
-    setEnviando(true);
-    setAviso(null);
-    try {
-      const r = await imprimirZpl(z, conteudo);
-      setAviso(r.ok ? `Enviado para ${nomeImpressora(z)}.` : `Não consegui imprimir — ${r.erro}`);
-    } finally {
-      setEnviando(false);
-    }
-  }
-
-  /** Faz a impressora medir o vão entre as etiquetas antes de imprimir. */
+  /** Comando que manda a impressora medir o vão entre as etiquetas. */
   async function calibrar() {
-    const cmd = linguagem === 'epl' ? eplCalibrar() : zplCalibrar();
-    if (zebras.length > 0) {
-      await imprimirNaZebra(cmd);
-      setAviso('Calibração enviada — a impressora vai puxar algumas etiquetas medindo o vão.');
-      return;
-    }
-    await navigator.clipboard.writeText(cmd);
-    setAviso('Comando de calibração copiado — cole no Zebra Setup Utilities.');
+    await navigator.clipboard.writeText(linguagem === 'epl' ? eplCalibrar() : zplCalibrar());
+    setAviso('Comando de calibração copiado — cole no Zebra Setup Utilities e envie.');
   }
 
   /** Uma fileira com moldura, para conferir tamanho e alinhamento do rolo. */
@@ -189,12 +144,8 @@ export function Labels() {
       linguagem === 'epl'
         ? gerarEplTeste({ formato, densidade: darkness })
         : gerarZplTeste({ formato, darkness });
-    if (zebras.length > 0) {
-      await imprimirNaZebra(teste);
-      return;
-    }
     await navigator.clipboard.writeText(teste);
-    setAviso(`${linguagem.toUpperCase()} de teste copiado — cole no Zebra Setup Utilities para imprimir.`);
+    setAviso(`${linguagem.toUpperCase()} de teste copiado — cole no Zebra Setup Utilities e envie.`);
   }
 
   return (
@@ -204,12 +155,17 @@ export function Labels() {
         <h1>Etiquetas</h1>
       </div>
       <p className="muted review-hint">
-        Monte a fila, confira o tamanho e imprima. O código de barras é
-        desenhado pela própria impressora, o que deixa a leitura bem mais
-        confiável do que mandar como imagem. Confira a{' '}
-        <strong>linguagem</strong>: a TLP 2844 e as outras da linha Eltron
-        falam <strong>EPL</strong>, as mais novas falam <strong>ZPL</strong> —
-        mandar a errada faz o trabalho morrer em "Erro" sem explicação.
+        Monte a fila e escolha como imprimir. <strong>Imprimir</strong> usa a
+        janela do navegador, com a Zebra como impressora comum.{' '}
+        <strong>Copiar</strong> põe os comandos na área de transferência para
+        colar no Zebra Setup Utilities, e <strong>Baixar</strong> salva num
+        arquivo — nesses dois o código de barras é desenhado pela própria
+        impressora, o que deixa a leitura mais confiável.
+        <br />
+        Confira a <strong>linguagem</strong>: a TLP 2844 e as outras da linha
+        Eltron falam <strong>EPL</strong>, as mais novas falam{' '}
+        <strong>ZPL</strong> — mandar a errada faz o trabalho morrer em "Erro"
+        sem explicação.
       </p>
 
       <div className="etq-busca">
@@ -273,10 +229,10 @@ export function Labels() {
               />
               Imprimir o nome
             </label>
-            <button className="secondary" onClick={calibrar} disabled={enviando}>
+            <button className="secondary" onClick={calibrar}>
               📏 Calibrar
             </button>
-            <button className="secondary" onClick={imprimirTeste} disabled={enviando}>
+            <button className="secondary" onClick={imprimirTeste}>
               📐 Imprimir teste
             </button>
           </div>
@@ -324,21 +280,7 @@ export function Labels() {
             <span className="muted small">
               {totalEtiquetas} etiqueta{totalEtiquetas === 1 ? '' : 's'} · {formato.label}
             </span>
-            {zebras.length > 0 ? (
-              <>
-                {zebras.length > 1 && (
-                  <select value={zebraUid} onChange={(e) => setZebraUid(e.target.value)}>
-                    {zebras.map((z) => <option key={z.uid} value={z.uid}>{nomeImpressora(z)}</option>)}
-                  </select>
-                )}
-                <button className="primary" onClick={() => imprimirNaZebra()} disabled={enviando}>
-                  {enviando ? 'Enviando…' : '🖨️ Imprimir na Zebra'}
-                </button>
-                <button className="secondary" onClick={() => window.print()}>Imprimir pelo navegador</button>
-              </>
-            ) : (
-              <button className="primary" onClick={() => window.print()}>🖨️ Imprimir</button>
-            )}
+            <button className="primary" onClick={() => window.print()}>🖨️ Imprimir</button>
             <button className="secondary" onClick={copiarZpl}>
               {copiado ? 'Copiado!' : `Copiar ${linguagem.toUpperCase()}`}
             </button>
@@ -347,74 +289,6 @@ export function Labels() {
           </div>
           {aviso && <p className="nf-ok">{aviso}</p>}
 
-          {zebras.length > 0 ? (
-            <p className="tiny muted etq-dica">
-              ✓ Impressão direta ligada — a etiqueta sai sem abrir a janela de
-              impressão, e o código de barras é desenhado pela própria Zebra.
-            </p>
-          ) : (
-            <div className="etq-setup">
-              {diag?.estado === 'sem-impressora' ? (
-                <>
-                  <strong className="small">Programa achado, mas sem impressora</strong>
-                  <p className="tiny">
-                    O Zebra Browser Print está rodando ({diag.porta}), só que não
-                    enxerga nenhuma impressora. Confira se a TLP 2844 está ligada
-                    e conectada, e se aparece em <strong>Dispositivos e
-                    Impressoras</strong> do Windows. Se acabou de ligá-la, feche e
-                    abra o Browser Print pela bandeja do sistema.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <strong className="small">Imprimir sem abrir a janela de impressão</strong>
-                  <p className="tiny">
-                    Nenhum navegador deixa uma página mandar direto para a
-                    impressora — é trava de segurança, e a janela sempre aparece.
-                    Quem resolve isso é o <strong>Zebra Browser Print</strong>, um
-                    programinha gratuito da própria Zebra: instalado, o botão daqui
-                    manda o ZPL direto e a etiqueta sai na hora.
-                  </p>
-                  <ol className="tiny">
-                    <li>
-                      Baixe em{' '}
-                      <a href="https://www.zebra.com/br/pt/support-downloads/printer-software/by-product/browser-print.html" target="_blank" rel="noopener noreferrer">
-                        zebra.com → Browser Print ↗
-                      </a>{' '}
-                      (pede um cadastro gratuito).
-                    </li>
-                    <li>Instale e deixe o programa aberto — ele fica no relógio do Windows.</li>
-                    <li>
-                      Abra{' '}
-                      <a href="https://localhost:9101/ssl_support" target="_blank" rel="noopener noreferrer">
-                        https://localhost:9101/ssl_support ↗
-                      </a>{' '}
-                      e aceite o certificado. Sem isso o site não consegue falar com ele.
-                    </li>
-                    <li>Volte aqui e clique em procurar.</li>
-                  </ol>
-                  {diag?.estado === 'sem-programa' && (
-                    <>
-                      <p className="tiny muted">
-                        Nenhuma resposta nos endereços testados:
-                      </p>
-                      <pre className="etq-diag">{diag.detalhe.split(' · ').join('\n')}</pre>
-                      <p className="tiny muted">
-                        "TimeoutError" ou "TypeError" costuma ser o programa fechado
-                        ou o certificado recusado. Se aparecer bloqueio de rede
-                        privada, é o Chrome barrando o acesso ao localhost — abra{' '}
-                        <strong>chrome://flags/#block-insecure-private-network-requests</strong>{' '}
-                        e mude para <strong>Disabled</strong>.
-                      </p>
-                    </>
-                  )}
-                </>
-              )}
-              <button className="secondary" onClick={procurarImpressoras} disabled={procurando}>
-                {procurando ? 'Procurando…' : '🔄 Procurar impressora'}
-              </button>
-            </div>
-          )}
 
           {/*
             Folha de impressão: só aparece no papel, no tamanho exato da
