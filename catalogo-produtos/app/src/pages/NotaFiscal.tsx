@@ -5,6 +5,7 @@ import { norm } from '../lib/normalize';
 import { parseNfe, type ItemNota, type Nota } from '../lib/nfe';
 import { supabase } from '../lib/supabase';
 import { useCatalog } from '../lib/catalog';
+import { enviarParaEtiquetas, type ItemEtiqueta } from '../lib/zpl';
 import type { ListProduct } from '../lib/types';
 
 const RASCUNHO = 'catalogo.nota.rascunho';
@@ -27,6 +28,8 @@ interface Linha {
   photoUrl: string;
   /** Unidades por embalagem — vem da nota e pode ser corrigido. */
   fator: number;
+  /** Etiquetas a imprimir. Começa na quantidade recebida na nota. */
+  etiquetas: number;
   variacoes: Variacao[];
   aberto: boolean;
 }
@@ -136,6 +139,8 @@ export function NotaFiscal() {
             fornecedor: n.fornecedor,
             photoUrl: '',
             fator: item.fatorConversao,
+            // uma etiqueta por unidade recebida é o padrão do balcão
+            etiquetas: Math.max(0, Math.round(item.quantidadeComercial * item.fatorConversao)),
             variacoes: [],
             aberto: false,
           };
@@ -192,6 +197,10 @@ export function NotaFiscal() {
   const marcadas = linhas.filter((l) => l.incluir);
   const jaExistem = linhas.filter((l) => l.ean && porEan.has(l.ean)).length;
   const totalProdutos = marcadas.reduce((s, l) => s + Math.max(1, l.variacoes.length), 0);
+  const totalEtiquetas = marcadas.reduce(
+    (s, l) => s + l.etiquetas * Math.max(1, l.variacoes.length),
+    0,
+  );
 
   /** Só deixa gravar quando o essencial está preenchido. */
   const pendencias = useMemo(() => {
@@ -254,6 +263,28 @@ export function NotaFiscal() {
     } finally {
       setSalvando(false);
     }
+  }
+
+  /**
+   * Manda para a tela de etiquetas o que está marcado e tem código. Cada
+   * variação leva a mesma quantidade da linha, já que cada uma é um produto
+   * com código próprio na prateleira.
+   */
+  function irParaEtiquetas() {
+    const fila: ItemEtiqueta[] = [];
+    for (const l of marcadas) {
+      if (l.etiquetas <= 0) continue;
+      if (l.variacoes.length > 0) {
+        for (const v of l.variacoes) {
+          if (v.ean) fila.push({ nome: `${l.nome} - ${v.nome}`.trim(), barcode: v.ean, copias: l.etiquetas });
+        }
+      } else if (l.ean.trim()) {
+        fila.push({ nome: l.nome, barcode: l.ean.trim(), copias: l.etiquetas });
+      }
+    }
+    if (fila.length === 0) return;
+    enviarParaEtiquetas(fila);
+    window.location.hash = '#/etiquetas';
   }
 
   function descartar() {
@@ -390,6 +421,27 @@ export function NotaFiscal() {
             >
               Só os novos
             </button>
+            <span className="nf-sep" />
+            <button
+              className="secondary"
+              onClick={() =>
+                setLinhas((ls) =>
+                  ls.map((l) => ({
+                    ...l,
+                    etiquetas: Math.max(0, Math.round(l.item.quantidadeComercial * l.fator)),
+                  })),
+                )
+              }
+              title="Uma etiqueta por unidade recebida"
+            >
+              Etiquetas = quantidade da nota
+            </button>
+            <button className="secondary" onClick={() => setLinhas((ls) => ls.map((l) => ({ ...l, etiquetas: 1 })))}>
+              1 etiqueta cada
+            </button>
+            <button className="secondary" onClick={() => setLinhas((ls) => ls.map((l) => ({ ...l, etiquetas: 0 })))}>
+              Zerar etiquetas
+            </button>
           </div>
 
           <ul className="nf-itens">
@@ -418,6 +470,15 @@ export function NotaFiscal() {
                     ) : (
                       <span className="badge nf-badge-novo">novo</span>
                     )}
+                    <label className="nf-etq" title="Quantas etiquetas imprimir deste produto">
+                      🖨️
+                      <input
+                        type="number"
+                        min={0}
+                        value={l.etiquetas}
+                        onChange={(e) => editar(l.key, { etiquetas: Math.max(0, Number(e.target.value)) })}
+                      />
+                    </label>
                     <button className="nf-expand" onClick={() => editar(l.key, { aberto: !l.aberto })}>
                       {l.aberto ? '▾' : '▸'}
                     </button>
@@ -571,10 +632,11 @@ export function NotaFiscal() {
             </div>
           )}
 
-          <div className="selbar">
+          <div className="selbar selbar-cat">
             <span>
               {marcadas.length} item{marcadas.length === 1 ? '' : 's'} → {totalProdutos} produto
               {totalProdutos === 1 ? '' : 's'}
+              {totalEtiquetas > 0 && ` · ${totalEtiquetas} etiqueta${totalEtiquetas === 1 ? '' : 's'}`}
             </span>
             <button
               className="selbar-save"
@@ -582,6 +644,9 @@ export function NotaFiscal() {
               disabled={salvando || marcadas.length === 0 || pendencias.length > 0}
             >
               {salvando ? 'Gravando…' : 'Cadastrar no catálogo'}
+            </button>
+            <button className="selbar-save" onClick={irParaEtiquetas} disabled={totalEtiquetas === 0}>
+              🖨️ Etiquetas ({totalEtiquetas})
             </button>
           </div>
         </>

@@ -954,3 +954,14 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
   .etq-papel-cod { width: 100%; display: flex; justify-content: center; }
   .etq-papel-cod svg { width: 100%; height: auto; max-height: 14mm; }
 }
+
+/* etiquetas na linha da nota */
+.nf-etq {
+  display: flex; align-items: center; gap: 0.25rem; flex-shrink: 0;
+  font-size: 0.9rem; color: var(--muted); cursor: pointer;
+}
+.nf-etq input {
+  width: 3.4rem; padding: 0.3rem 0.35rem; text-align: center; font-size: 0.85rem;
+  border: 1px solid var(--border); border-radius: 0.4rem;
+}
+.nf-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 0.2rem; }

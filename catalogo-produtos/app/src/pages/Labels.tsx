@@ -3,7 +3,7 @@ import { imprimirZpl, listarImpressoras, type Impressora } from '../lib/browserp
 import { eanSvg, isValidEan13 } from '../lib/ean';
 import { useCatalog } from '../lib/catalog';
 import { norm } from '../lib/normalize';
-import { FORMATOS, gerarZpl, type ItemEtiqueta } from '../lib/zpl';
+import { FILA_ETIQUETAS, FORMATOS, gerarZpl, type ItemEtiqueta } from '../lib/zpl';
 
 /**
  * Impressão de etiquetas de código de barras na Zebra.
@@ -16,7 +16,10 @@ import { FORMATOS, gerarZpl, type ItemEtiqueta } from '../lib/zpl';
 export function Labels() {
   const { products, loading } = useCatalog();
   const [q, setQ] = useState('');
-  const [fila, setFila] = useState<Record<string, number>>({}); // id → cópias
+  // fila indexada pelo código de barras, e carregando os próprios dados: a
+  // entrada de nota manda produtos para cá sem depender do catálogo já
+  // ter recarregado
+  const [fila, setFila] = useState<Record<string, ItemEtiqueta>>({});
   const [formatoId, setFormatoId] = useState(FORMATOS[0]!.id);
   const [darkness, setDarkness] = useState(15);
   const [mostrarNome, setMostrarNome] = useState(true);
@@ -51,16 +54,7 @@ export function Labels() {
       .slice(0, 30);
   }, [q, buscaveis]);
 
-  const itens: (ItemEtiqueta & { id: string })[] = useMemo(
-    () =>
-      Object.entries(fila)
-        .map(([id, copias]) => {
-          const p = products.find((x) => x.id === id);
-          return p ? { id, nome: p.name, barcode: p.barcode!, copias } : null;
-        })
-        .filter((x): x is ItemEtiqueta & { id: string } => x !== null),
-    [fila, products],
-  );
+  const itens = useMemo(() => Object.values(fila), [fila]);
 
   const totalEtiquetas = itens.reduce((s, i) => s + i.copias, 0);
   const zpl = useMemo(
@@ -68,18 +62,41 @@ export function Labels() {
     [itens, formato, darkness, mostrarNome],
   );
 
-  function addProduto(id: string) {
-    setFila((f) => ({ ...f, [id]: (f[id] ?? 0) + 1 }));
+  function addProduto(nome: string, barcode: string) {
+    setFila((f) => ({
+      ...f,
+      [barcode]: { nome, barcode, copias: (f[barcode]?.copias ?? 0) + 1 },
+    }));
     setQ('');
   }
-  function setCopias(id: string, n: number) {
+  function setCopias(barcode: string, n: number) {
     setFila((f) => {
       const next = { ...f };
-      if (n <= 0) delete next[id];
-      else next[id] = n;
+      if (n <= 0) delete next[barcode];
+      else if (next[barcode]) next[barcode] = { ...next[barcode]!, copias: n };
       return next;
     });
   }
+
+  // fila mandada por outra tela (entrada de nota)
+  useEffect(() => {
+    const salvo = localStorage.getItem(FILA_ETIQUETAS);
+    if (!salvo) return;
+    localStorage.removeItem(FILA_ETIQUETAS);
+    try {
+      const vindos = JSON.parse(salvo) as ItemEtiqueta[];
+      setFila((f) => {
+        const next = { ...f };
+        for (const i of vindos) {
+          if (!i.barcode) continue;
+          next[i.barcode] = { ...i, copias: (next[i.barcode]?.copias ?? 0) + i.copias };
+        }
+        return next;
+      });
+    } catch {
+      // fila corrompida: ignora e segue com a tela vazia
+    }
+  }, []);
 
   function baixarZpl() {
     const blob = new Blob([zpl], { type: 'text/plain;charset=utf-8' });
@@ -136,7 +153,7 @@ export function Labels() {
           <ul className="etq-resultados">
             {resultados.map((p) => (
               <li key={p.id}>
-                <button onClick={() => addProduto(p.id)}>
+                <button onClick={() => addProduto(p.name, p.barcode!)}>
                   <span className="etq-res-nome">{p.name}</span>
                   <span className="mono tiny muted">{p.barcode}</span>
                 </button>
@@ -183,7 +200,7 @@ export function Labels() {
 
           <ul className="etq-fila">
             {itens.map((i) => (
-              <li key={i.id} className="etq-item">
+              <li key={i.barcode} className="etq-item">
                 <div
                   className="etq-preview"
                   // svg gerado aqui mesmo, sem entrada externa
@@ -194,16 +211,16 @@ export function Labels() {
                   <span className="mono tiny muted">{i.barcode}</span>
                 </div>
                 <div className="etq-copias">
-                  <button onClick={() => setCopias(i.id, i.copias - 1)} aria-label="Menos uma">−</button>
+                  <button onClick={() => setCopias(i.barcode, i.copias - 1)} aria-label="Menos uma">−</button>
                   <input
                     type="number"
                     min={1}
                     value={i.copias}
-                    onChange={(e) => setCopias(i.id, Number(e.target.value))}
+                    onChange={(e) => setCopias(i.barcode, Number(e.target.value))}
                   />
-                  <button onClick={() => setCopias(i.id, i.copias + 1)} aria-label="Mais uma">+</button>
+                  <button onClick={() => setCopias(i.barcode, i.copias + 1)} aria-label="Mais uma">+</button>
                 </div>
-                <button className="cart-del" onClick={() => setCopias(i.id, 0)} aria-label="Tirar da fila">✕</button>
+                <button className="cart-del" onClick={() => setCopias(i.barcode, 0)} aria-label="Tirar da fila">✕</button>
               </li>
             ))}
           </ul>
@@ -265,7 +282,7 @@ export function Labels() {
             {itens.flatMap((i) =>
               Array.from({ length: i.copias }, (_, n) => (
                 <div
-                  key={`${i.id}-${n}`}
+                  key={`${i.barcode}-${n}`}
                   className="etq-papel"
                   style={{ width: `${formato.larguraMm}mm`, height: `${formato.alturaMm}mm` }}
                 >

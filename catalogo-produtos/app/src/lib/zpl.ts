@@ -34,6 +34,17 @@ export interface ItemEtiqueta {
   copias: number;
 }
 
+/**
+ * Fila passada de uma tela para outra (a entrada de nota manda os produtos
+ * recém-cadastrados para as etiquetas). Vai pelo armazenamento local porque
+ * a navegação é por hash e não carrega estado entre telas.
+ */
+export const FILA_ETIQUETAS = 'catalogo.etiquetas.fila';
+
+export function enviarParaEtiquetas(itens: ItemEtiqueta[]): void {
+  localStorage.setItem(FILA_ETIQUETAS, JSON.stringify(itens));
+}
+
 export interface OpcoesZpl {
   formato: FormatoEtiqueta;
   dpi?: number;
