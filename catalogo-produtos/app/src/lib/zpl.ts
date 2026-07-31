@@ -194,3 +194,8 @@ export function gerarZplTeste(o: OpcoesZpl): string {
   );
   return linhas.join('\n');
 }
+
+/** Calibração do sensor de mídia no ZPL, equivalente ao AutoSense do EPL. */
+export function zplCalibrar(): string {
+  return '~JC';
+}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { diagnosticar, imprimirZpl, type Diagnostico, type Impressora } from '../lib/browserprint';
 import { eanSvg, isValidEan13 } from '../lib/ean';
-import { gerarEpl, gerarEplTeste } from '../lib/epl';
+import { eplCalibrar, gerarEpl, gerarEplTeste } from '../lib/epl';
 import { useCatalog } from '../lib/catalog';
 import { norm } from '../lib/normalize';
 import {
@@ -11,6 +11,7 @@ import {
   gerarZplTeste,
   larguraFitaMm,
   moduloParaLargura,
+  zplCalibrar,
   type ItemEtiqueta,
 } from '../lib/zpl';
 
@@ -170,6 +171,18 @@ export function Labels() {
     }
   }
 
+  /** Faz a impressora medir o vão entre as etiquetas antes de imprimir. */
+  async function calibrar() {
+    const cmd = linguagem === 'epl' ? eplCalibrar() : zplCalibrar();
+    if (zebras.length > 0) {
+      await imprimirNaZebra(cmd);
+      setAviso('Calibração enviada — a impressora vai puxar algumas etiquetas medindo o vão.');
+      return;
+    }
+    await navigator.clipboard.writeText(cmd);
+    setAviso('Comando de calibração copiado — cole no Zebra Setup Utilities.');
+  }
+
   /** Uma fileira com moldura, para conferir tamanho e alinhamento do rolo. */
   async function imprimirTeste() {
     const teste =
@@ -260,6 +273,9 @@ export function Labels() {
               />
               Imprimir o nome
             </label>
+            <button className="secondary" onClick={calibrar} disabled={enviando}>
+              📏 Calibrar
+            </button>
             <button className="secondary" onClick={imprimirTeste} disabled={enviando}>
               📐 Imprimir teste
             </button>

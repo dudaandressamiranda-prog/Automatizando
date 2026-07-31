@@ -146,3 +146,14 @@ export function gerarEplTeste(o: OpcoesEpl): string {
   linhas.push('P1');
   return linhas.join('\n');
 }
+
+/**
+ * Manda a impressora medir sozinha o vão entre as etiquetas (AutoSense).
+ *
+ * Sem isso ela não sabe onde uma etiqueta termina e a outra começa, e a
+ * impressão sai deslocada ou avançando etiqueta a mais. É o mesmo que o
+ * truque de ligar segurando o botão de avanço, só que por comando.
+ */
+export function eplCalibrar(): string {
+  return 'xa';
+}
