@@ -14,7 +14,7 @@ export type Route =
   | { page: 'list' }
   | { page: 'category'; group: string; sub?: string }
   | { page: 'cart' }
-  | { page: 'cartsAdmin' }
+  | { page: 'cartsAdmin'; loja?: string; carrinho?: string }
   | { page: 'permissions' }
   | { page: 'categories' }
   | { page: 'labels' }
@@ -31,7 +31,10 @@ function parseHash(hash: string): Route {
     return { page: 'new', barcode };
   }
   if (path === '/carrinho') return { page: 'cart' };
-  if (path === '/carrinhos-lojas') return { page: 'cartsAdmin' };
+  if (path === '/carrinhos-lojas') {
+    const q = new URLSearchParams(query ?? '');
+    return { page: 'cartsAdmin', loja: q.get('loja') ?? undefined, carrinho: q.get('carrinho') ?? undefined };
+  }
   if (path === '/funcionarios') return { page: 'permissions' };
   if (path === '/categorias') return { page: 'categories' };
   if (path === '/etiquetas') return { page: 'labels' };

@@ -2,23 +2,35 @@ import { useEffect, useMemo, useState } from 'react';
 import { CartItemCard } from '../components/CartItemCard';
 import { getItems, listAllCarts, setItemStatus, type Cart, type CartItemRow } from '../lib/cart';
 import { photoSrc, useSignedUrls } from '../lib/photos';
-import { STORES, storeLabel } from '../lib/store';
+import { STORES, storeLabel, type StoreId } from '../lib/store';
 
 interface Props {
   email: string | null;
+  /** Loja aberta; sem ela, mostra a escolha das duas. */
+  loja?: string;
+  /** Carrinho aberto; abre a tela dos produtos. */
+  carrinho?: string;
 }
 
 function quando(iso: string): string {
-  return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  });
 }
 
-/** Visão do admin: todos os carrinhos das duas lojas, com os itens de cada um. */
-export function CartsAdmin({ email }: Props) {
+const porNome = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'pt-BR');
+
+/**
+ * Visão do admin, em três telas: escolhe a loja, vê os carrinhos dela e
+ * abre um para trabalhar nos produtos. Cada nível é um endereço próprio,
+ * então o botão voltar do celular anda um passo de cada vez.
+ */
+export function CartsAdmin({ email, loja, carrinho }: Props) {
   const [carts, setCarts] = useState<Cart[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<string | null>(null);
-  const [items, setItems] = useState<Record<string, CartItemRow[]>>({});
+  const [itens, setItens] = useState<CartItemRow[] | null>(null);
+  const [carregandoItens, setCarregandoItens] = useState(false);
 
   useEffect(() => {
     listAllCarts()
@@ -27,32 +39,119 @@ export function CartsAdmin({ email }: Props) {
       .finally(() => setLoading(false));
   }, []);
 
-  async function toggle(id: string) {
-    if (open === id) return setOpen(null);
-    setOpen(id);
-    if (!items[id]) {
-      const rows = await getItems(id);
-      setItems((cur) => ({ ...cur, [id]: rows }));
+  // carrega os produtos só do carrinho aberto
+  useEffect(() => {
+    if (!carrinho) {
+      setItens(null);
+      return;
     }
-  }
+    let vivo = true;
+    setCarregandoItens(true);
+    getItems(carrinho)
+      .then((rows) => { if (vivo) setItens(rows); })
+      .catch((e) => { if (vivo) setError(e instanceof Error ? e.message : String(e)); })
+      .finally(() => { if (vivo) setCarregandoItens(false); });
+    return () => { vivo = false; };
+  }, [carrinho]);
 
-  const signed = useSignedUrls(useMemo(() => Object.values(items).flat(), [items]));
+  const signed = useSignedUrls(itens ?? []);
 
-  async function mudarStatus(cartId: string, item: CartItemRow, status: CartItemRow['status'], reason: CartItemRow['reason']) {
-    setItems((cur) => ({
-      ...cur,
-      [cartId]: (cur[cartId] ?? []).map((x) => (x.id === item.id ? { ...x, status, reason } : x)),
-    }));
+  async function mudarStatus(item: CartItemRow, status: CartItemRow['status'], reason: CartItemRow['reason']) {
+    setItens((cur) => (cur ?? []).map((x) => (x.id === item.id ? { ...x, status, reason } : x)));
     await setItemStatus(item.id, status, reason, email);
   }
 
-  function resumo(rows: CartItemRow[] | undefined): string {
-    if (!rows || rows.length === 0) return '';
-    const rep = rows.filter((r) => r.status === 'reposto').length;
-    const nao = rows.filter((r) => r.status === 'nao_reposto').length;
-    return `${rep} repostos · ${nao} não · ${rows.length - rep - nao} pend.`;
+  const porLoja = useMemo(() => {
+    const m = new Map<StoreId, Cart[]>();
+    for (const s of STORES) {
+      m.set(
+        s.id,
+        carts.filter((c) => c.store === s.id).sort(porNome),
+      );
+    }
+    return m;
+  }, [carts]);
+
+  // ---- tela 3: produtos de um carrinho ---------------------------------
+  if (carrinho) {
+    const c = carts.find((x) => x.id === carrinho);
+    const ordenados = [...(itens ?? [])].sort(porNome);
+    const reposto = ordenados.filter((i) => i.status === 'reposto').length;
+    const naoReposto = ordenados.filter((i) => i.status === 'nao_reposto').length;
+    const pendente = ordenados.length - reposto - naoReposto;
+
+    return (
+      <main className="content">
+        <div className="page-head">
+          <a href={`#/carrinhos-lojas?loja=${c?.store ?? ''}`} className="back">‹ Carrinhos</a>
+          <h1>{c?.name ?? 'Carrinho'}</h1>
+          <span className="muted small">{ordenados.length} produtos</span>
+        </div>
+        {c && (
+          <p className="muted small">
+            {storeLabel(c.store)} · criado por {c.created_by || '—'} · {quando(c.created_at)}
+          </p>
+        )}
+
+        {ordenados.length > 0 && (
+          <div className="rep-summary">
+            <span className="rep-pill rep-ok">{reposto} repostos</span>
+            <span className="rep-pill rep-no">{naoReposto} não repostos</span>
+            <span className="rep-pill rep-pend">{pendente} pendentes</span>
+          </div>
+        )}
+
+        {error && <p className="error">Erro: {error}</p>}
+        {carregandoItens && <p className="muted center-msg">Carregando…</p>}
+        {!carregandoItens && ordenados.length === 0 && <p className="muted center-msg">Carrinho vazio.</p>}
+
+        <ul className="cart-grid">
+          {ordenados.map((i) => (
+            <CartItemCard
+              key={i.id}
+              item={i}
+              src={photoSrc(i, signed)}
+              editable
+              onChange={(st, rs) => mudarStatus(i, st, rs)}
+            />
+          ))}
+        </ul>
+      </main>
+    );
   }
 
+  // ---- tela 2: carrinhos de uma loja -----------------------------------
+  if (loja) {
+    const s = STORES.find((x) => x.id === loja);
+    const lista = porLoja.get(loja as StoreId) ?? [];
+    return (
+      <main className="content">
+        <div className="page-head">
+          <a href="#/carrinhos-lojas" className="back">‹ Lojas</a>
+          <h1>{s?.emoji} {storeLabel(loja as StoreId)}</h1>
+          <span className="muted small">{lista.length} carrinhos</span>
+        </div>
+
+        {error && <p className="error">Erro: {error}</p>}
+        {loading && <p className="muted center-msg">Carregando…</p>}
+        {!loading && lista.length === 0 && <p className="muted center-msg">Nenhum carrinho nesta loja.</p>}
+
+        <ul className="cart-lista">
+          {lista.map((c) => (
+            <li key={c.id}>
+              <a href={`#/carrinhos-lojas?carrinho=${c.id}`} className="cart-lista-item">
+                <span className="cart-lista-nome">🛒 {c.name}</span>
+                <span className="muted small">{c.created_by || '—'} · {quando(c.created_at)}</span>
+                <span className="cart-lista-seta">›</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </main>
+    );
+  }
+
+  // ---- tela 1: escolha da loja -----------------------------------------
   return (
     <main className="content">
       <div className="page-head">
@@ -64,39 +163,20 @@ export function CartsAdmin({ email }: Props) {
       {error && <p className="error">Erro: {error}</p>}
       {loading && <p className="muted center-msg">Carregando…</p>}
 
-      {STORES.map((s) => {
-        const doStore = carts.filter((c) => c.store === s.id);
-        return (
-          <section key={s.id}>
-            <h2 className="section-title">{s.emoji} {storeLabel(s.id)} — {doStore.length}</h2>
-            {doStore.length === 0 && <p className="muted small">Nenhum carrinho.</p>}
-            {doStore.map((c) => (
-              <div key={c.id} className="admin-cart">
-                <button className="admin-cart-head" onClick={() => toggle(c.id)}>
-                  <span className="admin-cart-name">{open === c.id ? '▾' : '▸'} {c.name}</span>
-                  <span className="muted small">
-                    {resumo(items[c.id]) || c.created_by || '—'} · {quando(c.created_at)}
-                  </span>
-                </button>
-                {open === c.id && (
-                  <ul className="cart-grid admin-cart-items">
-                    {(items[c.id] ?? []).map((i) => (
-                      <CartItemCard
-                        key={i.id}
-                        item={i}
-                        src={photoSrc(i, signed)}
-                        editable
-                        onChange={(st, rs) => mudarStatus(c.id, i, st, rs)}
-                      />
-                    ))}
-                    {(items[c.id] ?? []).length === 0 && <li className="muted small">Vazio.</li>}
-                  </ul>
-                )}
-              </div>
-            ))}
-          </section>
-        );
-      })}
+      <div className="loja-botoes">
+        {STORES.map((s) => {
+          const n = (porLoja.get(s.id) ?? []).length;
+          return (
+            <a key={s.id} href={`#/carrinhos-lojas?loja=${s.id}`} className="loja-botao">
+              <span className="loja-botao-emoji" aria-hidden>{s.emoji}</span>
+              <span className="loja-botao-nome">{storeLabel(s.id)}</span>
+              <span className="loja-botao-cart">
+                🛒 {n} carrinho{n === 1 ? '' : 's'}
+              </span>
+            </a>
+          );
+        })}
+      </div>
     </main>
   );
 }

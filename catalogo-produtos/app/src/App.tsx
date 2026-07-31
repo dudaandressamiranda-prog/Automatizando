@@ -97,7 +97,9 @@ export function App() {
           <CategoryPage group={route.group} initialSub={route.sub ?? null} store={active} email={email} admin={admin} />
         )}
         {!blocked && route.page === 'cart' && <Cart store={active} email={email} />}
-        {!blocked && route.page === 'cartsAdmin' && <CartsAdmin email={email} />}
+        {!blocked && route.page === 'cartsAdmin' && (
+          <CartsAdmin email={email} loja={route.loja} carrinho={route.carrinho} />
+        )}
         {!blocked && route.page === 'permissions' && <Permissions />}
         {!blocked && route.page === 'categories' && <Categories />}
         {!blocked && route.page === 'labels' && <Labels />}
