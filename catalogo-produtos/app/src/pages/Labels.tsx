@@ -394,9 +394,19 @@ export function Labels() {
                     <li>Volte aqui e clique em procurar.</li>
                   </ol>
                   {diag?.estado === 'sem-programa' && (
-                    <p className="tiny muted">
-                      Não obtive resposta em nenhuma das portas — {diag.detalhe}.
-                    </p>
+                    <>
+                      <p className="tiny muted">
+                        Nenhuma resposta nos endereços testados:
+                      </p>
+                      <pre className="etq-diag">{diag.detalhe.split(' · ').join('\n')}</pre>
+                      <p className="tiny muted">
+                        "TimeoutError" ou "TypeError" costuma ser o programa fechado
+                        ou o certificado recusado. Se aparecer bloqueio de rede
+                        privada, é o Chrome barrando o acesso ao localhost — abra{' '}
+                        <strong>chrome://flags/#block-insecure-private-network-requests</strong>{' '}
+                        e mude para <strong>Disabled</strong>.
+                      </p>
+                    </>
                   )}
                 </>
               )}

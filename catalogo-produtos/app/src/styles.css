@@ -1011,3 +1011,7 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
 .etq-setup p { margin: 0.4rem 0; line-height: 1.55; }
 .etq-setup ol { margin: 0.5rem 0 0.8rem; padding-left: 1.2rem; line-height: 1.7; }
 .etq-setup a { color: var(--green); font-weight: 600; }
+.etq-diag {
+  background: #1f2937; color: #e5e7eb; padding: 0.6rem 0.8rem; border-radius: 0.5rem;
+  font-size: 0.72rem; line-height: 1.5; overflow-x: auto; margin: 0.4rem 0;
+}

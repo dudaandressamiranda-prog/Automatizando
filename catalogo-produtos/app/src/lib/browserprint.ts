@@ -11,7 +11,18 @@
  * navegador. Por isso ela é tentada primeiro.
  */
 
-const ENDERECOS = ['https://localhost:9101', 'http://localhost:9100'];
+/*
+ * Versões diferentes do Browser Print atendem em nomes diferentes: umas
+ * emitem o certificado para "localhost", outras para "127.0.0.1". Quando o
+ * nome não bate com o do certificado, o navegador recusa a conexão antes
+ * mesmo de chegar ao programa. Por isso tentamos os quatro.
+ */
+const ENDERECOS = [
+  'https://localhost:9101',
+  'https://127.0.0.1:9101',
+  'http://localhost:9100',
+  'http://127.0.0.1:9100',
+];
 
 export interface Impressora {
   name: string;
