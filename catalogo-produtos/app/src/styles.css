@@ -911,3 +911,27 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
   padding: 0.75rem 1rem; margin-bottom: 5.5rem;
 }
 .nf-pendencias ul { margin: 0.35rem 0 0; padding-left: 1.1rem; font-size: 0.85rem; }
+
+/* -- entrada por chave de acesso --------------------------------------- */
+.nf-sub { font-size: 1rem; color: var(--green); margin: 0 0 0.4rem; }
+.nf-chave, .nf-entrada {
+  background: var(--card); border: 1px solid var(--border); border-radius: 0.8rem;
+  padding: 1rem; margin-top: 1rem;
+}
+.nf-chave-input {
+  width: 100%; margin-top: 0.6rem; padding: 0.7rem 0.9rem; letter-spacing: 0.04em;
+  border: 1px solid var(--border); border-radius: 0.6rem; font-size: 0.95rem;
+}
+.nf-chave-ok {
+  display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.7rem;
+  padding: 0.7rem 0.9rem; background: var(--green-soft); color: var(--green);
+  border-radius: 0.6rem;
+}
+.nf-chave-acoes { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin-top: 0.2rem; }
+.nf-link-externo { color: var(--green); font-weight: 600; font-size: 0.9rem; }
+.nf-colar { margin-top: 0.8rem; }
+.nf-colar summary { cursor: pointer; color: var(--muted); font-size: 0.88rem; }
+.nf-colar textarea {
+  width: 100%; margin: 0.5rem 0; padding: 0.6rem 0.8rem; font-family: ui-monospace, monospace;
+  font-size: 0.78rem; border: 1px solid var(--border); border-radius: 0.6rem; resize: vertical;
+}

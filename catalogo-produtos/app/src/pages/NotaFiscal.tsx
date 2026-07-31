@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { formataChave, formataCnpj, lerChave } from '../lib/chaveNfe';
 import { completeEan13, eanSvg, isValidEan13, nextInternalEan } from '../lib/ean';
 import { norm } from '../lib/normalize';
 import { parseNfe, type ItemNota, type Nota } from '../lib/nfe';
@@ -46,6 +47,11 @@ export function NotaFiscal() {
   const [salvando, setSalvando] = useState(false);
   const [resultado, setResultado] = useState<string | null>(null);
   const [eansUsados, setEansUsados] = useState<string[]>([]);
+  const [chave, setChave] = useState('');
+  const [xmlColado, setXmlColado] = useState('');
+  const [chaveCopiada, setChaveCopiada] = useState(false);
+
+  const dadosChave = useMemo(() => lerChave(chave), [chave]);
 
   // códigos internos já em uso, para o gerador não repetir número
   useEffect(() => {
@@ -106,10 +112,13 @@ export function NotaFiscal() {
   }
 
   async function carregarArquivo(file: File) {
+    carregarXml(await file.text());
+  }
+
+  function carregarXml(texto: string) {
     setErro(null);
     setResultado(null);
     try {
-      const texto = await file.text();
       const n = parseNfe(texto);
       setNota(n);
       setLinhas(
@@ -264,20 +273,91 @@ export function NotaFiscal() {
       {!nota && (
         <>
           <p className="muted review-hint">
-            Envie o <strong>XML da NF-e</strong> (o arquivo que o fornecedor
-            manda por e-mail, não o DANFE em PDF). A nota já traz a descrição,
-            o código de barras, o fornecedor e quantas unidades vêm na caixa —
-            aqui você completa categoria e foto, escolhe o que entra, e só
-            então o produto vai para o catálogo.
+            A nota já traz descrição, código de barras, fornecedor e quantas
+            unidades vêm na caixa — aqui você completa categoria e foto,
+            escolhe o que entra, e só então o produto vai para o catálogo.
           </p>
-          <label className="nf-drop">
+
+          <section className="nf-chave">
+            <h2 className="nf-sub">Tenho a nota em papel</h2>
+            <p className="muted small">
+              Digite os 44 dígitos do rodapé do DANFE. Conferimos a chave aqui
+              antes de você gastar tempo no site de consulta — chave digitada
+              errada é o motivo mais comum de "nota não encontrada".
+            </p>
             <input
-              type="file"
-              accept=".xml,text/xml,application/xml"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) void carregarArquivo(f); }}
+              className="nf-chave-input mono"
+              value={formataChave(chave)}
+              onChange={(e) => { setChave(e.target.value); setChaveCopiada(false); }}
+              placeholder="0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000"
+              inputMode="numeric"
             />
-            <span>📄 Escolher o XML da nota</span>
-          </label>
+            {chave.replace(/\D/g, '').length > 0 && (
+              dadosChave ? (
+                <div className="nf-chave-ok">
+                  <strong>✓ Chave válida</strong>
+                  <span className="small">
+                    NF {dadosChave.numero} · série {dadosChave.serie} · {dadosChave.uf} ·{' '}
+                    {dadosChave.emissao} · emitente {formataCnpj(dadosChave.cnpjEmitente)}
+                  </span>
+                  <div className="nf-chave-acoes">
+                    <button
+                      className="secondary"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(dadosChave.chave);
+                        setChaveCopiada(true);
+                      }}
+                    >
+                      {chaveCopiada ? 'Copiada!' : 'Copiar chave'}
+                    </button>
+                    <a
+                      className="nf-link-externo"
+                      href="https://meudanfe.com.br"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Abrir Meu Danfe ↗
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <p className="error small">
+                  {chave.replace(/\D/g, '').length !== 44
+                    ? `${chave.replace(/\D/g, '').length} de 44 dígitos.`
+                    : 'Os 44 dígitos estão completos, mas o verificador não bate — confira a digitação.'}
+                </p>
+              )
+            )}
+          </section>
+
+          <section className="nf-entrada">
+            <h2 className="nf-sub">Já tenho o XML</h2>
+            <label className="nf-drop">
+              <input
+                type="file"
+                accept=".xml,text/xml,application/xml"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) void carregarArquivo(f); }}
+              />
+              <span>📄 Escolher o arquivo XML</span>
+            </label>
+            <details className="nf-colar">
+              <summary>ou colar o conteúdo do XML</summary>
+              <textarea
+                value={xmlColado}
+                onChange={(e) => setXmlColado(e.target.value)}
+                placeholder="Cole aqui o XML copiado do site de consulta…"
+                rows={6}
+              />
+              <button
+                className="primary"
+                onClick={() => carregarXml(xmlColado)}
+                disabled={!xmlColado.trim()}
+              >
+                Ler nota colada
+              </button>
+            </details>
+          </section>
+
           {resultado && <p className="nf-ok">✅ {resultado}</p>}
         </>
       )}
