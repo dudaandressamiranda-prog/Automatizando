@@ -12,6 +12,7 @@
     "regras": "tsx src/regras.ts",
     "medicamentos": "tsx src/medicamentos.ts",
     "recuperar-ean": "tsx src/recuperar-ean.ts",
+    "sem-codigo": "tsx src/sem-codigo.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
