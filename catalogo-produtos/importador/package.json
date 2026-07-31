@@ -14,6 +14,7 @@
     "recuperar-ean": "tsx src/recuperar-ean.ts",
     "sem-codigo": "tsx src/sem-codigo.ts",
     "caca-ean": "tsx src/caca-ean.ts",
+    "fusao": "tsx src/fusao.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

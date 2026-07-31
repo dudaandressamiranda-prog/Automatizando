@@ -32,177 +32,12 @@
  *   npm run caca-ean -- planilha.csv --apply --media # inclui as MEDIA
  */
 import 'dotenv/config';
-import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import ExcelJS from 'exceljs';
-import { detectColumns } from './lib/columns.js';
-import { cleanBarcode, isValidEan, norm } from './lib/normalize.js';
-import { readSpreadsheet } from './lib/parse.js';
+import { Indice, carregarFontes, type Relacao } from './lib/similar.js';
 
 const ARQUIVO = 'caca-ean.xlsx';
 const VERDE = 'FF25756C';
-
-/** Palavras que não distinguem produto nenhum. */
-const VAZIAS = new Set([
-  'de', 'da', 'do', 'das', 'dos', 'e', 'com', 'para', 'a', 'o', 'os', 'as',
-  'em', 'no', 'na', 'nos', 'nas', 'ao', 'aos', 'por', 'the', 'un',
-]);
-
-/** Abreviação → palavra inteira. Aplicado token a token. */
-const SINONIMOS: Record<string, string> = {
-  'p': 'para', 'pra': 'para', 'c': 'com', 's': 'sem',
-  'cao': 'cao', 'caes': 'cao', 'cachorro': 'cao', 'cachorros': 'cao', 'caninos': 'cao', 'canino': 'cao',
-  'gatos': 'gato', 'felino': 'gato', 'felinos': 'gato',
-  'adultos': 'adulto', 'filhotes': 'filhote', 'racas': 'raca',
-  'comp': 'comprimido', 'cpr': 'comprimido', 'comprimidos': 'comprimido', 'cp': 'comprimido',
-  'caps': 'capsula', 'capsulas': 'capsula',
-  'cx': 'caixa', 'caixas': 'caixa', 'pct': 'pacote', 'pacotes': 'pacote',
-  'und': 'unidade', 'unid': 'unidade', 'unidades': 'unidade', 'uni': 'unidade',
-  'racao': 'racao', 'racoes': 'racao',
-  'sache': 'sache', 'saches': 'sache', 'sachet': 'sache', 'sachets': 'sache',
-  'petiscos': 'petisco', 'brinquedos': 'brinquedo', 'coleiras': 'coleira',
-  'shampoo': 'shampoo', 'shamp': 'shampoo', 'xampu': 'shampoo',
-  'antipulga': 'antipulgas', 'vermifugo': 'vermifugo', 'vermifugos': 'vermifugo',
-  'tam': 'tamanho', 'pq': 'pequeno', 'peq': 'pequeno', 'med': 'medio', 'gde': 'grande', 'gr': 'grande',
-};
-
-/** Unidade de medida → forma canônica. */
-const UNIDADES: Record<string, string> = {
-  kg: 'kg', kgs: 'kg', quilo: 'kg', quilos: 'kg', k: 'kg',
-  g: 'g', gr: 'g', grs: 'g', grama: 'g', gramas: 'g',
-  mg: 'mg', mcg: 'mcg',
-  ml: 'ml', l: 'l', lt: 'l', lts: 'l', litro: 'l', litros: 'l',
-  cm: 'cm', mm: 'mm', m: 'm', pol: 'pol',
-  un: 'un', und: 'un', unidade: 'un', unidades: 'un',
-  comp: 'comprimido', comprimido: 'comprimido', comprimidos: 'comprimido',
-};
-
-/** "2,5" e "2.50" e "2" viram a mesma coisa; "015" vira "15". */
-function numeroCanonico(n: string): string {
-  const v = Number(n.replace(',', '.'));
-  return Number.isFinite(v) ? String(v) : n;
-}
-
-/**
- * Quebra o nome em palavras comparáveis.
- * "Ração p/ Cães Adultos 15kg" → ["racao","cao","adulto","15","kg"]
- */
-function tokens(txt: string): string[] {
-  const cru = norm(txt)
-    .replace(/(\d)[,.](\d)/g, '$1_$2') // protege o decimal antes de picar
-    .split(/[^a-z0-9_]+/)
-    .filter(Boolean);
-
-  const saida: string[] = [];
-  for (const bruto of cru) {
-    const t = bruto.replace('_', ',');
-    // "500ml" / "2,5kg" → número + unidade
-    const m = /^(\d+(?:,\d+)?)([a-z]+)$/.exec(t);
-    if (m) {
-      saida.push(numeroCanonico(m[1]!));
-      saida.push(UNIDADES[m[2]!] ?? m[2]!);
-      continue;
-    }
-    if (/^\d+(?:,\d+)?$/.test(t)) {
-      saida.push(numeroCanonico(t));
-      continue;
-    }
-    const canon = UNIDADES[t] ?? SINONIMOS[t] ?? t;
-    if (!VAZIAS.has(canon)) saida.push(canon);
-  }
-  return saida;
-}
-
-/**
- * Assinatura de medida, agrupada por unidade: {kg:["10"], comprimido:["3"]}.
- * É a trava contra herdar o EAN do 10 kg para o 15 kg. Número sem unidade
- * ("4,1 a 10kg", "50X90") entra no grupo vazio.
- */
-function medidas(ts: string[]): Map<string, string[]> {
-  const m = new Map<string, string[]>();
-  const canonicas = new Set(Object.values(UNIDADES));
-  for (let i = 0; i < ts.length; i++) {
-    if (!/^\d+(?:\.\d+)?$/.test(ts[i]!)) continue;
-    const prox = ts[i + 1];
-    const unidade = prox && canonicas.has(prox) ? prox : '';
-    const lista = m.get(unidade);
-    if (lista) lista.push(ts[i]!);
-    else m.set(unidade, [ts[i]!]);
-  }
-  for (const lista of m.values()) lista.sort();
-  return m;
-}
-
-type Relacao = 'igual' | 'planilha-extra' | 'catalogo-extra' | 'conflito';
-
-/**
- * Compara medida por medida, unidade a unidade.
- *
- * Divergência dentro da MESMA unidade é produto diferente e reprova: 10 kg
- * contra 15 kg, 1 comprimido contra 3. Já unidade que só um dos lados
- * declara não reprova — é o caso clássico do cadastro pai ("NexGard 4,1 a
- * 10kg") contra a linha da planilha que detalha a embalagem ("… - 3
- * comprimidos"). Esse a gente quer VER, com a ressalva anotada.
- */
-function compararMedidas(a: Map<string, string[]>, b: Map<string, string[]>): Relacao {
-  let soA = false;
-  let soB = false;
-  for (const unidade of new Set([...a.keys(), ...b.keys()])) {
-    const va = a.get(unidade);
-    const vb = b.get(unidade);
-    if (va && vb) {
-      if (va.length !== vb.length || va.some((v, i) => v !== vb[i])) return 'conflito';
-    } else if (va) soA = true;
-    else soB = true;
-  }
-  if (soA && soB) return 'conflito';
-  if (soB) return 'planilha-extra';
-  if (soA) return 'catalogo-extra';
-  return 'igual';
-}
-
-/** Mesmas palavras nas mesmas quantidades — casamento perfeito. */
-function multisetIgual(a: Map<string, number>, b: Map<string, number>): boolean {
-  if (a.size !== b.size) return false;
-  for (const [t, n] of a) if (b.get(t) !== n) return false;
-  return true;
-}
-
-/** Contagem por palavra — repetição importa ("Lazy Dog - Lazy Dog"). */
-function contar(ts: string[]): Map<string, number> {
-  const m = new Map<string, number>();
-  for (const t of ts) m.set(t, (m.get(t) ?? 0) + 1);
-  return m;
-}
-
-/**
- * Dice ponderado por raridade: 2·(peso em comum) / (peso A + peso B).
- * 1 = mesmas palavras nas mesmas quantidades.
- */
-function nota(a: Map<string, number>, b: Map<string, number>, idf: Map<string, number>): number {
-  const peso = (t: string) => idf.get(t) ?? 6; // palavra inédita = bem específica
-  let comum = 0;
-  let totalA = 0;
-  let totalB = 0;
-  for (const [t, n] of a) totalA += n * peso(t);
-  for (const [t, n] of b) {
-    totalB += n * peso(t);
-    const na = a.get(t);
-    if (na) comum += Math.min(na, n) * peso(t);
-  }
-  return totalA + totalB === 0 ? 0 : (2 * comum) / (totalA + totalB);
-}
-
-interface Fonte {
-  nome: string;
-  ean: string;
-  marca: string;
-  origem: string;
-  eanValido: boolean;
-  toks: string[];
-  conta: Map<string, number>;
-  meds: Map<string, string[]>;
-}
 
 interface Prod {
   id: string;
@@ -224,52 +59,6 @@ interface Achado {
   motivo: string;
 }
 
-async function carregarFontes(arquivos: string[]): Promise<Fonte[]> {
-  const fontes: Fonte[] = [];
-  for (const arq of arquivos) {
-    const rotulo = path.basename(arq);
-    const { headers, records } = await readSpreadsheet(arq);
-    const { map } = detectColumns(headers);
-    if (!map.name) {
-      console.log(`  ⚠ ${rotulo}: sem coluna de nome — ignorado.`);
-      continue;
-    }
-    const texto = (r: Record<string, unknown>, c?: string) =>
-      c && r[c] != null ? String(r[c]).trim() : '';
-
-    let usados = 0;
-    for (const r of records) {
-      const nome = texto(r, map.name);
-      if (!nome) continue;
-
-      // GTIN é o campo certo; o SKU só vale quando é um EAN de verdade,
-      // e no painel do chefe ele quase sempre é.
-      const candidatos = [texto(r, map.barcode), texto(r, map.sku)];
-      let ean = '';
-      let valido = false;
-      for (const c of candidatos) {
-        const limpo = cleanBarcode(c || null);
-        if (!limpo.ok || !limpo.value) continue;
-        const ok = isValidEan(limpo.value);
-        if (ok) { ean = limpo.value; valido = true; break; }
-        if (!ean) ean = limpo.value; // guarda como reserva, sem dígito fechando
-      }
-      if (!ean) continue;
-
-      const ts = tokens(nome);
-      if (ts.length === 0) continue;
-      fontes.push({
-        nome, ean, origem: rotulo, eanValido: valido,
-        marca: norm(texto(r, map.brand)),
-        toks: ts, conta: contar(ts), meds: medidas(ts),
-      });
-      usados++;
-    }
-    console.log(`  ${rotulo}: ${usados} linhas com código aproveitável (de ${records.length}).`);
-  }
-  return fontes;
-}
-
 async function main() {
   const args = process.argv.slice(2);
   const apply = args.includes('--apply');
@@ -288,25 +77,7 @@ async function main() {
   const fontes = await carregarFontes(arquivos);
   if (fontes.length === 0) throw new Error('Nenhuma linha com código nas planilhas informadas.');
 
-  // IDF: palavra que aparece em quase todo nome quase não pesa
-  const docs = fontes.length;
-  const emQuantos = new Map<string, number>();
-  for (const f of fontes) {
-    for (const t of new Set(f.toks)) emQuantos.set(t, (emQuantos.get(t) ?? 0) + 1);
-  }
-  const idf = new Map<string, number>();
-  for (const [t, n] of emQuantos) idf.set(t, Math.log(docs / n) + 0.5);
-
-  // índice invertido: só compara com quem divide alguma palavra rara
-  const porToken = new Map<string, Fonte[]>();
-  for (const f of fontes) {
-    for (const t of new Set(f.toks)) {
-      if ((emQuantos.get(t) ?? 0) > docs * 0.25) continue; // palavra banal não indexa
-      const lista = porToken.get(t);
-      if (lista) lista.push(f);
-      else porToken.set(t, [f]);
-    }
-  }
+  const indice = new Indice(fontes);
 
   console.log('Consultando o catálogo...');
   const prods: Prod[] = [];
@@ -333,37 +104,9 @@ async function main() {
   const duplicados: { p: Prod; ean: string; nomeFonte: string; dono: string }[] = [];
 
   for (const p of alvos) {
-    const ts = tokens(p.name);
-    const conta = contar(ts);
-    const meds = medidas(ts);
-    const marca = norm(p.brand);
+    const { candidatos: pontuados, reprovado } = indice.procurar(p.name, p.brand);
+    if (pontuados.length === 0) { semNada.push({ p, quaseFoi: reprovado }); continue; }
 
-    // candidatos: quem compartilha ao menos uma palavra indexada
-    const vistos = new Set<Fonte>();
-    for (const t of new Set(ts)) {
-      for (const f of porToken.get(t) ?? []) vistos.add(f);
-    }
-    if (vistos.size === 0) { semNada.push({ p, quaseFoi: '' }); continue; }
-
-    const pontuados: { f: Fonte; score: number; rel: Relacao; exato: boolean }[] = [];
-    let melhorReprovado = '';
-    for (const f of vistos) {
-      const s = nota(conta, f.conta, idf);
-      if (s < 0.6) continue;
-      // trava da marca: declarada dos dois lados e diferente → nem avalia
-      if (marca && f.marca && marca !== f.marca && !f.toks.includes(marca) && !ts.includes(f.marca)) continue;
-      // trava da dose/peso: mesma unidade com valor diferente é outro produto
-      const rel = compararMedidas(meds, f.meds);
-      if (rel === 'conflito') {
-        if (!melhorReprovado) melhorReprovado = `${f.nome} [${f.ean}] — medida diferente`;
-        continue;
-      }
-      pontuados.push({ f, score: s, rel, exato: multisetIgual(conta, f.conta) });
-    }
-    if (pontuados.length === 0) { semNada.push({ p, quaseFoi: melhorReprovado }); continue; }
-
-    // casamento perfeito de palavras vence qualquer aproximação
-    pontuados.sort((a, b) => Number(b.exato) - Number(a.exato) || b.score - a.score);
     let melhor = pontuados[0]!;
 
     // O primeiro colocado pode trazer um código inventado (é comum no ERP).

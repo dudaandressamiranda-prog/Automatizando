@@ -22,6 +22,7 @@ interface Linha {
   brand: string | null;
   supplier: string | null;
   photo_path: string | null;
+  photo_source_url: string | null;
   category_id: string | null;
 }
 
@@ -40,7 +41,7 @@ async function main() {
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db
       .from('products')
-      .select('id, name, brand, supplier, photo_path, category_id')
+      .select('id, name, brand, supplier, photo_path, photo_source_url, category_id')
       .eq('status', 'ativo')
       .is('barcode', null)
       .order('name')
@@ -76,7 +77,7 @@ async function main() {
       marca: p.brand ?? '',
       categoria: p.category_id ? nomeCat.get(p.category_id) ?? '' : '',
       fornecedor: p.supplier ?? '',
-      foto: p.photo_path ? 'sim' : 'não',
+      foto: p.photo_path || p.photo_source_url ? 'sim' : 'não',
       codigo: '',
       id: p.id,
     });
