@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { imprimirZpl, listarImpressoras, type Impressora } from '../lib/browserprint';
+import { diagnosticar, imprimirZpl, type Diagnostico, type Impressora } from '../lib/browserprint';
 import { eanSvg, isValidEan13 } from '../lib/ean';
 import { useCatalog } from '../lib/catalog';
 import { norm } from '../lib/normalize';
@@ -39,6 +39,7 @@ export function Labels() {
   const [aviso, setAviso] = useState<string | null>(null);
 
   const [procurando, setProcurando] = useState(true);
+  const [diag, setDiag] = useState<Diagnostico | null>(null);
 
   /**
    * Procura o Zebra Browser Print na máquina. Só com ele a etiqueta sai
@@ -47,8 +48,10 @@ export function Labels() {
    */
   function procurarImpressoras() {
     setProcurando(true);
-    listarImpressoras()
-      .then((ps) => {
+    diagnosticar()
+      .then((d) => {
+        setDiag(d);
+        const ps = d.estado === 'ok' ? d.impressoras : [];
         setZebras(ps);
         if (ps[0]) setZebraUid(ps[0].uid);
       })
@@ -149,8 +152,8 @@ export function Labels() {
     setEnviando(true);
     setAviso(null);
     try {
-      const ok = await imprimirZpl(z, conteudo);
-      setAviso(ok ? `Enviado para ${z.name}.` : 'Não consegui falar com a impressora. Ela está ligada?');
+      const r = await imprimirZpl(z, conteudo);
+      setAviso(r.ok ? `Enviado para ${z.name}.` : `Não consegui imprimir — ${r.erro}`);
     } finally {
       setEnviando(false);
     }
@@ -313,29 +316,52 @@ export function Labels() {
             </p>
           ) : (
             <div className="etq-setup">
-              <strong className="small">Imprimir sem abrir a janela de impressão</strong>
-              <p className="tiny">
-                Nenhum navegador deixa uma página mandar direto para a
-                impressora — é trava de segurança, e a janela sempre aparece.
-                Quem resolve isso é o <strong>Zebra Browser Print</strong>, um
-                programinha gratuito da própria Zebra: instalado, o botão daqui
-                manda o ZPL direto e a etiqueta sai na hora.
-              </p>
-              <ol className="tiny">
-                <li>
-                  Baixe em{' '}
-                  <a href="https://www.zebra.com/br/pt/support-downloads/printer-software/by-product/browser-print.html" target="_blank" rel="noopener noreferrer">
-                    zebra.com → Browser Print ↗
-                  </a>{' '}
-                  (pede um cadastro gratuito).
-                </li>
-                <li>Instale e deixe o programa aberto — ele fica no relógio do Windows.</li>
-                <li>
-                  Na primeira vez, abra <strong>https://localhost:9101</strong> no navegador e
-                  aceite o certificado. Sem isso o site não consegue falar com ele.
-                </li>
-                <li>Volte aqui e clique em procurar.</li>
-              </ol>
+              {diag?.estado === 'sem-impressora' ? (
+                <>
+                  <strong className="small">Programa achado, mas sem impressora</strong>
+                  <p className="tiny">
+                    O Zebra Browser Print está rodando ({diag.porta}), só que não
+                    enxerga nenhuma impressora. Confira se a TLP 2844 está ligada
+                    e conectada, e se aparece em <strong>Dispositivos e
+                    Impressoras</strong> do Windows. Se acabou de ligá-la, feche e
+                    abra o Browser Print pela bandeja do sistema.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <strong className="small">Imprimir sem abrir a janela de impressão</strong>
+                  <p className="tiny">
+                    Nenhum navegador deixa uma página mandar direto para a
+                    impressora — é trava de segurança, e a janela sempre aparece.
+                    Quem resolve isso é o <strong>Zebra Browser Print</strong>, um
+                    programinha gratuito da própria Zebra: instalado, o botão daqui
+                    manda o ZPL direto e a etiqueta sai na hora.
+                  </p>
+                  <ol className="tiny">
+                    <li>
+                      Baixe em{' '}
+                      <a href="https://www.zebra.com/br/pt/support-downloads/printer-software/by-product/browser-print.html" target="_blank" rel="noopener noreferrer">
+                        zebra.com → Browser Print ↗
+                      </a>{' '}
+                      (pede um cadastro gratuito).
+                    </li>
+                    <li>Instale e deixe o programa aberto — ele fica no relógio do Windows.</li>
+                    <li>
+                      Abra{' '}
+                      <a href="https://localhost:9101/ssl_support" target="_blank" rel="noopener noreferrer">
+                        https://localhost:9101/ssl_support ↗
+                      </a>{' '}
+                      e aceite o certificado. Sem isso o site não consegue falar com ele.
+                    </li>
+                    <li>Volte aqui e clique em procurar.</li>
+                  </ol>
+                  {diag?.estado === 'sem-programa' && (
+                    <p className="tiny muted">
+                      Não obtive resposta em nenhuma das portas — {diag.detalhe}.
+                    </p>
+                  )}
+                </>
+              )}
               <button className="secondary" onClick={procurarImpressoras} disabled={procurando}>
                 {procurando ? 'Procurando…' : '🔄 Procurar impressora'}
               </button>
