@@ -939,13 +939,18 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
 /* -- folha de etiquetas (só sai no papel) ------------------------------ */
 .etq-folha { display: none; }
 .etq-dica { display: block; margin: -0.4rem 0 1rem; line-height: 1.5; }
+.etq-medidas { display: block; margin: -0.5rem 0 1rem; line-height: 1.5; }
 @media print {
+  .etq-fileira {
+    display: flex; align-items: stretch; box-sizing: border-box;
+    page-break-after: always; break-after: page;
+  }
+  .etq-fileira:last-child { page-break-after: auto; break-after: auto; }
   .etq-papel {
     box-sizing: border-box; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 0.5mm;
-    padding: 1mm; overflow: hidden; page-break-after: always; break-after: page;
+    padding: 0.8mm; overflow: hidden; flex-shrink: 0;
   }
-  .etq-papel:last-child { page-break-after: auto; break-after: auto; }
   .etq-papel-nome {
     font-size: 2.2mm; font-weight: 700; text-align: center; line-height: 1.15;
     max-height: 5mm; overflow: hidden; width: 100%;

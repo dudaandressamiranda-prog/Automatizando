@@ -3,7 +3,15 @@ import { imprimirZpl, listarImpressoras, type Impressora } from '../lib/browserp
 import { eanSvg, isValidEan13 } from '../lib/ean';
 import { useCatalog } from '../lib/catalog';
 import { norm } from '../lib/normalize';
-import { FILA_ETIQUETAS, FORMATOS, gerarZpl, type ItemEtiqueta } from '../lib/zpl';
+import {
+  FILA_ETIQUETAS,
+  FORMATOS,
+  gerarZpl,
+  gerarZplTeste,
+  larguraFitaMm,
+  moduloParaLargura,
+  type ItemEtiqueta,
+} from '../lib/zpl';
 
 /**
  * Impressão de etiquetas de código de barras na Zebra.
@@ -22,7 +30,8 @@ export function Labels() {
   const [fila, setFila] = useState<Record<string, ItemEtiqueta>>({});
   const [formatoId, setFormatoId] = useState(FORMATOS[0]!.id);
   const [darkness, setDarkness] = useState(15);
-  const [mostrarNome, setMostrarNome] = useState(true);
+  // etiqueta pequena não tem altura para nome e código: o código vem antes
+  const [mostrarNome, setMostrarNome] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [zebras, setZebras] = useState<Impressora[]>([]);
   const [zebraUid, setZebraUid] = useState('');
@@ -57,6 +66,16 @@ export function Labels() {
   const itens = useMemo(() => Object.values(fila), [fila]);
 
   const totalEtiquetas = itens.reduce((s, i) => s + i.copias, 0);
+
+  /** Etiquetas agrupadas em fileiras, do mesmo jeito que saem na fita. */
+  const fileiras = useMemo(() => {
+    const todas = itens.flatMap((i) => Array.from({ length: i.copias }, () => i));
+    const linhas: ItemEtiqueta[][] = [];
+    for (let i = 0; i < todas.length; i += formato.colunas) {
+      linhas.push(todas.slice(i, i + formato.colunas));
+    }
+    return linhas;
+  }, [itens, formato.colunas]);
   const zpl = useMemo(
     () => gerarZpl(itens, { formato, darkness, mostrarNome }),
     [itens, formato, darkness, mostrarNome],
@@ -115,17 +134,28 @@ export function Labels() {
   }
 
   /** Caminho de melhor qualidade: ZPL direto, a Zebra desenha o código. */
-  async function imprimirNaZebra() {
+  async function imprimirNaZebra(conteudo = zpl) {
     const z = zebras.find((p) => p.uid === zebraUid);
     if (!z) return;
     setEnviando(true);
     setAviso(null);
     try {
-      const ok = await imprimirZpl(z, zpl);
+      const ok = await imprimirZpl(z, conteudo);
       setAviso(ok ? `Enviado para ${z.name}.` : 'Não consegui falar com a impressora. Ela está ligada?');
     } finally {
       setEnviando(false);
     }
+  }
+
+  /** Uma fileira com moldura, para conferir tamanho e alinhamento do rolo. */
+  async function imprimirTeste() {
+    const teste = gerarZplTeste({ formato, darkness });
+    if (zebras.length > 0) {
+      await imprimirNaZebra(teste);
+      return;
+    }
+    await navigator.clipboard.writeText(teste);
+    setAviso('ZPL de teste copiado — cole no Zebra Setup Utilities para imprimir.');
   }
 
   return (
@@ -196,7 +226,22 @@ export function Labels() {
               />
               Imprimir o nome
             </label>
+            <button className="secondary" onClick={imprimirTeste} disabled={enviando}>
+              📐 Imprimir teste
+            </button>
           </div>
+
+          <p className="tiny muted etq-medidas">
+            Fita de <strong>{larguraFitaMm(formato)} mm</strong> ({formato.colunas} ×{' '}
+            {formato.larguraMm} mm{formato.colunas > 1 && ` + ${formato.gapMm} mm entre colunas`}) ·
+            módulo do código {(moduloParaLargura(formato.larguraMm) * 25.4 / 203).toFixed(2)} mm ·{' '}
+            código ocupa {(113 * moduloParaLargura(formato.larguraMm) * 25.4 / 203).toFixed(1)} mm
+            dos {formato.larguraMm} mm da etiqueta.
+            {moduloParaLargura(formato.larguraMm) * 25.4 / 203 < 0.264 && (
+              <> <strong>Abaixo do tamanho recomendado pela GS1</strong> — funciona com leitor
+              de perto, mas teste antes de imprimir o rolo todo.</>
+            )}
+          </p>
 
           <ul className="etq-fila">
             {itens.map((i) => (
@@ -236,7 +281,7 @@ export function Labels() {
                     {zebras.map((z) => <option key={z.uid} value={z.uid}>{z.name}</option>)}
                   </select>
                 )}
-                <button className="primary" onClick={imprimirNaZebra} disabled={enviando}>
+                <button className="primary" onClick={() => imprimirNaZebra()} disabled={enviando}>
                   {enviando ? 'Enviando…' : '🖨️ Imprimir na Zebra'}
                 </button>
                 <button className="secondary" onClick={() => window.print()}>Imprimir pelo navegador</button>
@@ -268,7 +313,7 @@ export function Labels() {
           */}
           <style>{`
             @media print {
-              @page { size: ${formato.larguraMm}mm ${formato.alturaMm}mm; margin: 0; }
+              @page { size: ${larguraFitaMm(formato)}mm ${formato.alturaMm}mm; margin: 0; }
               body * { visibility: hidden !important; }
               .etq-folha, .etq-folha * { visibility: visible !important; }
               .etq-folha {
@@ -276,26 +321,33 @@ export function Labels() {
                 position: absolute !important;
                 left: 0; top: 0; margin: 0; padding: 0;
               }
+              .etq-fileira { gap: ${formato.gapMm}mm; }
             }
           `}</style>
           <div className="etq-folha" aria-hidden>
-            {itens.flatMap((i) =>
-              Array.from({ length: i.copias }, (_, n) => (
-                <div
-                  key={`${i.barcode}-${n}`}
-                  className="etq-papel"
-                  style={{ width: `${formato.larguraMm}mm`, height: `${formato.alturaMm}mm` }}
-                >
-                  {mostrarNome && <span className="etq-papel-nome">{i.nome}</span>}
+            {fileiras.map((fileira, fi) => (
+              <div
+                key={fi}
+                className="etq-fileira"
+                style={{ width: `${larguraFitaMm(formato)}mm`, height: `${formato.alturaMm}mm` }}
+              >
+                {fileira.map((i, ci) => (
                   <div
-                    className="etq-papel-cod"
-                    dangerouslySetInnerHTML={{
-                      __html: eanSvg(i.barcode, { modulo: 2, altura: mostrarNome ? 46 : 60 }),
-                    }}
-                  />
-                </div>
-              )),
-            )}
+                    key={`${i.barcode}-${ci}`}
+                    className="etq-papel"
+                    style={{ width: `${formato.larguraMm}mm`, height: `${formato.alturaMm}mm` }}
+                  >
+                    {mostrarNome && <span className="etq-papel-nome">{i.nome}</span>}
+                    <div
+                      className="etq-papel-cod"
+                      dangerouslySetInnerHTML={{
+                        __html: eanSvg(i.barcode, { modulo: 2, altura: mostrarNome ? 46 : 60 }),
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
 
           <details className="etq-zpl">
