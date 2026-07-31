@@ -50,6 +50,29 @@ function extrair(corpo: unknown): Impressora[] {
   return o.printer ?? o.device ?? o.usb ?? [];
 }
 
+/**
+ * Impressora marcada como padrão nas configurações do Browser Print.
+ *
+ * É consultada quando a varredura não devolve nada: o /available faz uma
+ * busca nova a cada chamada e pode vir vazio, enquanto o /default entrega
+ * o que já está configurado na tela de ajustes do programa. Foi o caso
+ * aqui — a impressora aparecia em "Default Devices" e a varredura não a
+ * encontrava.
+ */
+async function padrao(base: string): Promise<Impressora | null> {
+  try {
+    const res = await fetch(`${base}/default?type=printer`, { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) return null;
+    const corpo = await res.json().catch(() => null);
+    if (!corpo) return null;
+    const d = corpo as Impressora & { device?: Impressora };
+    const dispositivo = d.device ?? d;
+    return dispositivo.uid ? dispositivo : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function diagnosticar(): Promise<Diagnostico> {
   const falhas: string[] = [];
   for (const base of ENDERECOS) {
@@ -59,8 +82,13 @@ export async function diagnosticar(): Promise<Diagnostico> {
       continue;
     }
     const impressoras = extrair(r.corpo);
-    if (impressoras.length === 0) return { estado: 'sem-impressora', porta: base };
-    return { estado: 'ok', impressoras, porta: base };
+    if (impressoras.length > 0) return { estado: 'ok', impressoras, porta: base };
+
+    // varredura vazia: tenta a que está marcada como padrão
+    const p = await padrao(base);
+    if (p) return { estado: 'ok', impressoras: [p], porta: base };
+
+    return { estado: 'sem-impressora', porta: base };
   }
   return { estado: 'sem-programa', detalhe: falhas.join(' · ') };
 }
