@@ -777,3 +777,71 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
   gap: 0.75rem;
 }
 .scanner-video { width: 100%; border-radius: 0.5rem; background: #000; aspect-ratio: 4 / 3; object-fit: cover; }
+
+/* ===== etiquetas e código de barras ==================================== */
+.ean-tools { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; margin: -0.3rem 0 0.2rem; }
+.ean-preview {
+  background: #fff; border: 1px solid var(--border); border-radius: 0.6rem;
+  padding: 0.5rem; display: inline-block; align-self: flex-start;
+}
+.ean-preview svg, .etq-preview svg { display: block; max-width: 100%; height: auto; }
+
+.etq-busca { position: relative; margin-bottom: 1rem; }
+.etq-busca input[type="search"] {
+  width: 100%; padding: 0.7rem 1rem; border: 1px solid var(--border);
+  border-radius: 0.7rem; font-size: 1rem; background: var(--card);
+}
+.etq-resultados {
+  list-style: none; margin: 0.3rem 0 0; padding: 0;
+  border: 1px solid var(--border); border-radius: 0.7rem; overflow: hidden;
+  max-height: 19rem; overflow-y: auto; background: var(--card);
+}
+.etq-resultados button {
+  display: flex; flex-direction: column; gap: 0.1rem; width: 100%;
+  padding: 0.55rem 0.9rem; background: none; border: none; cursor: pointer;
+  text-align: left; border-bottom: 1px solid var(--border); color: inherit;
+}
+.etq-resultados li:last-child button { border-bottom: none; }
+.etq-resultados button:hover { background: var(--green-soft); }
+.etq-res-nome { font-size: 0.9rem; font-weight: 600; }
+
+.etq-config {
+  display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;
+  padding: 0.9rem; margin-bottom: 1rem;
+  background: var(--card); border: 1px solid var(--border); border-radius: 0.8rem;
+}
+.etq-config label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.82rem; color: var(--muted); }
+.etq-config select, .etq-config input[type="number"] {
+  padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 0.5rem;
+  font-size: 0.9rem; background: #fff; color: var(--text);
+}
+.etq-config input[type="number"] { width: 5rem; }
+.etq-check { flex-direction: row !important; align-items: center; gap: 0.4rem !important; }
+
+.etq-fila { list-style: none; margin: 0; padding: 0; }
+.etq-item {
+  display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap;
+  padding: 0.7rem 0.25rem; border-bottom: 1px solid var(--border);
+}
+.etq-preview { background: #fff; border: 1px solid var(--border); border-radius: 0.4rem; padding: 0.25rem; }
+.etq-item-info { flex: 1; min-width: 9rem; display: flex; flex-direction: column; gap: 0.1rem; }
+.etq-item-nome { font-size: 0.88rem; font-weight: 600; }
+.etq-copias { display: flex; align-items: center; gap: 0.25rem; }
+.etq-copias button {
+  width: 1.9rem; height: 1.9rem; border-radius: 0.45rem; cursor: pointer;
+  border: 1px solid var(--border); background: var(--card); font-size: 1rem; color: var(--text);
+}
+.etq-copias button:hover { border-color: var(--green-light); }
+.etq-copias input {
+  width: 3.2rem; text-align: center; padding: 0.4rem 0.2rem;
+  border: 1px solid var(--border); border-radius: 0.45rem; font-size: 0.9rem;
+}
+
+.etq-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin: 1.1rem 0; }
+.etq-acoes .muted { margin-right: auto; }
+.etq-zpl { margin-bottom: 2rem; }
+.etq-zpl summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
+.etq-zpl pre {
+  background: #1f2937; color: #e5e7eb; padding: 0.9rem; border-radius: 0.6rem;
+  overflow-x: auto; font-size: 0.75rem; line-height: 1.45; margin-top: 0.5rem;
+}

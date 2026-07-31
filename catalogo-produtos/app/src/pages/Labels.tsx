@@ -1,0 +1,206 @@
+import { useMemo, useState } from 'react';
+import { eanSvg, isValidEan13 } from '../lib/ean';
+import { useCatalog } from '../lib/catalog';
+import { norm } from '../lib/normalize';
+import { FORMATOS, gerarZpl, type ItemEtiqueta } from '../lib/zpl';
+
+/**
+ * Impressão de etiquetas de código de barras na Zebra.
+ *
+ * Sai em ZPL, a linguagem nativa da impressora, em vez de imagem: o código
+ * de barras é desenhado pela própria Zebra e fica muito mais nítido para o
+ * leitor. O arquivo baixado é enviado à impressora pelo Zebra Setup
+ * Utilities (ou copiado direto para a fila, em rede).
+ */
+export function Labels() {
+  const { products, loading } = useCatalog();
+  const [q, setQ] = useState('');
+  const [fila, setFila] = useState<Record<string, number>>({}); // id → cópias
+  const [formatoId, setFormatoId] = useState(FORMATOS[0]!.id);
+  const [darkness, setDarkness] = useState(15);
+  const [mostrarNome, setMostrarNome] = useState(true);
+  const [copiado, setCopiado] = useState(false);
+
+  const formato = FORMATOS.find((f) => f.id === formatoId)!;
+
+  // só produto com EAN-13 válido pode virar etiqueta
+  const buscaveis = useMemo(
+    () => products.filter((p) => p.barcode && isValidEan13(p.barcode)),
+    [products],
+  );
+
+  const resultados = useMemo(() => {
+    const termo = norm(q);
+    if (!termo) return [];
+    return buscaveis
+      .filter((p) => norm(`${p.name} ${p.brand ?? ''} ${p.barcode}`).includes(termo))
+      .slice(0, 30);
+  }, [q, buscaveis]);
+
+  const itens: (ItemEtiqueta & { id: string })[] = useMemo(
+    () =>
+      Object.entries(fila)
+        .map(([id, copias]) => {
+          const p = products.find((x) => x.id === id);
+          return p ? { id, nome: p.name, barcode: p.barcode!, copias } : null;
+        })
+        .filter((x): x is ItemEtiqueta & { id: string } => x !== null),
+    [fila, products],
+  );
+
+  const totalEtiquetas = itens.reduce((s, i) => s + i.copias, 0);
+  const zpl = useMemo(
+    () => gerarZpl(itens, { formato, darkness, mostrarNome }),
+    [itens, formato, darkness, mostrarNome],
+  );
+
+  function addProduto(id: string) {
+    setFila((f) => ({ ...f, [id]: (f[id] ?? 0) + 1 }));
+    setQ('');
+  }
+  function setCopias(id: string, n: number) {
+    setFila((f) => {
+      const next = { ...f };
+      if (n <= 0) delete next[id];
+      else next[id] = n;
+      return next;
+    });
+  }
+
+  function baixarZpl() {
+    const blob = new Blob([zpl], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `etiquetas-${new Date().toISOString().slice(0, 10)}.zpl`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function copiarZpl() {
+    await navigator.clipboard.writeText(zpl);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
+  }
+
+  return (
+    <main className="content">
+      <div className="page-head">
+        <a href="#/" className="back">‹ Início</a>
+        <h1>Etiquetas</h1>
+      </div>
+      <p className="muted review-hint">
+        Monte a fila, escolha o tamanho da etiqueta e baixe o arquivo .zpl —
+        ele vai direto para a Zebra pelo Zebra Setup Utilities (ou copiado
+        para a fila da impressora, se ela estiver em rede). O código de
+        barras é desenhado pela própria impressora, o que deixa a leitura
+        bem mais confiável do que imprimir como imagem.
+      </p>
+
+      <div className="etq-busca">
+        <input
+          type="search"
+          placeholder="Buscar produto por nome, marca ou código…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        {resultados.length > 0 && (
+          <ul className="etq-resultados">
+            {resultados.map((p) => (
+              <li key={p.id}>
+                <button onClick={() => addProduto(p.id)}>
+                  <span className="etq-res-nome">{p.name}</span>
+                  <span className="mono tiny muted">{p.barcode}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {q && resultados.length === 0 && !loading && (
+          <p className="muted small">
+            Nenhum produto com código de barras válido. Produtos sem EAN podem
+            receber um código interno na tela de edição.
+          </p>
+        )}
+      </div>
+
+      {itens.length > 0 && (
+        <>
+          <div className="etq-config">
+            <label>
+              Tamanho
+              <select value={formatoId} onChange={(e) => setFormatoId(e.target.value)}>
+                {FORMATOS.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+              </select>
+            </label>
+            <label>
+              Escurecimento
+              <input
+                type="number"
+                min={0}
+                max={30}
+                value={darkness}
+                onChange={(e) => setDarkness(Number(e.target.value))}
+              />
+            </label>
+            <label className="etq-check">
+              <input
+                type="checkbox"
+                checked={mostrarNome}
+                onChange={(e) => setMostrarNome(e.target.checked)}
+              />
+              Imprimir o nome
+            </label>
+          </div>
+
+          <ul className="etq-fila">
+            {itens.map((i) => (
+              <li key={i.id} className="etq-item">
+                <div
+                  className="etq-preview"
+                  // svg gerado aqui mesmo, sem entrada externa
+                  dangerouslySetInnerHTML={{ __html: eanSvg(i.barcode, { modulo: 2, altura: 44 }) }}
+                />
+                <div className="etq-item-info">
+                  <span className="etq-item-nome">{i.nome}</span>
+                  <span className="mono tiny muted">{i.barcode}</span>
+                </div>
+                <div className="etq-copias">
+                  <button onClick={() => setCopias(i.id, i.copias - 1)} aria-label="Menos uma">−</button>
+                  <input
+                    type="number"
+                    min={1}
+                    value={i.copias}
+                    onChange={(e) => setCopias(i.id, Number(e.target.value))}
+                  />
+                  <button onClick={() => setCopias(i.id, i.copias + 1)} aria-label="Mais uma">+</button>
+                </div>
+                <button className="cart-del" onClick={() => setCopias(i.id, 0)} aria-label="Tirar da fila">✕</button>
+              </li>
+            ))}
+          </ul>
+
+          <div className="etq-acoes">
+            <span className="muted small">
+              {totalEtiquetas} etiqueta{totalEtiquetas === 1 ? '' : 's'} · {formato.label}
+            </span>
+            <button className="primary" onClick={baixarZpl}>Baixar .zpl</button>
+            <button className="secondary" onClick={copiarZpl}>
+              {copiado ? 'Copiado!' : 'Copiar ZPL'}
+            </button>
+            <button className="secondary" onClick={() => setFila({})}>Limpar</button>
+          </div>
+
+          <details className="etq-zpl">
+            <summary>Ver o ZPL gerado</summary>
+            <pre>{zpl}</pre>
+          </details>
+        </>
+      )}
+
+      {itens.length === 0 && !loading && (
+        <p className="muted center-msg">Busque um produto acima para começar a fila.</p>
+      )}
+    </main>
+  );
+}

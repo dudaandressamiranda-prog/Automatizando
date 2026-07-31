@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { Photo } from '../components/Photo';
+import { eanSvg, isValidEan13, nextInternalEan } from '../lib/ean';
 import { cleanBarcode, norm } from '../lib/normalize';
 import { PHOTO_BUCKET, supabase } from '../lib/supabase';
 import { STATUS_LABEL, type Category, type Product, type ProductStatus } from '../lib/types';
@@ -32,6 +33,7 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [gerando, setGerando] = useState(false);
 
   useEffect(() => {
     supabase
@@ -66,6 +68,33 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
         setLoaded(true);
       });
   }, [productId]);
+
+  /**
+   * Gera o próximo código interno livre. Consulta os que já existem para
+   * continuar a contagem — dois produtos nunca recebem o mesmo número.
+   */
+  async function gerarInterno() {
+    setGerando(true);
+    setError(null);
+    try {
+      const usados: string[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data, error: err } = await supabase
+          .from('products')
+          .select('barcode')
+          .like('barcode', '2%')
+          .range(from, from + 999);
+        if (err) throw err;
+        usados.push(...(data ?? []).map((r) => r.barcode as string).filter(Boolean));
+        if (!data || data.length < 1000) break;
+      }
+      setBarcode(nextInternalEan(usados));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setGerando(false);
+    }
+  }
 
   /** Cria a categoria (ou reaproveita uma existente que só difere em acento/caixa). */
   async function resolveCategory(): Promise<string | null> {
@@ -250,6 +279,22 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
             placeholder="6 a 14 dígitos (opcional)"
           />
         </label>
+        <div className="ean-tools">
+          <button type="button" className="secondary" onClick={gerarInterno} disabled={gerando}>
+            {gerando ? 'Gerando…' : '⊕ Gerar código interno'}
+          </button>
+          <span className="muted tiny">
+            Para produto sem EAN do fornecedor, ou quando o fornecedor repete o
+            mesmo código em variações diferentes. Usa a faixa 2, reservada para
+            uso interno — não colide com código de fabricante.
+          </span>
+        </div>
+        {isValidEan13(barcode.trim()) && (
+          <div
+            className="ean-preview"
+            dangerouslySetInnerHTML={{ __html: eanSvg(barcode.trim(), { modulo: 2, altura: 48 }) }}
+          />
+        )}
 
         <label>
           Marca

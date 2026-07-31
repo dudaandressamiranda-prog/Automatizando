@@ -168,6 +168,13 @@ export function Nav({ route, onNavigate, onSignOut, email, admin, store, onChoos
             <span className="nav-ico">🗂️</span> Criar categoria
           </a>
           <a
+            href="#/etiquetas"
+            className={`nav-item ${route.page === 'labels' ? 'active' : ''}`}
+            onClick={onNavigate}
+          >
+            <span className="nav-ico">🖨️</span> Etiquetas
+          </a>
+          <a
             href="#/revisao"
             className={`nav-item ${route.page === 'review' ? 'active' : ''}`}
             onClick={onNavigate}

@@ -12,6 +12,7 @@ import { CartsAdmin } from './pages/CartsAdmin';
 import { Categories } from './pages/Categories';
 import { CategoryPage } from './pages/CategoryPage';
 import { Home } from './pages/Home';
+import { Labels } from './pages/Labels';
 import { Login } from './pages/Login';
 import { Logs } from './pages/Logs';
 import { Permissions } from './pages/Permissions';
@@ -66,7 +67,7 @@ export function App() {
 
   const adminOnly =
     route.page === 'new' || route.page === 'review' || route.page === 'logs' ||
-    route.page === 'cartsAdmin' || route.page === 'permissions' || route.page === 'categories';
+    route.page === 'cartsAdmin' || route.page === 'permissions' || route.page === 'categories' || route.page === 'labels';
   const blocked = adminOnly && !admin;
 
   return (
@@ -98,6 +99,7 @@ export function App() {
         {!blocked && route.page === 'cartsAdmin' && <CartsAdmin email={email} />}
         {!blocked && route.page === 'permissions' && <Permissions />}
         {!blocked && route.page === 'categories' && <Categories />}
+        {!blocked && route.page === 'labels' && <Labels />}
         {!blocked && route.page === 'review' && <Review />}
         {!blocked && route.page === 'logs' && <Logs />}
         {!blocked && route.page === 'new' && <ProductForm navigate={navigate} initialBarcode={route.barcode} />}
