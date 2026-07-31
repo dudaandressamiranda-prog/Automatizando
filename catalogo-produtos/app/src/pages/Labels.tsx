@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { diagnosticar, imprimirZpl, type Diagnostico, type Impressora } from '../lib/browserprint';
 import { eanSvg, isValidEan13 } from '../lib/ean';
+import { gerarEpl, gerarEplTeste } from '../lib/epl';
 import { useCatalog } from '../lib/catalog';
 import { norm } from '../lib/normalize';
 import {
@@ -16,10 +17,14 @@ import {
 /**
  * Impressão de etiquetas de código de barras na Zebra.
  *
- * Sai em ZPL, a linguagem nativa da impressora, em vez de imagem: o código
- * de barras é desenhado pela própria Zebra e fica muito mais nítido para o
- * leitor. O arquivo baixado é enviado à impressora pelo Zebra Setup
- * Utilities (ou copiado direto para a fila, em rede).
+ * Sai na linguagem nativa da impressora (EPL ou ZPL) em vez de imagem: o
+ * código de barras é desenhado pela própria Zebra e fica muito mais nítido
+ * para o leitor.
+ *
+ * A escolha da linguagem não é detalhe: a TLP 2844 é da linha Eltron e só
+ * entende EPL. Mandar ZPL para ela não dá aviso nenhum — o trabalho morre
+ * na fila do Windows com "Erro", que é o sintoma mais difícil de ligar à
+ * causa.
  */
 export function Labels() {
   const { products, loading } = useCatalog();
@@ -29,7 +34,10 @@ export function Labels() {
   // ter recarregado
   const [fila, setFila] = useState<Record<string, ItemEtiqueta>>({});
   const [formatoId, setFormatoId] = useState(FORMATOS[0]!.id);
-  const [darkness, setDarkness] = useState(15);
+  const [darkness, setDarkness] = useState(10);
+  // A TLP 2844 e as irmãs da linha Eltron falam EPL, não ZPL. Mandar a
+  // linguagem errada não avisa nada: o trabalho só morre em "Erro".
+  const [linguagem, setLinguagem] = useState<'epl' | 'zpl'>('epl');
   // etiqueta pequena não tem altura para nome e código: o código vem antes
   const [mostrarNome, setMostrarNome] = useState(false);
   const [copiado, setCopiado] = useState(false);
@@ -89,8 +97,11 @@ export function Labels() {
     return linhas;
   }, [itens, formato.colunas]);
   const zpl = useMemo(
-    () => gerarZpl(itens, { formato, darkness, mostrarNome }),
-    [itens, formato, darkness, mostrarNome],
+    () =>
+      linguagem === 'epl'
+        ? gerarEpl(itens, { formato, densidade: darkness, mostrarNome })
+        : gerarZpl(itens, { formato, darkness, mostrarNome }),
+    [itens, formato, darkness, mostrarNome, linguagem],
   );
 
   function addProduto(nome: string, barcode: string) {
@@ -134,7 +145,7 @@ export function Labels() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `etiquetas-${new Date().toISOString().slice(0, 10)}.zpl`;
+    a.download = `etiquetas-${new Date().toISOString().slice(0, 10)}.${linguagem}`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -161,13 +172,16 @@ export function Labels() {
 
   /** Uma fileira com moldura, para conferir tamanho e alinhamento do rolo. */
   async function imprimirTeste() {
-    const teste = gerarZplTeste({ formato, darkness });
+    const teste =
+      linguagem === 'epl'
+        ? gerarEplTeste({ formato, densidade: darkness })
+        : gerarZplTeste({ formato, darkness });
     if (zebras.length > 0) {
       await imprimirNaZebra(teste);
       return;
     }
     await navigator.clipboard.writeText(teste);
-    setAviso('ZPL de teste copiado — cole no Zebra Setup Utilities para imprimir.');
+    setAviso(`${linguagem.toUpperCase()} de teste copiado — cole no Zebra Setup Utilities para imprimir.`);
   }
 
   return (
@@ -177,11 +191,12 @@ export function Labels() {
         <h1>Etiquetas</h1>
       </div>
       <p className="muted review-hint">
-        Monte a fila, escolha o tamanho da etiqueta e baixe o arquivo .zpl —
-        ele vai direto para a Zebra pelo Zebra Setup Utilities (ou copiado
-        para a fila da impressora, se ela estiver em rede). O código de
-        barras é desenhado pela própria impressora, o que deixa a leitura
-        bem mais confiável do que imprimir como imagem.
+        Monte a fila, confira o tamanho e imprima. O código de barras é
+        desenhado pela própria impressora, o que deixa a leitura bem mais
+        confiável do que mandar como imagem. Confira a{' '}
+        <strong>linguagem</strong>: a TLP 2844 e as outras da linha Eltron
+        falam <strong>EPL</strong>, as mais novas falam <strong>ZPL</strong> —
+        mandar a errada faz o trabalho morrer em "Erro" sem explicação.
       </p>
 
       <div className="etq-busca">
@@ -221,11 +236,18 @@ export function Labels() {
               </select>
             </label>
             <label>
+              Linguagem
+              <select value={linguagem} onChange={(e) => setLinguagem(e.target.value as 'epl' | 'zpl')}>
+                <option value="epl">EPL — TLP 2844, LP 2844, TLP 2824</option>
+                <option value="zpl">ZPL — ZD220, GC420, GK420, ZD421</option>
+              </select>
+            </label>
+            <label>
               Escurecimento
               <input
                 type="number"
                 min={0}
-                max={30}
+                max={linguagem === 'epl' ? 15 : 30}
                 value={darkness}
                 onChange={(e) => setDarkness(Number(e.target.value))}
               />
@@ -302,9 +324,9 @@ export function Labels() {
               <button className="primary" onClick={() => window.print()}>🖨️ Imprimir</button>
             )}
             <button className="secondary" onClick={copiarZpl}>
-              {copiado ? 'Copiado!' : 'Copiar ZPL'}
+              {copiado ? 'Copiado!' : `Copiar ${linguagem.toUpperCase()}`}
             </button>
-            <button className="secondary" onClick={baixarZpl}>Baixar .zpl</button>
+            <button className="secondary" onClick={baixarZpl}>Baixar arquivo</button>
             <button className="secondary" onClick={() => setFila({})}>Limpar</button>
           </div>
           {aviso && <p className="nf-ok">{aviso}</p>}
@@ -413,7 +435,7 @@ export function Labels() {
           </div>
 
           <details className="etq-zpl">
-            <summary>Ver o ZPL gerado</summary>
+            <summary>Ver o {linguagem.toUpperCase()} gerado</summary>
             <pre>{zpl}</pre>
           </details>
         </>
