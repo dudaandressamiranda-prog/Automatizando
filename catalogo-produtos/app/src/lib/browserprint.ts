@@ -104,6 +104,15 @@ export async function diagnosticar(): Promise<Diagnostico> {
   return { estado: 'sem-programa', detalhe: falhas.join(' · ') };
 }
 
+/** Nome legível: algumas versões só devolvem o identificador interno. */
+export function nomeImpressora(p: Impressora): string {
+  const n = (p.name ?? '').trim();
+  // uid puro (só letras e números, sem espaço) não diz nada a quem lê
+  if (n && !/^[a-z0-9]+$/i.test(n)) return n;
+  const partes = [p.manufacturer, p.deviceType, p.connection].filter(Boolean);
+  return partes.length > 0 ? `Zebra (${partes.join(' · ')})` : `Impressora ${p.uid.slice(0, 8)}`;
+}
+
 /** Lista simples, para quem só quer saber se dá para imprimir. */
 export async function listarImpressoras(): Promise<Impressora[]> {
   const d = await diagnosticar();

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { diagnosticar, imprimirZpl, type Diagnostico, type Impressora } from '../lib/browserprint';
+import { diagnosticar, imprimirZpl, nomeImpressora, type Diagnostico, type Impressora } from '../lib/browserprint';
 import { eanSvg, isValidEan13 } from '../lib/ean';
 import { eplCalibrar, gerarEpl, gerarEplTeste } from '../lib/epl';
 import { useCatalog } from '../lib/catalog';
@@ -165,7 +165,7 @@ export function Labels() {
     setAviso(null);
     try {
       const r = await imprimirZpl(z, conteudo);
-      setAviso(r.ok ? `Enviado para ${z.name}.` : `Não consegui imprimir — ${r.erro}`);
+      setAviso(r.ok ? `Enviado para ${nomeImpressora(z)}.` : `Não consegui imprimir — ${r.erro}`);
     } finally {
       setEnviando(false);
     }
@@ -328,7 +328,7 @@ export function Labels() {
               <>
                 {zebras.length > 1 && (
                   <select value={zebraUid} onChange={(e) => setZebraUid(e.target.value)}>
-                    {zebras.map((z) => <option key={z.uid} value={z.uid}>{z.name}</option>)}
+                    {zebras.map((z) => <option key={z.uid} value={z.uid}>{nomeImpressora(z)}</option>)}
                   </select>
                 )}
                 <button className="primary" onClick={() => imprimirNaZebra()} disabled={enviando}>
