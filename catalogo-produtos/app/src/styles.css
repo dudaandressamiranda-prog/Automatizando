@@ -935,3 +935,22 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
   width: 100%; margin: 0.5rem 0; padding: 0.6rem 0.8rem; font-family: ui-monospace, monospace;
   font-size: 0.78rem; border: 1px solid var(--border); border-radius: 0.6rem; resize: vertical;
 }
+
+/* -- folha de etiquetas (só sai no papel) ------------------------------ */
+.etq-folha { display: none; }
+.etq-dica { display: block; margin: -0.4rem 0 1rem; line-height: 1.5; }
+@media print {
+  .etq-papel {
+    box-sizing: border-box; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 0.5mm;
+    padding: 1mm; overflow: hidden; page-break-after: always; break-after: page;
+  }
+  .etq-papel:last-child { page-break-after: auto; break-after: auto; }
+  .etq-papel-nome {
+    font-size: 2.2mm; font-weight: 700; text-align: center; line-height: 1.15;
+    max-height: 5mm; overflow: hidden; width: 100%;
+  }
+  /* o código ocupa a largura útil da etiqueta, respeitando a zona de silêncio */
+  .etq-papel-cod { width: 100%; display: flex; justify-content: center; }
+  .etq-papel-cod svg { width: 100%; height: auto; max-height: 14mm; }
+}

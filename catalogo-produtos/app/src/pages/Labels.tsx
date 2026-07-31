@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { imprimirZpl, listarImpressoras, type Impressora } from '../lib/browserprint';
 import { eanSvg, isValidEan13 } from '../lib/ean';
 import { useCatalog } from '../lib/catalog';
 import { norm } from '../lib/normalize';
@@ -20,6 +21,19 @@ export function Labels() {
   const [darkness, setDarkness] = useState(15);
   const [mostrarNome, setMostrarNome] = useState(true);
   const [copiado, setCopiado] = useState(false);
+  const [zebras, setZebras] = useState<Impressora[]>([]);
+  const [zebraUid, setZebraUid] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  // procura o Zebra Browser Print na máquina; sem ele, sobra a impressão
+  // normal do navegador, que funciona igual
+  useEffect(() => {
+    listarImpressoras().then((ps) => {
+      setZebras(ps);
+      if (ps[0]) setZebraUid(ps[0].uid);
+    });
+  }, []);
 
   const formato = FORMATOS.find((f) => f.id === formatoId)!;
 
@@ -81,6 +95,20 @@ export function Labels() {
     await navigator.clipboard.writeText(zpl);
     setCopiado(true);
     setTimeout(() => setCopiado(false), 2000);
+  }
+
+  /** Caminho de melhor qualidade: ZPL direto, a Zebra desenha o código. */
+  async function imprimirNaZebra() {
+    const z = zebras.find((p) => p.uid === zebraUid);
+    if (!z) return;
+    setEnviando(true);
+    setAviso(null);
+    try {
+      const ok = await imprimirZpl(z, zpl);
+      setAviso(ok ? `Enviado para ${z.name}.` : 'Não consegui falar com a impressora. Ela está ligada?');
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (
@@ -184,11 +212,73 @@ export function Labels() {
             <span className="muted small">
               {totalEtiquetas} etiqueta{totalEtiquetas === 1 ? '' : 's'} · {formato.label}
             </span>
-            <button className="primary" onClick={baixarZpl}>Baixar .zpl</button>
+            {zebras.length > 0 ? (
+              <>
+                {zebras.length > 1 && (
+                  <select value={zebraUid} onChange={(e) => setZebraUid(e.target.value)}>
+                    {zebras.map((z) => <option key={z.uid} value={z.uid}>{z.name}</option>)}
+                  </select>
+                )}
+                <button className="primary" onClick={imprimirNaZebra} disabled={enviando}>
+                  {enviando ? 'Enviando…' : '🖨️ Imprimir na Zebra'}
+                </button>
+                <button className="secondary" onClick={() => window.print()}>Imprimir pelo navegador</button>
+              </>
+            ) : (
+              <button className="primary" onClick={() => window.print()}>🖨️ Imprimir</button>
+            )}
             <button className="secondary" onClick={copiarZpl}>
               {copiado ? 'Copiado!' : 'Copiar ZPL'}
             </button>
+            <button className="secondary" onClick={baixarZpl}>Baixar .zpl</button>
             <button className="secondary" onClick={() => setFila({})}>Limpar</button>
+          </div>
+          {aviso && <p className="nf-ok">{aviso}</p>}
+          {zebras.length === 0 && (
+            <p className="tiny muted etq-dica">
+              O botão imprime pelo navegador, usando a Zebra como impressora
+              comum — funciona sem instalar nada. Para o ZPL ir direto à
+              impressora (código de barras desenhado por ela, leitura mais
+              confiável), instale o <strong>Zebra Browser Print</strong> na
+              máquina e recarregue esta página.
+            </p>
+          )}
+
+          {/*
+            Folha de impressão: só aparece no papel, no tamanho exato da
+            etiqueta. Esconde o resto por visibility em vez de display —
+            assim não depende de onde a folha está na árvore da página.
+          */}
+          <style>{`
+            @media print {
+              @page { size: ${formato.larguraMm}mm ${formato.alturaMm}mm; margin: 0; }
+              body * { visibility: hidden !important; }
+              .etq-folha, .etq-folha * { visibility: visible !important; }
+              .etq-folha {
+                display: block !important;
+                position: absolute !important;
+                left: 0; top: 0; margin: 0; padding: 0;
+              }
+            }
+          `}</style>
+          <div className="etq-folha" aria-hidden>
+            {itens.flatMap((i) =>
+              Array.from({ length: i.copias }, (_, n) => (
+                <div
+                  key={`${i.id}-${n}`}
+                  className="etq-papel"
+                  style={{ width: `${formato.larguraMm}mm`, height: `${formato.alturaMm}mm` }}
+                >
+                  {mostrarNome && <span className="etq-papel-nome">{i.nome}</span>}
+                  <div
+                    className="etq-papel-cod"
+                    dangerouslySetInnerHTML={{
+                      __html: eanSvg(i.barcode, { modulo: 2, altura: mostrarNome ? 46 : 60 }),
+                    }}
+                  />
+                </div>
+              )),
+            )}
           </div>
 
           <details className="etq-zpl">
