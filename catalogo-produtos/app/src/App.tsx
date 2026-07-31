@@ -15,6 +15,7 @@ import { Home } from './pages/Home';
 import { Labels } from './pages/Labels';
 import { Login } from './pages/Login';
 import { Logs } from './pages/Logs';
+import { NotaFiscal } from './pages/NotaFiscal';
 import { Permissions } from './pages/Permissions';
 import { ProductForm } from './pages/ProductForm';
 import { Review } from './pages/Review';
@@ -67,7 +68,7 @@ export function App() {
 
   const adminOnly =
     route.page === 'new' || route.page === 'review' || route.page === 'logs' ||
-    route.page === 'cartsAdmin' || route.page === 'permissions' || route.page === 'categories' || route.page === 'labels';
+    route.page === 'cartsAdmin' || route.page === 'permissions' || route.page === 'categories' || route.page === 'labels' || route.page === 'nota';
   const blocked = adminOnly && !admin;
 
   return (
@@ -100,6 +101,7 @@ export function App() {
         {!blocked && route.page === 'permissions' && <Permissions />}
         {!blocked && route.page === 'categories' && <Categories />}
         {!blocked && route.page === 'labels' && <Labels />}
+        {!blocked && route.page === 'nota' && <NotaFiscal />}
         {!blocked && route.page === 'review' && <Review />}
         {!blocked && route.page === 'logs' && <Logs />}
         {!blocked && route.page === 'new' && <ProductForm navigate={navigate} initialBarcode={route.barcode} />}

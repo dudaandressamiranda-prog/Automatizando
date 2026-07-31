@@ -845,3 +845,69 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
   background: #1f2937; color: #e5e7eb; padding: 0.9rem; border-radius: 0.6rem;
   overflow-x: auto; font-size: 0.75rem; line-height: 1.45; margin-top: 0.5rem;
 }
+
+/* ===== entrada de nota fiscal ========================================== */
+.nf-drop {
+  display: block; text-align: center; cursor: pointer; margin: 1rem 0;
+  padding: 2.2rem 1rem; border: 2px dashed var(--border); border-radius: 0.9rem;
+  background: var(--card); color: var(--muted); font-size: 1rem;
+}
+.nf-drop:hover { border-color: var(--green-light); color: var(--green); }
+.nf-drop input { display: none; }
+.nf-ok {
+  background: var(--green-soft); color: var(--green); border-radius: 0.6rem;
+  padding: 0.7rem 1rem; font-weight: 600;
+}
+
+.nf-cabecalho {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  flex-wrap: wrap; padding: 0.9rem 1rem; margin: 0.5rem 0 0.8rem;
+  background: var(--card); border: 1px solid var(--border); border-radius: 0.8rem;
+}
+.nf-cabecalho > div { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.nf-acoes-topo { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+
+.nf-itens { list-style: none; margin: 0; padding: 0 0 6rem; }
+.nf-item {
+  background: var(--card); border: 1px solid var(--border); border-radius: 0.8rem;
+  margin-bottom: 0.6rem; padding: 0.7rem 0.9rem;
+}
+.nf-item.on { border-color: var(--green-light); box-shadow: 0 0 0 2px var(--green-soft); }
+.nf-item-topo { display: flex; align-items: center; gap: 0.7rem; }
+.nf-item-topo input[type="checkbox"] { width: 1.15rem; height: 1.15rem; flex-shrink: 0; }
+.nf-item-id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.nf-item-desc { font-size: 0.9rem; font-weight: 600; overflow-wrap: anywhere; }
+.nf-badge-existe { background: #e0e7ff; color: #3730a3; }
+.nf-badge-novo { background: var(--green-soft); color: var(--green); }
+.nf-expand { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 0.9rem; padding: 0.3rem 0.4rem; }
+.nf-existente { margin: 0.4rem 0 0 1.9rem; }
+
+.nf-form { display: flex; flex-direction: column; gap: 0.7rem; margin: 0.8rem 0 0.3rem; padding-top: 0.8rem; border-top: 1px solid var(--border); }
+.nf-form label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.82rem; color: var(--muted); }
+.nf-form input, .nf-form select {
+  padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: 0.5rem;
+  font-size: 0.92rem; background: #fff; color: var(--text); width: 100%;
+}
+.nf-linha { display: flex; gap: 0.6rem; align-items: flex-end; flex-wrap: wrap; }
+.nf-linha label { flex: 1; min-width: 9rem; }
+
+.nf-conversao {
+  display: flex; align-items: flex-end; gap: 0.8rem; flex-wrap: wrap;
+  background: #f9fafb; border-radius: 0.6rem; padding: 0.7rem 0.8rem;
+}
+.nf-conversao label { flex-direction: column; }
+.nf-conversao input { width: 7rem; }
+
+.nf-variacoes { border-top: 1px dashed var(--border); padding-top: 0.7rem; }
+.nf-var-topo { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.4rem; }
+.nf-var-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.nf-var-lista li { display: flex; gap: 0.4rem; align-items: center; }
+.nf-var-lista input:first-child { flex: 1; min-width: 6rem; }
+.nf-var-lista input.mono { width: 9.5rem; font-family: ui-monospace, monospace; font-size: 0.85rem; }
+.nf-var-lista input { padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 0.45rem; }
+
+.nf-pendencias {
+  background: #fffbeb; border: 1px solid #fde68a; border-radius: 0.6rem;
+  padding: 0.75rem 1rem; margin-bottom: 5.5rem;
+}
+.nf-pendencias ul { margin: 0.35rem 0 0; padding-left: 1.1rem; font-size: 0.85rem; }
