@@ -7,6 +7,9 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icon-32.png" type="image/png" sizes="32x32" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
+    <!-- o iOS não lê short_name do manifesto; sem isto o atalho na tela
+         inicial sai com o título inteiro da página -->
+    <meta name="apple-mobile-web-app-title" content="Catálogo" />
     <title>Consulveter — Catálogo</title>
   </head>
   <body>
