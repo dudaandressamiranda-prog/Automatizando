@@ -12,15 +12,22 @@
  * fora da vitrine — e para cada um o script procura a foto pelo EAN nas
  * lojas grandes, porque foto é o que trava a entrada no catálogo.
  *
- * Não grava nada: é relatório para conferir antes de importar.
+ * Com --apply, além do relatório:
+ *  - grava o estoque de cada depósito em TODO produto do catálogo, que é o
+ *    que alimenta a tela "Na prateleira" do app;
+ *  - cadastra estes que faltam como DESATIVADOS, para aparecerem lá e
+ *    poderem ser completados à mão. Desativado de propósito: sem foto eles
+ *    não entram na vitrine, e a regra continua valendo.
  *
  * Uso:
- *   npm run prateleira -- tiny.csv painel.csv
- *   npm run prateleira -- tiny.csv painel.csv --sem-foto   # só a lista, na hora
+ *   npm run prateleira -- tiny.csv painel.csv              # só relatório
+ *   npm run prateleira -- tiny.csv painel.csv --sem-foto   # relatório na hora
+ *   npm run prateleira -- tiny.csv painel.csv --apply      # grava
  */
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import ExcelJS from 'exceljs';
+import { classifyByName } from './lib/classify.js';
 import { detectColumns, detectStoreColumns } from './lib/columns.js';
 import { buscarFoto, sleep } from './lib/fotoweb.js';
 import { isIgnorado, loadIgnorados } from './lib/ignorados.js';
@@ -53,6 +60,7 @@ interface Item {
 async function main() {
   const args = process.argv.slice(2);
   const semFoto = args.includes('--sem-foto');
+  const apply = args.includes('--apply');
   const [arqTiny, arqPainel] = args.filter((a) => !a.startsWith('--'));
   if (!arqTiny || !arqPainel) {
     throw new Error('Informe os dois arquivos: npm run prateleira -- tiny.csv painel.csv');
@@ -214,6 +222,92 @@ async function main() {
 
   await wb.xlsx.writeFile(ARQUIVO);
   console.log(`\nRelatório: ${ARQUIVO}`);
+
+  if (!apply) {
+    console.log('Nada foi gravado. Rode com --apply para alimentar a tela "Na prateleira".');
+    return;
+  }
+
+  // ---- estoque de quem já está no catálogo -----------------------------
+  console.log('\nGravando o estoque dos produtos que já estão no catálogo...');
+  const agora = new Date().toISOString();
+  const doCatalogo: { id: string; barcode: string | null; external_id: string | null }[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await db.from('products').select('id, barcode, external_id').range(from, from + 999);
+    if (error) throw new Error(error.message);
+    doCatalogo.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
+
+  // estoque do ERP indexado, para casar com o do painel
+  const erpPorEan = new Map<string, number>();
+  const erpPorId = new Map<string, number>();
+  for (const r of tiny.records) {
+    const n = tm.stock ? numero(r[tm.stock]) : 0;
+    const bc = cleanBarcode(String(r[tm.barcode!] ?? ''));
+    if (bc.ok && bc.value) erpPorEan.set(bc.value, n);
+    const id = String(r[tm.externalId!] ?? '');
+    if (id) erpPorId.set(id, n);
+  }
+
+  const [colCentro, colEldorado] = colunasLoja;
+  let atualizados = 0;
+  for (const p of doCatalogo) {
+    const painelDele = p.barcode ? painelPorEan.get(p.barcode) : undefined;
+    const erpDele = (p.barcode && erpPorEan.get(p.barcode)) ?? (p.external_id && erpPorId.get(p.external_id));
+    if (!painelDele && erpDele === undefined) continue;
+    const { error } = await db
+      .from('products')
+      .update({
+        stock_centro: colCentro ? painelDele?.lojas[colCentro] ?? null : null,
+        stock_eldorado: colEldorado ? painelDele?.lojas[colEldorado] ?? null : null,
+        stock_erp: typeof erpDele === 'number' ? erpDele : null,
+        stock_synced_at: agora,
+      })
+      .eq('id', p.id);
+    if (error) throw new Error(`Erro no estoque de ${p.id}: ${error.message}`);
+    atualizados++;
+  }
+  console.log(`  ${atualizados} produtos com estoque atualizado.`);
+
+  // ---- cadastra os que faltam, desativados -----------------------------
+  console.log('Cadastrando os que faltam (desativados)...');
+  const { data: cats, error: erroCats } = await db.from('categories').select('id, name');
+  if (erroCats) throw new Error(erroCats.message);
+  const catPorNome = new Map((cats ?? []).map((c) => [norm(c.name as string), c.id as string]));
+
+  const vistos = new Set<string>();
+  const novos = [];
+  for (const i of itens) {
+    if (i.ean && vistos.has(i.ean)) continue; // a planilha repete GTIN; o banco não deixa
+    if (i.ean) vistos.add(i.ean);
+    const palpite = classifyByName(i.nome);
+    novos.push({
+      name: i.nome,
+      barcode: i.ean || null,
+      brand: i.marca || null,
+      category_id: palpite ? catPorNome.get(norm(palpite)) ?? null : null,
+      status: 'desativado',
+      source: 'erp',
+      external_id: i.idErp || null,
+      stock_centro: colCentro ? i.lojas[colCentro] ?? 0 : null,
+      stock_eldorado: colEldorado ? i.lojas[colEldorado] ?? 0 : null,
+      stock_erp: i.tiny,
+      stock_synced_at: agora,
+    });
+  }
+
+  let inseridos = 0;
+  for (let k = 0; k < novos.length; k += 100) {
+    const lote = novos.slice(k, k + 100);
+    const { error } = await db.from('products').insert(lote);
+    if (error) throw new Error(`Erro inserindo o lote ${k / 100 + 1}: ${error.message}`);
+    inseridos += lote.length;
+  }
+  console.log(`  ${inseridos} produtos cadastrados como desativados.`);
+  console.log('\n✅ Pronto. Eles aparecem no menu "Na prateleira" do app.');
+  console.log('   Para desfazer: apague os produtos com source=erp e status=desativado');
+  console.log(`   criados agora (stock_synced_at = ${agora}).`);
 }
 
 main().catch((err) => {
