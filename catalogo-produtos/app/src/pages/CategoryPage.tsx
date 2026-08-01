@@ -3,6 +3,7 @@ import { CardGrid } from './Home';
 import { SEM_CATEGORIA, bulkSetCategory, bulkSetStatus, topLevel, useCatalog } from '../lib/catalog';
 import { availableBrands, productHasBrand } from '../lib/brands';
 import { useCartSaver } from '../lib/cart';
+import { criarBusca } from '../lib/busca';
 import { norm } from '../lib/normalize';
 import { useSignedUrls } from '../lib/photos';
 import { setPending } from '../lib/pending';
@@ -150,10 +151,10 @@ export function CategoryPage({ group, initialSub, store, email, admin }: Props) 
 
   // aplica busca por texto e filtro de marca
   const scoped = useMemo(() => {
-    const term = norm(q);
+    const casa = criarBusca(q);
     const marca = brands.find((m) => m.label === brand) ?? null;
     return scopedBase.filter((p) => {
-      if (term && !norm(`${p.name} ${p.brand ?? ''}`).includes(term)) return false;
+      if (casa && !casa(`${p.name} ${p.brand ?? ''}`)) return false;
       if (marca && !productHasBrand(p, marca)) return false;
       return true;
     });
@@ -193,7 +194,7 @@ export function CategoryPage({ group, initialSub, store, email, admin }: Props) 
         <div className="cat-search">
           <input
             type="search"
-            placeholder={`Buscar em ${title}…`}
+            placeholder={`Buscar em ${title} — use % entre palavras`}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             autoFocus

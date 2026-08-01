@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * Rotas por hash, para o botão "voltar" do celular funcionar sem
  * precisar de um router completo:
- *   #/         início: busca + categorias
+ *   #/?q=...   início: busca + categorias
  *   #/c/<nome> categoria (nome do grupo, URL-encoded)
  *   #/revisao  produtos sem código de barras (desativados) — admin
  *   #/logs     atividade recente do catálogo — admin
@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
  *   #/p/<id>   edição de um produto
  */
 export type Route =
-  | { page: 'list' }
+  | { page: 'list'; q?: string }
   | { page: 'category'; group: string; sub?: string }
   | { page: 'cart' }
   | { page: 'cartsAdmin'; loja?: string; carrinho?: string }
@@ -48,14 +48,29 @@ function parseHash(hash: string): Route {
     const sub = new URLSearchParams(query ?? '').get('sub') ?? undefined;
     return { page: 'category', group: decodeURIComponent(c[1]!), sub };
   }
-  return { page: 'list' };
+  // a busca fica na URL para sobreviver a abrir um produto e voltar
+  return { page: 'list', q: new URLSearchParams(query ?? '').get('q') ?? undefined };
 }
 
 export function useHashRoute() {
   const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash));
+  /**
+   * De onde viemos. Serve para o formulário devolver a pessoa à tela em que
+   * ela estava depois de salvar — quem edita um produto dentro de uma
+   * categoria quer voltar para aquela categoria, não para o início.
+   */
+  const anterior = useRef<string | null>(null);
 
   useEffect(() => {
-    const onChange = () => setRoute(parseHash(window.location.hash));
+    const onChange = (e: HashChangeEvent) => {
+      const veio = new URL(e.oldURL).hash;
+      // ida e volta entre dois produtos não conta como origem: senão, salvar
+      // devolveria para o produto anterior em vez da lista
+      const paraProduto = window.location.hash.startsWith('#/p/');
+      const veioDeProduto = veio.startsWith('#/p/');
+      if (!(paraProduto && veioDeProduto)) anterior.current = veio || null;
+      setRoute(parseHash(window.location.hash));
+    };
     window.addEventListener('hashchange', onChange);
     return () => window.removeEventListener('hashchange', onChange);
   }, []);
@@ -64,5 +79,13 @@ export function useHashRoute() {
     window.location.hash = hash;
   }, []);
 
-  return { route, navigate };
+  /**
+   * Volta para a tela de origem. Sem origem conhecida — abriu o link direto,
+   * recarregou a página — cai no início, que é o único destino garantido.
+   */
+  const voltar = useCallback(() => {
+    window.location.hash = anterior.current ?? '#/';
+  }, []);
+
+  return { route, navigate, voltar };
 }

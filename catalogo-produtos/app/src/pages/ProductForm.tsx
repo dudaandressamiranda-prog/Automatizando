@@ -2,18 +2,20 @@ import { type FormEvent, useEffect, useState } from 'react';
 import { Photo } from '../components/Photo';
 import { eanSvg, isValidEan13, nextInternalEan } from '../lib/ean';
 import { cleanBarcode, norm } from '../lib/normalize';
+import { PRODUTO_RECENTE } from '../lib/recentes';
 import { PHOTO_BUCKET, supabase } from '../lib/supabase';
 import { STATUS_LABEL, type Category, type Product, type ProductStatus } from '../lib/types';
 
 const NEW_CATEGORY = '__nova__';
 
 interface Props {
-  navigate: (hash: string) => void;
+  /** Devolve para a tela de origem — a categoria de onde o produto foi aberto. */
+  voltar: () => void;
   productId?: string;
   initialBarcode?: string;
 }
 
-export function ProductForm({ navigate, productId, initialBarcode }: Props) {
+export function ProductForm({ voltar, productId, initialBarcode }: Props) {
   const editing = Boolean(productId);
 
   const [loaded, setLoaded] = useState(!editing);
@@ -224,7 +226,9 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
       }
 
       await savePhoto(id!);
-      navigate('/');
+      // deixa o rastro para a lista rolar até este produto e destacá-lo
+      sessionStorage.setItem(PRODUTO_RECENTE, id!);
+      voltar();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -242,7 +246,7 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
       setError(`Não foi possível excluir: ${err.message}`);
       return;
     }
-    navigate('/');
+    voltar();
   }
 
   if (!loaded) return <main><p className="muted">Carregando…</p></main>;
@@ -252,7 +256,7 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
       <button
         type="button"
         className="back back-btn"
-        onClick={() => (window.history.length > 1 ? window.history.back() : navigate('/'))}
+        onClick={voltar}
       >
         ‹ Voltar
       </button>
@@ -373,7 +377,9 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
           <button type="submit" className="primary" disabled={busy}>
             {busy ? 'Salvando…' : 'Salvar'}
           </button>
-          <a href="#/" className="secondary button-link">Cancelar</a>
+          <button type="button" className="secondary" onClick={voltar} disabled={busy}>
+            Cancelar
+          </button>
           {editing && (
             <button type="button" className="danger" onClick={onDelete} disabled={busy}>
               Excluir

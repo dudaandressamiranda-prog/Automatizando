@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ProductCard } from '../components/ProductCard';
-import { norm } from '../lib/normalize';
+import { criarBusca } from '../lib/busca';
 import { photoSrc, useSignedUrls } from '../lib/photos';
 import { supabase } from '../lib/supabase';
 import { LIST_COLUMNS, type ListProduct } from '../lib/types';
@@ -49,9 +49,9 @@ export function Review() {
   const signed = useSignedUrls(products);
 
   const filtered = useMemo(() => {
-    const term = norm(q);
-    if (!term) return products;
-    return products.filter((p) => norm(`${p.name} ${p.brand ?? ''}`).includes(term));
+    const casa = criarBusca(q);
+    if (!casa) return products;
+    return products.filter((p) => casa(`${p.name} ${p.brand ?? ''}`));
   }, [q, products]);
 
   return (
@@ -68,7 +68,7 @@ export function Review() {
       <div className="searchbar">
         <input
           type="search"
-          placeholder="Filtrar por nome ou marca…"
+          placeholder="Filtrar por nome ou marca — use % entre palavras"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />

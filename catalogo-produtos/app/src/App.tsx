@@ -24,7 +24,7 @@ export function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const { route, navigate } = useHashRoute();
+  const { route, navigate, voltar } = useHashRoute();
   const admin = isAdmin(session?.user.email);
   const { active, loading: storeLoading, choose, canSwitch } = useActiveStore(session, admin);
 
@@ -92,7 +92,9 @@ export function App() {
       </aside>
 
       <div className="main">
-        {(blocked || route.page === 'list') && <Home navigate={navigate} />}
+        {(blocked || route.page === 'list') && (
+          <Home navigate={navigate} buscaInicial={route.page === 'list' ? route.q : undefined} />
+        )}
         {!blocked && route.page === 'category' && (
           <CategoryPage group={route.group} initialSub={route.sub ?? null} store={active} email={email} admin={admin} />
         )}
@@ -106,8 +108,12 @@ export function App() {
         {!blocked && route.page === 'nota' && <NotaFiscal />}
         {!blocked && route.page === 'review' && <Review />}
         {!blocked && route.page === 'logs' && <Logs />}
-        {!blocked && route.page === 'new' && <ProductForm navigate={navigate} initialBarcode={route.barcode} />}
-        {route.page === 'product' && <ProductForm navigate={navigate} productId={route.id} />}
+        {!blocked && route.page === 'new' && (
+          <ProductForm voltar={voltar} initialBarcode={route.barcode} />
+        )}
+        {route.page === 'product' && (
+          <ProductForm voltar={voltar} productId={route.id} />
+        )}
       </div>
 
       <SaveGuard store={active} email={email} />

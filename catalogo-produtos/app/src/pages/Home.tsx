@@ -1,10 +1,12 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { ProductCard } from '../components/ProductCard';
+import { lerProdutoRecente, limparProdutoRecente } from '../lib/recentes';
 import { topRequested } from '../lib/cart';
 import { SEM_CATEGORIA, topLevel, useCatalog } from '../lib/catalog';
 import { iconFor } from '../lib/categoryIcons';
 import { APP_NAME, APP_TAGLINE } from '../lib/config';
-import { cleanBarcode, norm } from '../lib/normalize';
+import { criarBusca } from '../lib/busca';
+import { cleanBarcode } from '../lib/normalize';
 import { photoSrc, useSignedUrls } from '../lib/photos';
 import type { ListProduct } from '../lib/types';
 
@@ -15,10 +17,20 @@ const Scanner = lazy(() =>
 
 interface Props {
   navigate: (hash: string) => void;
+  /** Busca que veio na URL, para reaparecer ao voltar da edição. */
+  buscaInicial?: string;
 }
 
-export function Home({ navigate }: Props) {
-  const [q, setQ] = useState('');
+export function Home({ navigate, buscaInicial }: Props) {
+  const [q, setQ] = useState(buscaInicial ?? '');
+
+  // Espelha a busca na URL SEM empilhar histórico (replaceState não dispara
+  // hashchange, então digitar não navega). Assim, ao abrir um produto e
+  // salvar, a volta traz a busca de novo em vez de uma tela em branco.
+  useEffect(() => {
+    const alvo = q ? `#/?q=${encodeURIComponent(q)}` : '#/';
+    if (window.location.hash !== alvo) window.history.replaceState(null, '', alvo);
+  }, [q]);
   const [scanning, setScanning] = useState(false);
   const [scanMiss, setScanMiss] = useState<string | null>(null);
   const { products, categories, loading, error } = useCatalog();
@@ -48,14 +60,14 @@ export function Home({ navigate }: Props) {
       );
   }, [products, catNameById, signed]);
 
-  /** Busca no aparelho: nome+marca sem acento, ou código de barras. */
+  /** Busca no aparelho: nome+marca sem acento, código de barras, ou `%`. */
   const results = useMemo(() => {
-    const term = norm(q);
-    if (!term) return null;
+    const casa = criarBusca(q);
+    if (!casa) return null;
     const digits = cleanBarcode(q);
     return products.filter((p) => {
       if (digits && p.barcode === digits) return true;
-      return `${norm(p.name)} ${norm(p.brand ?? '')}`.includes(term);
+      return casa(`${p.name} ${p.brand ?? ''}`);
     });
   }, [q, products]);
 
@@ -101,7 +113,7 @@ export function Home({ navigate }: Props) {
           <div className="hero-search">
             <input
               type="search"
-              placeholder="Buscar por nome, marca ou código de barras…"
+              placeholder="Buscar por nome, marca ou código — use % entre palavras"
               value={q}
               onChange={(e) => { setQ(e.target.value); setScanMiss(null); }}
             />
@@ -199,6 +211,24 @@ export function CardGrid({ products, signed, selectable, isSelected, onToggle, b
   // lista mudou (busca nova, outra categoria): volta para a primeira página
   useEffect(() => setLimite(PAGINA), [chave, products.length]);
 
+  // Quem acabou de editar um produto volta para cá: rola até ele e o
+  // destaca, em vez de largar a pessoa no topo de uma lista de mil itens.
+  const [destaque, setDestaque] = useState<string | null>(() => lerProdutoRecente());
+  useEffect(() => {
+    if (!destaque) return;
+    const posicao = products.findIndex((p) => p.id === destaque);
+    if (posicao < 0) return; // não está nesta lista — pode ter mudado de categoria
+    if (posicao >= limite) {
+      // está numa página que ainda não foi aberta: abre até alcançá-lo
+      setLimite(Math.ceil((posicao + 1) / PAGINA) * PAGINA);
+      return;
+    }
+    document.getElementById(`p-${destaque}`)?.scrollIntoView({ block: 'center' });
+    limparProdutoRecente();
+    const t = setTimeout(() => setDestaque(null), 2500);
+    return () => clearTimeout(t);
+  }, [destaque, products, limite]);
+
   const visiveis = products.slice(0, limite);
   return (
     <>
@@ -212,6 +242,7 @@ export function CardGrid({ products, signed, selectable, isSelected, onToggle, b
             selected={isSelected?.(p.id)}
             onToggle={onToggle}
             blockNav={blockNav}
+            destacado={p.id === destaque}
           />
         ))}
       </div>

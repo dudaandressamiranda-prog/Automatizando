@@ -487,6 +487,20 @@ body {
 /* ===== bolinha de seleção no card ====================================== */
 .pcard { position: relative; }
 .pcard-selected { border-color: var(--green-light); box-shadow: 0 0 0 2px var(--green-soft); }
+
+/* Produto recém-editado: pisca para a pessoa reencontrar onde parou. */
+.pcard-destaque {
+  border-color: var(--green);
+  animation: pcard-piscar 2.4s ease-out;
+}
+@keyframes pcard-piscar {
+  0%, 55% { box-shadow: 0 0 0 3px var(--green-light); }
+  100%    { box-shadow: 0 0 0 3px transparent; }
+}
+/* quem pediu menos movimento fica só com a borda */
+@media (prefers-reduced-motion: reduce) {
+  .pcard-destaque { animation: none; box-shadow: 0 0 0 3px var(--green-light); }
+}
 .pcard-pick {
   position: absolute; top: 0.45rem; right: 0.45rem; z-index: 2;
   width: 1.6rem; height: 1.6rem; border-radius: 50%;

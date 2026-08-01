@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { eanSvg, isValidEan13 } from '../lib/ean';
 import { eplCalibrar, gerarEpl, gerarEplTeste } from '../lib/epl';
 import { useCatalog } from '../lib/catalog';
-import { norm } from '../lib/normalize';
+import { criarBusca } from '../lib/busca';
 import {
   FILA_ETIQUETAS,
   FORMATOS,
@@ -52,10 +52,10 @@ export function Labels() {
   );
 
   const resultados = useMemo(() => {
-    const termo = norm(q);
-    if (!termo) return [];
+    const casa = criarBusca(q);
+    if (!casa) return [];
     return buscaveis
-      .filter((p) => norm(`${p.name} ${p.brand ?? ''} ${p.barcode}`).includes(termo))
+      .filter((p) => casa(`${p.name} ${p.brand ?? ''} ${p.barcode}`))
       .slice(0, 30);
   }, [q, buscaveis]);
 
@@ -171,7 +171,7 @@ export function Labels() {
       <div className="etq-busca">
         <input
           type="search"
-          placeholder="Buscar produto por nome, marca ou código…"
+          placeholder="Buscar por nome, marca ou código — use % entre palavras"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />

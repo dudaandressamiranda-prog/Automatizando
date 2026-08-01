@@ -14,9 +14,11 @@ interface Props {
    * clique fora da bolinha continua abrindo o produto normalmente.
    */
   blockNav?: boolean;
+  /** Realce passageiro de quem acabou de ser editado, para achar na lista. */
+  destacado?: boolean;
 }
 
-export function ProductCard({ product: p, src, selectable, selected, onToggle, blockNav }: Props) {
+export function ProductCard({ product: p, src, selectable, selected, onToggle, blockNav, destacado }: Props) {
   const media = (
     <>
       <div className="pcard-img">
@@ -44,7 +46,8 @@ export function ProductCard({ product: p, src, selectable, selected, onToggle, b
   if (blockNav) {
     return (
       <div
-        className={`pcard pcard-block ${selected ? 'pcard-selected' : ''}`}
+        id={`p-${p.id}`}
+        className={`pcard pcard-block ${selected ? 'pcard-selected' : ''} ${destacado ? 'pcard-destaque' : ''}`}
         role="button"
         tabIndex={0}
         onClick={() => onToggle?.(p.id)}
@@ -59,7 +62,11 @@ export function ProductCard({ product: p, src, selectable, selected, onToggle, b
   }
 
   return (
-    <a href={`#/p/${p.id}`} className={`pcard ${selected ? 'pcard-selected' : ''}`}>
+    <a
+      id={`p-${p.id}`}
+      href={`#/p/${p.id}`}
+      className={`pcard ${selected ? 'pcard-selected' : ''} ${destacado ? 'pcard-destaque' : ''}`}
+    >
       {selectable && (
         <button
           type="button"
