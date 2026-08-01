@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  *   #/?q=...   início: busca + categorias
  *   #/c/<nome> categoria (nome do grupo, URL-encoded)
  *   #/revisao  produtos sem código de barras (desativados) — admin
- *   #/prateleira com estoque e faltando foto/código — admin
+ *   #/prateleira cadastros sem foto ou sem código — admin
  *   #/logs     atividade recente do catálogo — admin
  *   #/novo     cadastro (aceita ?barcode=... vindo do leitor) — admin
  *   #/p/<id>   edição de um produto

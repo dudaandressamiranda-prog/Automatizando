@@ -12,12 +12,12 @@
  * fora da vitrine — e para cada um o script procura a foto pelo EAN nas
  * lojas grandes, porque foto é o que trava a entrada no catálogo.
  *
- * Com --apply, além do relatório:
- *  - grava o estoque de cada depósito em TODO produto do catálogo, que é o
- *    que alimenta a tela "Na prateleira" do app;
- *  - cadastra estes que faltam como DESATIVADOS, para aparecerem lá e
- *    poderem ser completados à mão. Desativado de propósito: sem foto eles
- *    não entram na vitrine, e a regra continua valendo.
+ * Com --apply, cadastra os que faltam como DESATIVADOS, para aparecerem na
+ * tela "A completar" do app e poderem ser arrumados à mão. Desativado de
+ * propósito: sem foto eles não entram na vitrine, e a regra continua
+ * valendo. O estoque fica fora do catálogo — serve aqui só para separar o
+ * que está na loja do que é cadastro parado, e não é gravado em lugar
+ * nenhum.
  *
  * Uso:
  *   npm run prateleira -- tiny.csv painel.csv              # só relatório
@@ -228,50 +228,9 @@ async function main() {
     return;
   }
 
-  // ---- estoque de quem já está no catálogo -----------------------------
-  console.log('\nGravando o estoque dos produtos que já estão no catálogo...');
-  const agora = new Date().toISOString();
-  const doCatalogo: { id: string; barcode: string | null; external_id: string | null }[] = [];
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await db.from('products').select('id, barcode, external_id').range(from, from + 999);
-    if (error) throw new Error(error.message);
-    doCatalogo.push(...(data ?? []));
-    if (!data || data.length < 1000) break;
-  }
-
-  // estoque do ERP indexado, para casar com o do painel
-  const erpPorEan = new Map<string, number>();
-  const erpPorId = new Map<string, number>();
-  for (const r of tiny.records) {
-    const n = tm.stock ? numero(r[tm.stock]) : 0;
-    const bc = cleanBarcode(String(r[tm.barcode!] ?? ''));
-    if (bc.ok && bc.value) erpPorEan.set(bc.value, n);
-    const id = String(r[tm.externalId!] ?? '');
-    if (id) erpPorId.set(id, n);
-  }
-
-  const [colCentro, colEldorado] = colunasLoja;
-  let atualizados = 0;
-  for (const p of doCatalogo) {
-    const painelDele = p.barcode ? painelPorEan.get(p.barcode) : undefined;
-    const erpDele = (p.barcode && erpPorEan.get(p.barcode)) ?? (p.external_id && erpPorId.get(p.external_id));
-    if (!painelDele && erpDele === undefined) continue;
-    const { error } = await db
-      .from('products')
-      .update({
-        stock_centro: colCentro ? painelDele?.lojas[colCentro] ?? null : null,
-        stock_eldorado: colEldorado ? painelDele?.lojas[colEldorado] ?? null : null,
-        stock_erp: typeof erpDele === 'number' ? erpDele : null,
-        stock_synced_at: agora,
-      })
-      .eq('id', p.id);
-    if (error) throw new Error(`Erro no estoque de ${p.id}: ${error.message}`);
-    atualizados++;
-  }
-  console.log(`  ${atualizados} produtos com estoque atualizado.`);
-
   // ---- cadastra os que faltam, desativados -----------------------------
-  console.log('Cadastrando os que faltam (desativados)...');
+  const inicio = new Date().toISOString(); // marco para desfazer, se precisar
+  console.log('\nCadastrando os que faltam (desativados)...');
   const { data: cats, error: erroCats } = await db.from('categories').select('id, name');
   if (erroCats) throw new Error(erroCats.message);
   const catPorNome = new Map((cats ?? []).map((c) => [norm(c.name as string), c.id as string]));
@@ -290,10 +249,6 @@ async function main() {
       status: 'desativado',
       source: 'erp',
       external_id: i.idErp || null,
-      stock_centro: colCentro ? i.lojas[colCentro] ?? 0 : null,
-      stock_eldorado: colEldorado ? i.lojas[colEldorado] ?? 0 : null,
-      stock_erp: i.tiny,
-      stock_synced_at: agora,
     });
   }
 
@@ -305,9 +260,9 @@ async function main() {
     inseridos += lote.length;
   }
   console.log(`  ${inseridos} produtos cadastrados como desativados.`);
-  console.log('\n✅ Pronto. Eles aparecem no menu "Na prateleira" do app.');
-  console.log('   Para desfazer: apague os produtos com source=erp e status=desativado');
-  console.log(`   criados agora (stock_synced_at = ${agora}).`);
+  console.log('\n✅ Pronto. Eles aparecem no menu "A completar" do app.');
+  console.log('   Para desfazer: apague os produtos criados agora —');
+  console.log(`   source='erp', status='desativado', created_at >= ${inicio}.`);
 }
 
 main().catch((err) => {

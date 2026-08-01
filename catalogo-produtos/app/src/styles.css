@@ -1052,9 +1052,14 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
   padding: 0.05rem 0.5rem; font-size: 0.72rem; font-weight: 600;
 }
 
-/* o estoque é o número que ordena a fila — fica em evidência */
-.pend-estoque { display: grid; justify-items: end; gap: 0.1rem; text-align: right; }
-.pend-estoque strong { font-size: 1.25rem; color: var(--green); line-height: 1; }
+/* ordenação: mostra o campo ativo e para que lado está */
+.pend-ordem { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-bottom: 0.8rem; }
+.pend-sort {
+  padding: 0.3rem 0.7rem; border: 1px solid var(--border); border-radius: 0.5rem;
+  background: var(--card); color: var(--muted); font-size: 0.83rem; cursor: pointer;
+}
+.pend-sort:hover { border-color: var(--green-light); }
+.pend-sort.on { border-color: var(--green); color: var(--green); font-weight: 600; }
 
 @media (max-width: 480px) {
   .pend-item { grid-template-columns: 2.75rem 1fr auto; }

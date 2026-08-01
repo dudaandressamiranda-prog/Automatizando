@@ -2,66 +2,51 @@ import { useEffect, useMemo, useState } from 'react';
 import { criarBusca } from '../lib/busca';
 import { photoSrc, useSignedUrls } from '../lib/photos';
 import { supabase } from '../lib/supabase';
-import type { ListProduct } from '../lib/types';
+import { LIST_COLUMNS, STATUS_LABEL, type ListProduct } from '../lib/types';
 
 const PAGE = 1000;
 
-const COLUNAS =
-  'id, name, barcode, brand, category_id, photo_path, photo_source_url, status, updated_at,' +
-  ' stock_centro, stock_eldorado, stock_erp, stock_total';
-
-interface Pendente extends ListProduct {
-  stock_centro: number | null;
-  stock_eldorado: number | null;
-  stock_erp: number | null;
-  stock_total: number;
-}
-
 type Filtro = 'todos' | 'foto' | 'codigo' | 'ambos';
+type Campo = 'nome' | 'marca' | 'situacao';
 
-const temFoto = (p: Pendente) => Boolean(p.photo_path || p.photo_source_url);
-const temCodigo = (p: Pendente) => Boolean(p.barcode);
+const temFoto = (p: ListProduct) => Boolean(p.photo_path || p.photo_source_url);
+const temCodigo = (p: ListProduct) => Boolean(p.barcode);
 
 /**
- * Produtos que estão na prateleira mas ainda não podem ir para a vitrine:
- * têm estoque e falta foto, código de barras, ou os dois.
+ * Cadastros incompletos: falta foto, código de barras, ou os dois.
  *
  * É separada da tela "A revisar" de propósito. Lá estão os desativados em
- * geral, muitos parados de vez; aqui é só o que tem mercadoria esperando —
- * a fila que dá retorno imediato quando alguém senta para completar
- * cadastro. Ordenada pelo estoque, para render mais quem tem mais peça
- * parada sem aparecer na busca das lojas.
+ * geral, seja qual for o motivo; aqui é só o que está esperando um dado
+ * para ficar pronto — a fila de trabalho de quem senta para completar
+ * cadastro, em ordem alfabética e com as colunas ordenáveis.
  */
 export function Pendencias() {
-  const [produtos, setProdutos] = useState<Pendente[]>([]);
+  const [produtos, setProdutos] = useState<ListProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [filtro, setFiltro] = useState<Filtro>('todos');
+  const [campo, setCampo] = useState<Campo>('nome');
+  const [crescente, setCrescente] = useState(true);
 
   useEffect(() => {
     let vivo = true;
     async function load() {
-      const todos: Pendente[] = [];
+      const todos: ListProduct[] = [];
       for (let from = 0; ; from += PAGE) {
         const { data, error: err } = await supabase
           .from('products')
-          .select(COLUNAS)
-          .gt('stock_total', 0)
+          .select(LIST_COLUMNS)
+          // falta foto (nenhuma das duas origens) OU falta código
           .or('and(photo_path.is.null,photo_source_url.is.null),barcode.is.null')
-          .order('stock_total', { ascending: false })
+          .order('name')
           .range(from, from + PAGE - 1);
         if (!vivo) return;
         if (err) {
-          // a coluna só existe depois da migration do estoque
-          setError(
-            /stock_total/.test(err.message)
-              ? 'Falta rodar a migration do estoque (20260801000006_estoque.sql) no Supabase.'
-              : err.message,
-          );
+          setError(err.message);
           break;
         }
-        todos.push(...((data ?? []) as unknown as Pendente[]));
+        todos.push(...((data ?? []) as ListProduct[]));
         setProdutos([...todos]);
         if (!data || data.length < PAGE) break;
       }
@@ -75,14 +60,25 @@ export function Pendencias() {
 
   const lista = useMemo(() => {
     const casa = criarBusca(q);
-    return produtos.filter((p) => {
+    const filtrados = produtos.filter((p) => {
       if (casa && !casa(`${p.name} ${p.brand ?? ''}`)) return false;
       if (filtro === 'foto') return !temFoto(p);
       if (filtro === 'codigo') return !temCodigo(p);
       if (filtro === 'ambos') return !temFoto(p) && !temCodigo(p);
       return true;
     });
-  }, [produtos, q, filtro]);
+
+    const chave = (p: ListProduct) =>
+      campo === 'marca' ? p.brand ?? '' : campo === 'situacao' ? p.status : p.name;
+    return filtrados.sort((a, b) => {
+      // sem marca vai para o fim nas duas direções: linha vazia no topo não ajuda ninguém
+      const va = chave(a);
+      const vb = chave(b);
+      if (!va !== !vb) return va ? -1 : 1;
+      const cmp = va.localeCompare(vb, 'pt-BR') || a.name.localeCompare(b.name, 'pt-BR');
+      return crescente ? cmp : -cmp;
+    });
+  }, [produtos, q, filtro, campo, crescente]);
 
   const contagem = useMemo(
     () => ({
@@ -93,20 +89,28 @@ export function Pendencias() {
     [produtos],
   );
 
-  const pecas = lista.reduce((s, p) => s + p.stock_total, 0);
+  function ordenarPor(c: Campo) {
+    if (c === campo) setCrescente((v) => !v);
+    else {
+      setCampo(c);
+      setCrescente(true);
+    }
+  }
+
+  const seta = (c: Campo) => (campo !== c ? '↕' : crescente ? '↑' : '↓');
 
   return (
     <main className="content">
       <div className="page-head">
         <a href="#/" className="back">‹ Início</a>
-        <h1>📦 Na prateleira</h1>
+        <h1>📦 A completar</h1>
         <span className="muted small">
-          {lista.length} produto{lista.length === 1 ? '' : 's'} · {pecas} peça{pecas === 1 ? '' : 's'}
+          {lista.length} produto{lista.length === 1 ? '' : 's'}
         </span>
       </div>
       <p className="muted small">
-        Tem estoque na loja mas falta foto ou código de barras — por isso ainda não
-        aparece na vitrine. Complete o cadastro e ative.
+        Cadastros a que falta foto ou código de barras. Complete e ative — assim
+        que os dois estiverem preenchidos, o produto sai desta lista.
       </p>
 
       <div className="filtros">
@@ -131,6 +135,24 @@ export function Pendencias() {
             onClick={() => setFiltro(id)}
           >
             {rotulo}
+          </button>
+        ))}
+      </div>
+
+      <div className="pend-ordem">
+        <span className="muted small">Ordenar por</span>
+        {([
+          ['nome', 'Produto'],
+          ['marca', 'Marca'],
+          ['situacao', 'Situação'],
+        ] as [Campo, string][]).map(([id, rotulo]) => (
+          <button
+            key={id}
+            className={`pend-sort ${campo === id ? 'on' : ''}`}
+            onClick={() => ordenarPor(id)}
+            title={campo === id ? (crescente ? 'Crescente — clique para inverter' : 'Decrescente — clique para inverter') : `Ordenar por ${rotulo}`}
+          >
+            {rotulo} <span aria-hidden>{seta(id)}</span>
           </button>
         ))}
       </div>
@@ -161,12 +183,7 @@ export function Pendencias() {
                   </span>
                 </span>
 
-                <span className="pend-estoque" title="Centro · Eldorado · Tiny">
-                  <strong>{p.stock_total}</strong>
-                  <span className="tiny muted">
-                    {p.stock_centro ?? 0} · {p.stock_eldorado ?? 0} · {p.stock_erp ?? 0}
-                  </span>
-                </span>
+                <span className={`badge badge-${p.status}`}>{STATUS_LABEL[p.status]}</span>
               </a>
             </li>
           );

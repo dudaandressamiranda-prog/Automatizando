@@ -186,7 +186,7 @@ export function Nav({ route, onNavigate, onSignOut, email, admin, store, onChoos
             className={`nav-item ${route.page === 'pendencias' ? 'active' : ''}`}
             onClick={onNavigate}
           >
-            <span className="nav-ico">📦</span> Na prateleira
+            <span className="nav-ico">📦</span> A completar
           </a>
           <a
             href="#/revisao"
