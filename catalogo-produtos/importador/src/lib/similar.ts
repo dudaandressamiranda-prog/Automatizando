@@ -291,3 +291,53 @@ export class Indice {
     return { candidatos, reprovado };
   }
 }
+
+/**
+ * Por que este produto está sem código de barras.
+ *
+ * São cinco desfechos, e cada um pede uma providência diferente — por isso
+ * a conclusão mora aqui, e não em cada relatório: a busca e a lista de
+ * pendências têm que contar a mesma história.
+ */
+export type Diagnostico =
+  | { tipo: 'sugestao'; melhor: Candidato }
+  | { tipo: 'codigo-invalido'; melhor: Candidato }
+  | { tipo: 'repetido'; melhor: Candidato }
+  | { tipo: 'variacoes'; eans: string[]; exemplos: string }
+  | { tipo: 'nada'; quaseFoi: string };
+
+export function diagnosticar(
+  nome: string,
+  marca: string | null,
+  indice: Indice,
+  eanTemDono: (ean: string) => boolean,
+): Diagnostico {
+  const { candidatos, reprovado } = indice.procurar(nome, marca);
+  if (candidatos.length === 0) return { tipo: 'nada', quaseFoi: reprovado };
+
+  let melhor = candidatos[0]!;
+  // O primeiro colocado pode trazer um código inventado (é comum no ERP).
+  // Se outra linha igualmente boa tem código que fecha o dígito, é ela que
+  // vale — a planilha do painel costuma ter o GTIN de verdade.
+  if (!melhor.f.eanValido) {
+    const bom = candidatos.find(
+      (x) => x.f.eanValido && x.exato === melhor.exato && x.score >= melhor.score - 0.05,
+    );
+    if (bom) melhor = bom;
+  }
+
+  // empate técnico em códigos diferentes = cadastro pai com variações
+  const topo = candidatos.filter((x) => x.exato === melhor.exato && x.score >= melhor.score - 0.02);
+  const eans = [...new Set(topo.map((x) => x.f.ean))];
+  if (eans.length > 1) {
+    return {
+      tipo: 'variacoes',
+      eans: eans.slice(0, 6),
+      exemplos: topo.slice(0, 3).map((x) => `${x.f.nome} [${x.f.ean}]`).join(' | '),
+    };
+  }
+
+  if (eanTemDono(melhor.f.ean)) return { tipo: 'repetido', melhor };
+  if (!melhor.f.eanValido) return { tipo: 'codigo-invalido', melhor };
+  return { tipo: 'sugestao', melhor };
+}

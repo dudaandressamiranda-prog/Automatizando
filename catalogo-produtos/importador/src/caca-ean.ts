@@ -34,7 +34,7 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import ExcelJS from 'exceljs';
-import { Indice, carregarFontes, type Relacao } from './lib/similar.js';
+import { Indice, carregarFontes, diagnosticar } from './lib/similar.js';
 
 const ARQUIVO = 'caca-ean.xlsx';
 const VERDE = 'FF25756C';
@@ -104,43 +104,24 @@ async function main() {
   const duplicados: { p: Prod; ean: string; nomeFonte: string; dono: string }[] = [];
 
   for (const p of alvos) {
-    const { candidatos: pontuados, reprovado } = indice.procurar(p.name, p.brand);
-    if (pontuados.length === 0) { semNada.push({ p, quaseFoi: reprovado }); continue; }
-
-    let melhor = pontuados[0]!;
-
-    // O primeiro colocado pode trazer um código inventado (é comum no ERP).
-    // Se outra linha igualmente boa tem código que fecha o dígito, é ela que
-    // vale — a planilha do painel costuma ter o GTIN de verdade.
-    if (!melhor.f.eanValido) {
-      const bom = pontuados.find(
-        (x) => x.f.eanValido && x.exato === melhor.exato && x.score >= melhor.score - 0.05,
-      );
-      if (bom) melhor = bom;
+    const d = diagnosticar(p.name, p.brand, indice, (e) => jaUsados.has(e));
+    if (d.tipo === 'nada') { semNada.push({ p, quaseFoi: d.quaseFoi }); continue; }
+    if (d.tipo === 'variacoes') {
+      variacoes.push({ nome: p.name, id: p.id, eans: d.eans, exemplos: d.exemplos });
+      continue;
     }
-
-    // empate técnico em EANs diferentes = cadastro pai com variações
-    const iguaisAoMelhor = pontuados.filter(
-      (x) => x.exato === melhor.exato && x.score >= melhor.score - 0.02,
-    );
-    const eansTopo = [...new Set(iguaisAoMelhor.map((x) => x.f.ean))];
-    if (eansTopo.length > 1) {
-      variacoes.push({
-        nome: p.name,
-        id: p.id,
-        eans: eansTopo.slice(0, 6),
-        exemplos: iguaisAoMelhor.slice(0, 3).map((x) => `${x.f.nome} [${x.f.ean}]`).join(' | '),
+    if (d.tipo === 'repetido') {
+      // o código existe, só que já tem dono no catálogo: os dois cadastros
+      // são o mesmo produto e o caso é de juntar, não de completar EAN
+      duplicados.push({
+        p, ean: d.melhor.f.ean, nomeFonte: d.melhor.f.nome,
+        dono: donoDoEan.get(d.melhor.f.ean) ?? '',
       });
       continue;
     }
 
+    const melhor = d.melhor;
     const ean = melhor.f.ean;
-    if (jaUsados.has(ean)) {
-      // o código existe, só que já tem dono no catálogo: os dois cadastros
-      // são o mesmo produto e o caso é de juntar, não de completar EAN
-      duplicados.push({ p, ean, nomeFonte: melhor.f.nome, dono: donoDoEan.get(ean) ?? '' });
-      continue;
-    }
 
     // duas planilhas apontando o mesmo código é confirmação independente
     const confirmadoPor = new Set(fontes.filter((f) => f.ean === ean).map((f) => f.origem)).size;
