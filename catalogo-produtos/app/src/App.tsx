@@ -19,6 +19,7 @@ import { NotaFiscal } from './pages/NotaFiscal';
 import { Pendencias } from './pages/Pendencias';
 import { Permissions } from './pages/Permissions';
 import { ProductForm } from './pages/ProductForm';
+import { ProductView } from './pages/ProductView';
 import { Review } from './pages/Review';
 
 export function App() {
@@ -113,8 +114,11 @@ export function App() {
         {!blocked && route.page === 'new' && (
           <ProductForm voltar={voltar} initialBarcode={route.barcode} />
         )}
+        {/* funcionário vê a ficha; só admin abre o formulário de edição */}
         {route.page === 'product' && (
-          <ProductForm voltar={voltar} productId={route.id} />
+          admin
+            ? <ProductForm voltar={voltar} productId={route.id} />
+            : <ProductView voltar={voltar} productId={route.id} />
         )}
       </div>
 

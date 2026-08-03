@@ -1065,3 +1065,15 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
   .pend-item { grid-template-columns: 2.75rem 1fr auto; }
   .pend-foto { width: 2.75rem; height: 2.75rem; }
 }
+
+/* ===== ficha do produto (visão do funcionário) ========================= */
+.ficha { display: grid; gap: 0.6rem; max-width: 640px; }
+.ficha h2 { margin: 0; color: var(--green); }
+.ficha .badge { justify-self: start; }
+.ficha-sem-foto {
+  height: 9rem; display: grid; place-items: center; font-size: 3rem;
+  background: var(--green-soft); border-radius: 0.7rem;
+}
+.ficha-dados { display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 1rem; margin: 0.4rem 0 0; }
+.ficha-dados dt { color: var(--muted); font-size: 0.85rem; }
+.ficha-dados dd { margin: 0; overflow-wrap: anywhere; }
