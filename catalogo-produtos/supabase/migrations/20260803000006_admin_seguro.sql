@@ -17,9 +17,9 @@
 -- admin perde o acesso de escrita até o papel ser gravado.
 -- ---------------------------------------------------------------------------
 
--- Papel do usuário logado, lido do JWT. app_metadata primeiro; user_metadata
--- continua aceito por um tempo para não derrubar quem ainda não migrou.
--- Quando todos estiverem em app_metadata, apagar a segunda metade.
+-- Papel do usuário logado, lido do JWT. SÓ app_metadata: aceitar também o
+-- user_metadata como reserva manteria aberta exatamente a porta que esta
+-- migration veio fechar.
 create or replace function public.jwt_is_admin()
 returns boolean language sql stable as $$
   select coalesce(
