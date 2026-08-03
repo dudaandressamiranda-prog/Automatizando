@@ -16,6 +16,7 @@
     "caca-ean": "tsx src/caca-ean.ts",
     "prateleira": "tsx src/prateleira.ts",
     "fusao": "tsx src/fusao.ts",
+    "admin": "tsx src/admin.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
