@@ -7,6 +7,7 @@ import { criarBusca } from '../lib/busca';
 import {
   FILA_ETIQUETAS,
   FORMATOS,
+  type FormatoEtiqueta,
   gerarZpl,
   gerarZplTeste,
   larguraFitaMm,
@@ -28,9 +29,16 @@ import {
  * causa.
  */
 
-/** Característica da impressora da loja, não escolha de cada impressão. */
+/** Característica da impressora e do rolo da loja, não de cada impressão. */
 const PREF_LINGUAGEM = 'catalogo.etiquetas.linguagem';
 const PREF_RIBBON = 'catalogo.etiquetas.ribbon';
+const PREF_FORMATO = 'catalogo.etiquetas.formato';
+const PREF_MEDIDA = 'catalogo.etiquetas.medida';
+
+/** Opção que libera digitar as medidas do rolo. */
+const CUSTOM = '__medido__';
+
+type Medida = Pick<FormatoEtiqueta, 'larguraMm' | 'alturaMm' | 'colunas' | 'gapMm'>;
 
 export function Labels() {
   const { products, loading } = useCatalog();
@@ -39,7 +47,19 @@ export function Labels() {
   // entrada de nota manda produtos para cá sem depender do catálogo já
   // ter recarregado
   const [fila, setFila] = useState<Record<string, ItemEtiqueta>>({});
-  const [formatoId, setFormatoId] = useState(FORMATOS[0]!.id);
+  const [formatoId, setFormatoId] = useState(() => localStorage.getItem(PREF_FORMATO) ?? FORMATOS[0]!.id);
+  /**
+   * Medidas do rolo, em milímetros. Rolo de fornecedor varia — 33×22 de um
+   * é 32×21 de outro — e errar por 2 mm basta para o conteúdo andar até
+   * cair no picote. Por isso dá para digitar as medidas reais em vez de
+   * depender de a lista ter exatamente o seu rolo.
+   */
+  const [medida, setMedida] = useState(() => {
+    const salvo = localStorage.getItem(PREF_MEDIDA);
+    if (salvo) { try { return JSON.parse(salvo) as Medida; } catch { /* usa o padrão */ } }
+    const f = FORMATOS[0]!;
+    return { larguraMm: f.larguraMm, alturaMm: f.alturaMm, colunas: f.colunas, gapMm: f.gapMm };
+  });
   const [darkness, setDarkness] = useState(10);
   /*
    * Linguagem e ribbon ficam guardados no aparelho: são característica da
@@ -82,7 +102,20 @@ export function Labels() {
   }
   useEffect(procurarImpressoras, []);
 
-  const formato = FORMATOS.find((f) => f.id === formatoId)!;
+  const formato: FormatoEtiqueta =
+    formatoId === CUSTOM
+      ? { id: CUSTOM, label: `${medida.larguraMm} × ${medida.alturaMm} mm — ${medida.colunas} coluna(s)`, ...medida }
+      : FORMATOS.find((f) => f.id === formatoId)!;
+
+  useEffect(() => { localStorage.setItem(PREF_FORMATO, formatoId); }, [formatoId]);
+  useEffect(() => { localStorage.setItem(PREF_MEDIDA, JSON.stringify(medida)); }, [medida]);
+
+  /** Trocar de preset leva as medidas junto, para o modo manual partir delas. */
+  function escolherFormato(id: string) {
+    setFormatoId(id);
+    const f = FORMATOS.find((x) => x.id === id);
+    if (f) setMedida({ larguraMm: f.larguraMm, alturaMm: f.alturaMm, colunas: f.colunas, gapMm: f.gapMm });
+  }
 
   // só produto com EAN-13 válido pode virar etiqueta
   const buscaveis = useMemo(
@@ -265,10 +298,35 @@ export function Labels() {
           <div className="etq-config">
             <label>
               Tamanho
-              <select value={formatoId} onChange={(e) => setFormatoId(e.target.value)}>
+              <select value={formatoId} onChange={(e) => escolherFormato(e.target.value)}>
                 {FORMATOS.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+                <option value={CUSTOM}>Medir o meu rolo…</option>
               </select>
             </label>
+            {formatoId === CUSTOM && (
+              <div className="etq-medir">
+                {([
+                  ['larguraMm', 'Largura'],
+                  ['alturaMm', 'Altura'],
+                  ['colunas', 'Colunas'],
+                  ['gapMm', 'Vão'],
+                ] as [keyof Medida, string][]).map(([campo, rotulo]) => (
+                  <label key={campo}>
+                    {rotulo}{campo === 'colunas' ? '' : ' (mm)'}
+                    <input
+                      type="number"
+                      min={campo === 'colunas' ? 1 : 0}
+                      max={campo === 'colunas' ? 6 : 200}
+                      step={campo === 'colunas' ? 1 : 0.5}
+                      value={medida[campo]}
+                      onChange={(e) =>
+                        setMedida((m) => ({ ...m, [campo]: Number(e.target.value) || 0 }))
+                      }
+                    />
+                  </label>
+                ))}
+              </div>
+            )}
             <label>
               Linguagem
               <select value={linguagem} onChange={(e) => setLinguagem(e.target.value as 'epl' | 'zpl')}>

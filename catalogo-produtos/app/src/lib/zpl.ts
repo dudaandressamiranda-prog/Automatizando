@@ -12,7 +12,15 @@
  * as outras duas colunas da fileira.
  */
 
-/** Modelos de etiqueta em uso na loja, em milímetros. */
+/**
+ * Modelos de etiqueta em uso na loja, em milímetros.
+ *
+ * Medir o rolo antes de escolher não é preciosismo: quando o tamanho
+ * declarado é menor que o real, cada etiqueta impressa fica um pouco atrás
+ * da física, o erro se acumula e em poucas linhas o conteúdo passa a cair
+ * em cima do picote. O sintoma parece falta de calibração, mas nenhuma
+ * calibração conserta — o que está errado é a medida.
+ */
 export interface FormatoEtiqueta {
   id: string;
   label: string;
@@ -25,6 +33,7 @@ export interface FormatoEtiqueta {
 }
 
 export const FORMATOS: FormatoEtiqueta[] = [
+  { id: '33x22x3', label: '33 × 22 mm — 3 colunas', larguraMm: 33, alturaMm: 22, colunas: 3, gapMm: 3 },
   { id: '30x15x3', label: '30 × 15 mm — 3 colunas', larguraMm: 30, alturaMm: 15, colunas: 3, gapMm: 2 },
   { id: '30x15', label: '30 × 15 mm — 1 coluna', larguraMm: 30, alturaMm: 15, colunas: 1, gapMm: 0 },
   { id: '33x22', label: '33 × 22 mm', larguraMm: 33, alturaMm: 22, colunas: 1, gapMm: 0 },

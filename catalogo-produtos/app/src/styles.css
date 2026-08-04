@@ -1091,3 +1091,12 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
   background: #1f2937; color: #e5e7eb; padding: 0.6rem 0.8rem; border-radius: 0.5rem;
   font-size: 0.72rem; overflow-x: auto; white-space: pre; margin: 0.4rem 0;
 }
+
+/* medidas do rolo, quando a lista não tem o formato exato */
+.etq-medir {
+  display: grid; grid-template-columns: repeat(4, minmax(4.5rem, 1fr)); gap: 0.5rem;
+  background: var(--green-soft); border-radius: 0.6rem; padding: 0.6rem 0.7rem;
+  grid-column: 1 / -1;
+}
+.etq-medir label { font-size: 0.78rem; gap: 0.2rem; }
+.etq-medir input { width: 100%; }
