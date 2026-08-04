@@ -52,9 +52,18 @@ function blocoEtiqueta(item: ItemEtiqueta, o: OpcoesEpl, dpi: number, xPt: numbe
   const mostrarNome = o.mostrarNome ?? false;
   const alturaNome = mostrarNome ? 20 : 0;
 
-  // a legenda numérica embaixo do código ocupa ~1,5 mm
-  const alturaNumeros = Math.round(dpi / 17);
-  const alturaBarras = Math.max(20, alturaPt - alturaNome - alturaNumeros - margem * 2);
+  /*
+   * Altura das barras: uma FRAÇÃO do que sobra, não todo o resto.
+   *
+   * Usar todo o espaço restante deixava a etiqueta com 21,6 mm de conteúdo
+   * numa etiqueta de 22 mm — matematicamente cabe, na prática não: a
+   * legenda numérica ocupa mais do que a conta reservava, e sem margem
+   * embaixo qualquer desvio de registro joga o código para fora do papel.
+   * Com 70% as barras seguem altas o bastante para o leitor e sobra folga
+   * visível nas duas pontas.
+   */
+  const util = alturaPt - alturaNome - margem * 2;
+  const alturaBarras = Math.max(20, Math.round(util * 0.7));
 
   // o EAN-13 gasta 95 módulos; centraliza o que sobra na etiqueta
   const larguraCodigo = 95 * estreita;
