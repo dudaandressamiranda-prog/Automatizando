@@ -32,7 +32,7 @@ import { detectColumns, detectStoreColumns } from './lib/columns.js';
 import { buscarFoto, sleep } from './lib/fotoweb.js';
 import { isIgnorado, loadIgnorados } from './lib/ignorados.js';
 import { cleanBarcode, norm } from './lib/normalize.js';
-import { KIT_NAME, readSpreadsheet } from './lib/parse.js';
+import { KIT_NAME, NOME_GENERICO, readSpreadsheet } from './lib/parse.js';
 
 const ARQUIVO = 'prateleira.xlsx';
 const VERDE = 'FF25756C';
@@ -102,12 +102,14 @@ async function main() {
   // ---- catálogo: o que já entrou ---------------------------------------
   console.log('Consultando o catálogo...');
   const jaTem = new Set<string>();
+  const nomesNoCatalogo = new Set<string>();
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await db.from('products').select('barcode, external_id').range(from, from + 999);
+    const { data, error } = await db.from('products').select('barcode, external_id, name').range(from, from + 999);
     if (error) throw new Error(error.message);
     for (const p of data ?? []) {
       if (p.barcode) jaTem.add(p.barcode);
       if (p.external_id) jaTem.add(`id:${p.external_id}`);
+      nomesNoCatalogo.add(norm(p.name as string));
     }
     if (!data || data.length < 1000) break;
   }
@@ -150,6 +152,50 @@ async function main() {
       foto: '', nomeNaLoja: '', ondeAchou: '',
     });
   }
+
+  // ---- e o que existe SÓ no painel ------------------------------------
+  //
+  // O ERP não é o universo. Produto que a loja vende no balcão e nunca foi
+  // cadastrado no Tiny não aparece em nenhuma linha lida acima — varrer só
+  // o ERP deixa esses invisíveis, e são justamente os que dão falta na
+  // vitrine. Aqui a varredura passa pelo painel também.
+  const vistosNoErp = new Set<string>();
+  for (const r of tiny.records) {
+    const bc = cleanBarcode(String(r[tm.barcode!] ?? ''));
+    if (bc.ok && bc.value) vistosNoErp.add(bc.value);
+    vistosNoErp.add(norm(String(r[tm.name!] ?? '')));
+  }
+
+  let soDoPainel = 0;
+  for (const r of painel.records) {
+    const nome = String(r[pm.name!] ?? '').trim();
+    if (!nome || KIT_NAME.test(nome) || NOME_GENERICO.test(nome)) continue;
+
+    const bc = cleanBarcode(String(r[pm.barcode!] ?? ''));
+    const ean = bc.ok && bc.value ? bc.value : '';
+    if ((ean && vistosNoErp.has(ean)) || vistosNoErp.has(norm(nome))) continue; // o ERP já cobriu
+    if ((ean && jaTem.has(ean)) || nomesNoCatalogo.has(norm(nome))) continue; // já está no catálogo
+    if (isIgnorado(ignorados, { externalId: null, barcode: ean || null })) continue;
+
+    const lojas: Record<string, number> = {};
+    let totalLojas = 0;
+    for (const c of colunasLoja) {
+      const n = numero(r[c]);
+      lojas[c] = n;
+      totalLojas += n;
+    }
+    if (totalLojas <= 0) continue;
+
+    itens.push({
+      nome, ean, idErp: '',
+      marca: pm.brand ? String(r[pm.brand] ?? '').trim() : '',
+      lojas, totalLojas, tiny: 0, onde: 'só lojas',
+      foto: '', nomeNaLoja: '', ondeAchou: '',
+    });
+    if (!ean) semEan++;
+    soDoPainel++;
+  }
+  console.log(`  (destes, ${soDoPainel} existem SÓ no painel — o ERP nem os conhece)`);
 
   const conta = (o: Item['onde']) => itens.filter((i) => i.onde === o).length;
   console.log('');

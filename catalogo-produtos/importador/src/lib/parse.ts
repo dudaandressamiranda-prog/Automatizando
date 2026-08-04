@@ -37,7 +37,7 @@ export interface ImportRow {
 }
 
 /** Nomes genéricos demais para virar produto de catálogo. */
-const NOME_GENERICO =
+export const NOME_GENERICO =
   /^\s*(produtos?|itens?|diversos|avulsos?|sortidos?)\b|\bvariados\b|\ba granel\b/i;
 
 /** Traduz a situação da planilha ("Ativo"/"Inativo"…) para o status do catálogo. */
