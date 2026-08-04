@@ -17,6 +17,7 @@
     "prateleira": "tsx src/prateleira.ts",
     "fusao": "tsx src/fusao.ts",
     "admin": "tsx src/admin.ts",
+    "fotos-pendentes": "tsx src/fotos-pendentes.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
