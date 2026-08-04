@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { diagnosticar, enviarParaImpressora, nomeImpressora, type Diagnostico, type Impressora } from '../lib/browserprint';
 import { eanSvg, isValidEan13 } from '../lib/ean';
 import { eplCalibrar, gerarEpl, gerarEplTeste } from '../lib/epl';
 import { useCatalog } from '../lib/catalog';
@@ -42,6 +43,30 @@ export function Labels() {
   const [mostrarNome, setMostrarNome] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [zebras, setZebras] = useState<Impressora[]>([]);
+  const [zebraUid, setZebraUid] = useState('');
+  const [enviando, setEnviando] = useState(false);
+
+  const [procurando, setProcurando] = useState(true);
+  const [diag, setDiag] = useState<Diagnostico | null>(null);
+
+  /**
+   * Procura o Zebra Browser Print na máquina. Só com ele a etiqueta sai sem
+   * passar pela janela de impressão — navegador nenhum deixa uma página
+   * mandar para a impressora sozinha, por segurança.
+   */
+  function procurarImpressoras() {
+    setProcurando(true);
+    diagnosticar()
+      .then((d) => {
+        setDiag(d);
+        const ps = d.estado === 'ok' ? d.impressoras : [];
+        setZebras(ps);
+        if (ps[0]) setZebraUid(ps[0].uid);
+      })
+      .finally(() => setProcurando(false));
+  }
+  useEffect(procurarImpressoras, []);
 
   const formato = FORMATOS.find((f) => f.id === formatoId)!;
 
@@ -132,9 +157,32 @@ export function Labels() {
     setTimeout(() => setCopiado(false), 2000);
   }
 
-  /** Comando que manda a impressora medir o vão entre as etiquetas. */
+  /**
+   * Caminho de melhor qualidade: manda os comandos direto, na linguagem
+   * escolhida, e a impressora desenha o código de barras.
+   */
+  async function imprimirDireto(conteudo = zpl) {
+    const z = zebras.find((p) => p.uid === zebraUid);
+    if (!z) return;
+    setEnviando(true);
+    setAviso(null);
+    try {
+      const r = await enviarParaImpressora(z, conteudo);
+      setAviso(r.ok ? `Enviado para ${nomeImpressora(z)}.` : `Não consegui imprimir — ${r.erro}`);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  /** Faz a impressora medir o vão entre as etiquetas antes de imprimir. */
   async function calibrar() {
-    await navigator.clipboard.writeText(linguagem === 'epl' ? eplCalibrar() : zplCalibrar());
+    const cmd = linguagem === 'epl' ? eplCalibrar() : zplCalibrar();
+    if (zebras.length > 0) {
+      await imprimirDireto(cmd);
+      setAviso('Calibração enviada — a impressora vai puxar algumas etiquetas medindo o vão.');
+      return;
+    }
+    await navigator.clipboard.writeText(cmd);
     setAviso('Comando de calibração copiado — cole no Zebra Setup Utilities e envie.');
   }
 
@@ -144,6 +192,10 @@ export function Labels() {
       linguagem === 'epl'
         ? gerarEplTeste({ formato, densidade: darkness })
         : gerarZplTeste({ formato, darkness });
+    if (zebras.length > 0) {
+      await imprimirDireto(teste);
+      return;
+    }
     await navigator.clipboard.writeText(teste);
     setAviso(`${linguagem.toUpperCase()} de teste copiado — cole no Zebra Setup Utilities e envie.`);
   }
@@ -155,12 +207,11 @@ export function Labels() {
         <h1>Etiquetas</h1>
       </div>
       <p className="muted review-hint">
-        Monte a fila e escolha como imprimir. <strong>Imprimir</strong> usa a
-        janela do navegador, com a Zebra como impressora comum.{' '}
-        <strong>Copiar</strong> põe os comandos na área de transferência para
-        colar no Zebra Setup Utilities, e <strong>Baixar</strong> salva num
-        arquivo — nesses dois o código de barras é desenhado pela própria
-        impressora, o que deixa a leitura mais confiável.
+        Monte a fila, confira o tamanho e imprima. Com o Zebra Browser Print
+        instalado aparece <strong>Imprimir na Zebra</strong>, que manda os
+        comandos direto e não abre a janela de impressão. Sem ele restam{' '}
+        <strong>Imprimir</strong> pelo navegador, <strong>Copiar</strong> para
+        colar no Zebra Setup Utilities e <strong>Baixar</strong> em arquivo.
         <br />
         Confira a <strong>linguagem</strong>: a TLP 2844 e as outras da linha
         Eltron falam <strong>EPL</strong>, as mais novas falam{' '}
@@ -229,10 +280,10 @@ export function Labels() {
               />
               Imprimir o nome
             </label>
-            <button className="secondary" onClick={calibrar}>
+            <button className="secondary" onClick={calibrar} disabled={enviando}>
               📏 Calibrar
             </button>
-            <button className="secondary" onClick={imprimirTeste}>
+            <button className="secondary" onClick={imprimirTeste} disabled={enviando}>
               📐 Imprimir teste
             </button>
           </div>
@@ -280,7 +331,21 @@ export function Labels() {
             <span className="muted small">
               {totalEtiquetas} etiqueta{totalEtiquetas === 1 ? '' : 's'} · {formato.label}
             </span>
-            <button className="primary" onClick={() => window.print()}>🖨️ Imprimir</button>
+            {zebras.length > 0 ? (
+              <>
+                {zebras.length > 1 && (
+                  <select value={zebraUid} onChange={(e) => setZebraUid(e.target.value)}>
+                    {zebras.map((z) => <option key={z.uid} value={z.uid}>{nomeImpressora(z)}</option>)}
+                  </select>
+                )}
+                <button className="primary" onClick={() => imprimirDireto()} disabled={enviando}>
+                  {enviando ? 'Enviando…' : '🖨️ Imprimir na Zebra'}
+                </button>
+                <button className="secondary" onClick={() => window.print()}>Imprimir pelo navegador</button>
+              </>
+            ) : (
+              <button className="primary" onClick={() => window.print()}>🖨️ Imprimir</button>
+            )}
             <button className="secondary" onClick={copiarZpl}>
               {copiado ? 'Copiado!' : `Copiar ${linguagem.toUpperCase()}`}
             </button>
@@ -288,6 +353,78 @@ export function Labels() {
             <button className="secondary" onClick={() => setFila({})}>Limpar</button>
           </div>
           {aviso && <p className="nf-ok">{aviso}</p>}
+
+          {zebras.length > 0 ? (
+            <p className="tiny muted etq-dica">
+              ✓ Impressão direta ligada — a etiqueta sai sem abrir a janela de
+              impressão, e o código de barras é desenhado pela própria Zebra.
+            </p>
+          ) : (
+            <div className="etq-setup">
+              {diag?.estado === 'sem-impressora' ? (
+                <>
+                  <strong className="small">Programa achado, mas sem impressora</strong>
+                  <p className="tiny">
+                    O Zebra Browser Print está rodando ({diag.porta}), só que não
+                    enxerga nenhuma impressora. Confira se ela está ligada e
+                    conectada, e se aparece em <strong>Dispositivos e
+                    Impressoras</strong> do Windows. Se acabou de ligá-la, feche e
+                    abra o Browser Print pela bandeja do sistema.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <strong className="small">Imprimir sem abrir a janela de impressão</strong>
+                  <p className="tiny">
+                    Nenhum navegador deixa uma página mandar direto para a
+                    impressora — é trava de segurança, e a janela sempre aparece.
+                    Quem resolve isso é o <strong>Zebra Browser Print</strong>, um
+                    programinha gratuito da própria Zebra: instalado, o botão daqui
+                    manda os comandos direto e a etiqueta sai na hora.
+                  </p>
+                  <ol className="tiny">
+                    <li>
+                      Baixe em{' '}
+                      <a href="https://www.zebra.com/br/pt/support-downloads/printer-software/by-product/browser-print.html" target="_blank" rel="noopener noreferrer">
+                        zebra.com → Browser Print ↗
+                      </a>{' '}
+                      (pede um cadastro gratuito).
+                    </li>
+                    <li>Instale e deixe o programa aberto — ele fica no relógio do Windows.</li>
+                    <li>
+                      Abra{' '}
+                      <a href="https://localhost:9101/ssl_support" target="_blank" rel="noopener noreferrer">
+                        https://localhost:9101/ssl_support ↗
+                      </a>{' '}
+                      e aceite o certificado. Sem isso o site não consegue falar com ele.
+                    </li>
+                    <li>
+                      Nas configurações do Browser Print, deixe a impressora marcada
+                      em <strong>Default Device</strong> — em algumas versões a
+                      varredura vem vazia e é só de lá que ela aparece.
+                    </li>
+                    <li>Volte aqui e clique em procurar.</li>
+                  </ol>
+                  {diag?.estado === 'sem-programa' && (
+                    <>
+                      <p className="tiny muted">Nenhuma resposta nos endereços testados:</p>
+                      <pre className="etq-diag">{diag.detalhe.split(' · ').join('\n')}</pre>
+                      <p className="tiny muted">
+                        "TimeoutError" ou "TypeError" costuma ser o programa fechado
+                        ou o certificado recusado. Se aparecer bloqueio de rede
+                        privada, é o Chrome barrando o acesso ao localhost — abra{' '}
+                        <strong>chrome://flags/#block-insecure-private-network-requests</strong>{' '}
+                        e mude para <strong>Disabled</strong>.
+                      </p>
+                    </>
+                  )}
+                </>
+              )}
+              <button className="secondary" onClick={procurarImpressoras} disabled={procurando}>
+                {procurando ? 'Procurando…' : '🔄 Procurar impressora'}
+              </button>
+            </div>
+          )}
 
 
           {/*
