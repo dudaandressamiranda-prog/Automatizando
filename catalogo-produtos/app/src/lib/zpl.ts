@@ -154,9 +154,13 @@ function blocoEtiqueta(item: ItemEtiqueta, o: OpcoesZpl, dpi: number, xPt: numbe
       `^FO${xPt},${margem}^A0N,${alturaNome},${alturaNome}^FB${larguraPt},1,0,C^FD${nome}^FS`,
     );
   }
+  // Centralização na mão, e não com ^FB: aquele comando é de bloco de
+  // TEXTO. Aplicado a código de barras ele não centraliza — desloca o
+  // campo, e o código sai numa etiqueta ao lado, por cima do nome.
+  const larguraCodigo = 95 * modulo;
+  const xCodigo = xPt + Math.max(0, Math.round((larguraPt - larguraCodigo) / 2));
   linhas.push(
-    `^FO${xPt},${margem + alturaNome}^BY${modulo}`,
-    `^FB${larguraPt},1,0,C`,
+    `^FO${xCodigo},${margem + alturaNome}^BY${modulo}`,
     `^BEN,${alturaBarras},Y,N`,
     `^FD${item.barcode.slice(0, 12)}^FS`,
   );
@@ -211,15 +215,18 @@ export function gerarZplTeste(o: OpcoesZpl): string {
   const linhas = cabecalho(o, fitaPt, alturaPt);
   for (let col = 0; col < f.colunas; col++) {
     const x = col * passoPt;
-    // moldura de 2 pontos: deve encostar nas bordas da etiqueta física
-    linhas.push(`^FO${x},0^GB${larguraPt},${alturaPt},2^FS`);
+    // Moldura recuada 2 pontos: encostada na borda ela cai exatamente no
+    // picote e some, e aí não dá para saber se acertou o tamanho ou se
+    // simplesmente não imprimiu.
+    linhas.push(`^FO${x + 2},2^GB${larguraPt - 4},${alturaPt - 4},2^FS`);
     linhas.push(`^FO${x + 6},6^A0N,18,18^FD${f.larguraMm}x${f.alturaMm} c${col + 1}^FS`);
   }
   // um EAN-13 real no meio, para conferir a leitura
+  const modulo = moduloParaLargura(f.larguraMm, dpi);
   const meio = Math.floor(f.colunas / 2) * passoPt;
+  const xCodigo = meio + Math.max(0, Math.round((larguraPt - 95 * modulo) / 2));
   linhas.push(
-    `^FO${meio},${Math.round(alturaPt * 0.35)}^BY${moduloParaLargura(f.larguraMm, dpi)}`,
-    `^FB${larguraPt},1,0,C`,
+    `^FO${xCodigo},${Math.round(alturaPt * 0.35)}^BY${modulo}`,
     `^BEN,${Math.round(alturaPt * 0.4)},Y,N`,
     '^FD789600620774^FS',
     '^XZ',
