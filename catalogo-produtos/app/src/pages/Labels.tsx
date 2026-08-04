@@ -27,6 +27,11 @@ import {
  * na fila do Windows com "Erro", que é o sintoma mais difícil de ligar à
  * causa.
  */
+
+/** Característica da impressora da loja, não escolha de cada impressão. */
+const PREF_LINGUAGEM = 'catalogo.etiquetas.linguagem';
+const PREF_RIBBON = 'catalogo.etiquetas.ribbon';
+
 export function Labels() {
   const { products, loading } = useCatalog();
   const [q, setQ] = useState('');
@@ -36,9 +41,18 @@ export function Labels() {
   const [fila, setFila] = useState<Record<string, ItemEtiqueta>>({});
   const [formatoId, setFormatoId] = useState(FORMATOS[0]!.id);
   const [darkness, setDarkness] = useState(10);
-  // A TLP 2844 e as irmãs da linha Eltron falam EPL, não ZPL. Mandar a
-  // linguagem errada não avisa nada: o trabalho só morre em "Erro".
-  const [linguagem, setLinguagem] = useState<'epl' | 'zpl'>('epl');
+  /*
+   * Linguagem e ribbon ficam guardados no aparelho: são característica da
+   * impressora da loja, não escolha de cada impressão. Reconfigurar a cada
+   * visita é o caminho mais curto para mandar a linguagem errada — e ela
+   * não avisa, o trabalho só morre em "Erro".
+   */
+  const [linguagem, setLinguagem] = useState<'epl' | 'zpl'>(
+    () => (localStorage.getItem(PREF_LINGUAGEM) as 'epl' | 'zpl' | null) ?? 'epl',
+  );
+  const [ribbon, setRibbon] = useState(() => localStorage.getItem(PREF_RIBBON) !== 'nao');
+  useEffect(() => { localStorage.setItem(PREF_LINGUAGEM, linguagem); }, [linguagem]);
+  useEffect(() => { localStorage.setItem(PREF_RIBBON, ribbon ? 'sim' : 'nao'); }, [ribbon]);
   // etiqueta pequena não tem altura para nome e código: o código vem antes
   const [mostrarNome, setMostrarNome] = useState(false);
   const [copiado, setCopiado] = useState(false);
@@ -101,8 +115,8 @@ export function Labels() {
     () =>
       linguagem === 'epl'
         ? gerarEpl(itens, { formato, densidade: darkness, mostrarNome })
-        : gerarZpl(itens, { formato, darkness, mostrarNome }),
-    [itens, formato, darkness, mostrarNome, linguagem],
+        : gerarZpl(itens, { formato, darkness, mostrarNome, ribbon }),
+    [itens, formato, darkness, mostrarNome, linguagem, ribbon],
   );
 
   function addProduto(nome: string, barcode: string) {
@@ -191,7 +205,7 @@ export function Labels() {
     const teste =
       linguagem === 'epl'
         ? gerarEplTeste({ formato, densidade: darkness })
-        : gerarZplTeste({ formato, darkness });
+        : gerarZplTeste({ formato, darkness, ribbon });
     if (zebras.length > 0) {
       await imprimirDireto(teste);
       return;
@@ -262,6 +276,15 @@ export function Labels() {
                 <option value="zpl">ZPL — ZD220, GC420, GK420, ZD421</option>
               </select>
             </label>
+            {linguagem === 'zpl' && (
+              <label>
+                Mídia
+                <select value={ribbon ? 'ribbon' : 'direta'} onChange={(e) => setRibbon(e.target.value === 'ribbon')}>
+                  <option value="ribbon">Com ribbon (transferência térmica)</option>
+                  <option value="direta">Sem ribbon (térmica direta)</option>
+                </select>
+              </label>
+            )}
             <label>
               Escurecimento
               <input

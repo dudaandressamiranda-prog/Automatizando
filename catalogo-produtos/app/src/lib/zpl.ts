@@ -65,6 +65,36 @@ export interface OpcoesZpl {
   /** Escurecimento (~10 a 30). Etiqueta clara demais o leitor não pega. */
   darkness?: number;
   mostrarNome?: boolean;
+  /**
+   * Com ribbon (transferência térmica) ou sem (térmica direta).
+   *
+   * Errar aqui gasta um rolo sem imprimir nada: a impressora configurada
+   * para térmica direta não aquece o ribbon, e a etiqueta sai em branco.
+   * Como vai no comando, o ajuste acompanha o trabalho e não depende de
+   * ninguém ter configurado a impressora antes.
+   */
+  ribbon?: boolean;
+}
+
+/**
+ * Cabeçalho comum: tamanho, escurecimento e tipo de mídia.
+ *
+ * ^MT diz se tem ribbon; ^MNY manda usar o sensor de vão, que é o certo
+ * para etiqueta picotada em rolo. Sem esses dois, vale o que estiver
+ * guardado na impressora — e aí a mesma etiqueta sai diferente em cada
+ * máquina, que é exatamente o tipo de surpresa difícil de diagnosticar.
+ */
+function cabecalho(o: OpcoesZpl, fitaPt: number, alturaPt: number): string[] {
+  return [
+    '^XA',
+    `^PW${fitaPt}`,
+    `^LL${alturaPt}`,
+    '^LH0,0',
+    `^MD${o.darkness ?? 15}`,
+    `^MT${o.ribbon ?? true ? 'T' : 'D'}`,
+    '^MNY', // sensor de vão entre etiquetas
+    '^CI28', // UTF-8
+  ];
 }
 
 /** Tira acento e caractere que a fonte padrão da Zebra não imprime. */
@@ -146,14 +176,7 @@ export function gerarZpl(itens: ItemEtiqueta[], o: OpcoesZpl): string {
 
   for (let i = 0; i < todas.length; i += f.colunas) {
     const daFileira = todas.slice(i, i + f.colunas);
-    const linhas = [
-      '^XA',
-      `^PW${fitaPt}`,
-      `^LL${alturaPt}`,
-      '^LH0,0',
-      `^MD${o.darkness ?? 15}`,
-      '^CI28', // UTF-8
-    ];
+    const linhas = cabecalho(o, fitaPt, alturaPt);
     daFileira.forEach((item, col) => linhas.push(...blocoEtiqueta(item, o, dpi, col * passoPt)));
     linhas.push('^XZ');
     fileiras.push(linhas.join('\n'));
@@ -176,7 +199,7 @@ export function gerarZplTeste(o: OpcoesZpl): string {
   const fitaPt = mmParaPontos(larguraFitaMm(f), dpi);
   const alturaPt = mmParaPontos(f.alturaMm, dpi);
 
-  const linhas = ['^XA', `^PW${fitaPt}`, `^LL${alturaPt}`, '^LH0,0', `^MD${o.darkness ?? 15}`, '^CI28'];
+  const linhas = cabecalho(o, fitaPt, alturaPt);
   for (let col = 0; col < f.colunas; col++) {
     const x = col * passoPt;
     // moldura de 2 pontos: deve encostar nas bordas da etiqueta física
