@@ -620,8 +620,20 @@ body {
   margin-top: 0.35rem; width: 100%; font-size: 0.8rem;
   padding: 0.3rem 0.4rem; border: 1px solid var(--border); border-radius: 0.45rem; background: #fff;
 }
-.rep-summary { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.25rem 0 1rem; }
-.rep-pill { font-size: 0.8rem; font-weight: 600; padding: 0.25rem 0.7rem; border-radius: 999px; }
+.rep-summary { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.25rem 0 1rem; align-items: center; }
+/* os contadores são botões de filtro: têm que parecer clicáveis */
+.rep-pill {
+  font-size: 0.8rem; font-weight: 600; padding: 0.25rem 0.7rem; border-radius: 999px;
+  border: 1px solid transparent; cursor: pointer; font-family: inherit;
+}
+.rep-pill:hover { filter: brightness(0.95); }
+/* o filtro ligado precisa se distinguir sem depender só de cor */
+.rep-pill.on { border-color: currentColor; box-shadow: 0 0 0 2px rgb(0 0 0 / 0.08); }
+.rep-pill.on::after { content: ' ✕'; font-weight: 400; }
+.rep-limpar {
+  background: none; border: none; cursor: pointer; font-size: 0.78rem;
+  color: var(--muted); text-decoration: underline; padding: 0.25rem 0.2rem;
+}
 .rep-pill.rep-ok { background: var(--green-soft); color: var(--green); }
 .rep-pill.rep-no { background: #fee2e2; color: #991b1b; }
 .rep-pill.rep-pend { background: #f3f4f6; color: var(--muted); }

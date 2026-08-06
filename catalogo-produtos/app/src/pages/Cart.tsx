@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { CartItemCard } from '../components/CartItemCard';
 import {
   createCart, deleteCart, getItems, listCarts, removeItem, setItemStatus, useActiveCart,
-  type Cart as CartT, type CartItemRow,
+  type Cart as CartT, type CartItemRow, type ItemStatus,
 } from '../lib/cart';
 import { photoSrc, useSignedUrls } from '../lib/photos';
 import { storeLabel, type StoreId } from '../lib/store';
@@ -64,6 +64,14 @@ export function Cart({ store, email }: Props) {
   const nNao = items.filter((i) => i.status === 'nao_reposto').length;
   const nPend = items.length - nRepostos - nNao;
 
+  /*
+   * Filtro pelos próprios contadores: clicar mostra só aquele grupo, clicar
+   * de novo volta a mostrar tudo. Num carrinho de quase cem itens, achar o
+   * que ainda falta repor a olho é o trabalho todo.
+   */
+  const [filtro, setFiltro] = useState<ItemStatus | null>(null);
+  const visiveis = filtro ? items.filter((i) => i.status === filtro) : items;
+
   async function mudarStatus(i: CartItemRow, status: CartItemRow['status'], reason: CartItemRow['reason']) {
     // atualização otimista para a UI responder na hora
     setItems((cur) => cur.map((x) => (x.id === i.id ? { ...x, status, reason } : x)));
@@ -118,9 +126,26 @@ export function Cart({ store, email }: Props) {
 
           {items.length > 0 && (
             <div className="rep-summary">
-              <span className="rep-pill rep-ok">✓ {nRepostos} repostos</span>
-              <span className="rep-pill rep-no">{nNao} não repostos</span>
-              <span className="rep-pill rep-pend">{nPend} pendentes</span>
+              {([
+                ['reposto', 'rep-ok', `✓ ${nRepostos} repostos`],
+                ['nao_reposto', 'rep-no', `${nNao} não repostos`],
+                ['pendente', 'rep-pend', `${nPend} pendentes`],
+              ] as [ItemStatus, string, string][]).map(([st, cor, rotulo]) => (
+                <button
+                  key={st}
+                  type="button"
+                  className={`rep-pill ${cor} ${filtro === st ? 'on' : ''}`}
+                  aria-pressed={filtro === st}
+                  onClick={() => setFiltro((f) => (f === st ? null : st))}
+                >
+                  {rotulo}
+                </button>
+              ))}
+              {filtro && (
+                <button type="button" className="rep-limpar" onClick={() => setFiltro(null)}>
+                  ✕ mostrar todos
+                </button>
+              )}
             </div>
           )}
 
@@ -128,9 +153,11 @@ export function Cart({ store, email }: Props) {
             <p className="muted center-msg">
               Carrinho vazio. Abra uma categoria, marque as bolinhas e salve.
             </p>
+          ) : visiveis.length === 0 ? (
+            <p className="muted center-msg">Nenhum item nesta situação.</p>
           ) : (
             <ul className="cart-grid">
-              {items.map((i) => (
+              {visiveis.map((i) => (
                 <CartItemCard
                   key={i.id}
                   item={i}

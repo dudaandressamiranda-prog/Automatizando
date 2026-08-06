@@ -31,6 +31,8 @@ export function CartsAdmin({ email, loja, carrinho }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [itens, setItens] = useState<CartItemRow[] | null>(null);
   const [carregandoItens, setCarregandoItens] = useState(false);
+  /** Clicar num contador mostra só aquele grupo; clicar de novo mostra tudo. */
+  const [filtro, setFiltro] = useState<CartItemRow['status'] | null>(null);
 
   useEffect(() => {
     listAllCarts()
@@ -79,6 +81,7 @@ export function CartsAdmin({ email, loja, carrinho }: Props) {
     const reposto = ordenados.filter((i) => i.status === 'reposto').length;
     const naoReposto = ordenados.filter((i) => i.status === 'nao_reposto').length;
     const pendente = ordenados.length - reposto - naoReposto;
+    const visiveis = filtro ? ordenados.filter((i) => i.status === filtro) : ordenados;
 
     return (
       <main className="content">
@@ -95,18 +98,38 @@ export function CartsAdmin({ email, loja, carrinho }: Props) {
 
         {ordenados.length > 0 && (
           <div className="rep-summary">
-            <span className="rep-pill rep-ok">{reposto} repostos</span>
-            <span className="rep-pill rep-no">{naoReposto} não repostos</span>
-            <span className="rep-pill rep-pend">{pendente} pendentes</span>
+            {([
+              ['reposto', 'rep-ok', `${reposto} repostos`],
+              ['nao_reposto', 'rep-no', `${naoReposto} não repostos`],
+              ['pendente', 'rep-pend', `${pendente} pendentes`],
+            ] as [CartItemRow['status'], string, string][]).map(([st, cor, rotulo]) => (
+              <button
+                key={st}
+                type="button"
+                className={`rep-pill ${cor} ${filtro === st ? 'on' : ''}`}
+                aria-pressed={filtro === st}
+                onClick={() => setFiltro((f) => (f === st ? null : st))}
+              >
+                {rotulo}
+              </button>
+            ))}
+            {filtro && (
+              <button type="button" className="rep-limpar" onClick={() => setFiltro(null)}>
+                ✕ mostrar todos
+              </button>
+            )}
           </div>
         )}
 
         {error && <p className="error">Erro: {error}</p>}
         {carregandoItens && <p className="muted center-msg">Carregando…</p>}
         {!carregandoItens && ordenados.length === 0 && <p className="muted center-msg">Carrinho vazio.</p>}
+        {ordenados.length > 0 && visiveis.length === 0 && (
+          <p className="muted center-msg">Nenhum item nesta situação.</p>
+        )}
 
         <ul className="cart-grid">
-          {ordenados.map((i) => (
+          {visiveis.map((i) => (
             <CartItemCard
               key={i.id}
               item={i}
