@@ -13,6 +13,7 @@ const OPTIONS: { value: string; label: string }[] = [
   { value: 'pendente', label: 'Pendente' },
   { value: 'reposto', label: '✓ Reposto' },
   { value: 'nao_reposto:fora_estoque', label: 'Fora de estoque' },
+  { value: 'nao_reposto:sem_galpao', label: 'Não tem no galpão' },
   { value: 'nao_reposto:descontinuado', label: 'Não trabalhamos mais' },
   { value: 'nao_reposto:aguardando', label: 'Aguardando reposição' },
 ];

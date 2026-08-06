@@ -13,11 +13,19 @@ export interface Cart {
 }
 
 export type ItemStatus = 'pendente' | 'reposto' | 'nao_reposto';
-export type ItemReason = 'fora_estoque' | 'descontinuado' | 'aguardando';
+export type ItemReason = 'fora_estoque' | 'sem_galpao' | 'descontinuado' | 'aguardando';
 
-/** Rótulos das situações de reposição (usados na UI). */
+/**
+ * Rótulos das situações de reposição (usados na UI).
+ *
+ * "Fora de estoque" e "não tem no galpão" parecem a mesma coisa e não são:
+ * o primeiro diz que o produto acabou, o segundo que ele existe e é
+ * vendido, mas não estava naquele depósito na hora de separar. Juntar os
+ * dois faria o relatório acusar ruptura onde havia só um remanejamento.
+ */
 export const REASON_LABEL: Record<ItemReason, string> = {
   fora_estoque: 'Fora de estoque',
+  sem_galpao: 'Não tem no galpão',
   descontinuado: 'Não trabalhamos mais',
   aguardando: 'Aguardando reposição',
 };
