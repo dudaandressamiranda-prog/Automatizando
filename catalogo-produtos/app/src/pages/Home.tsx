@@ -6,6 +6,7 @@ import { SEM_CATEGORIA, topLevel, useCatalog } from '../lib/catalog';
 import { iconFor } from '../lib/categoryIcons';
 import { APP_NAME, APP_TAGLINE } from '../lib/config';
 import { criarBusca } from '../lib/busca';
+import { compartilharApp } from '../lib/compartilhar';
 import { cleanBarcode } from '../lib/normalize';
 import { photoSrc, useSignedUrls } from '../lib/photos';
 import type { ListProduct } from '../lib/types';
@@ -33,6 +34,7 @@ export function Home({ navigate, buscaInicial }: Props) {
   }, [q]);
   const [scanning, setScanning] = useState(false);
   const [scanMiss, setScanMiss] = useState<string | null>(null);
+  const [avisoCompartilhar, setAvisoCompartilhar] = useState<string | null>(null);
   const { products, categories, loading, error } = useCatalog();
   const signed = useSignedUrls(products);
 
@@ -91,6 +93,20 @@ export function Home({ navigate, buscaInicial }: Props) {
   }, [topIds, byId, recent, products]);
   const featuredTitle = featured !== recent ? '✨ Mais pedidos' : '✨ Destaques';
 
+  async function compartilhar() {
+    const r = await compartilharApp(APP_NAME);
+    if (r === 'cancelado') return;
+    setAvisoCompartilhar(
+      r === 'copiado'
+        ? 'Link copiado! Lembre que quem receber precisa de um acesso criado para entrar.'
+        : r === 'falhou'
+          ? 'Não consegui compartilhar — copie o endereço da barra do navegador.'
+          : null,
+    );
+    // o aviso é recado de um instante, não deve ficar na tela
+    if (r !== 'compartilhado') setTimeout(() => setAvisoCompartilhar(null), 6000);
+  }
+
   function onScan(code: string) {
     setScanning(false);
     setScanMiss(null);
@@ -119,6 +135,11 @@ export function Home({ navigate, buscaInicial }: Props) {
             />
             <button onClick={() => setScanning(true)} title="Ler código de barras">📷</button>
           </div>
+
+          <button className="hero-share" onClick={compartilhar}>
+            🔗 Compartilhar o catálogo
+          </button>
+          {avisoCompartilhar && <p className="hero-aviso">{avisoCompartilhar}</p>}
         </div>
       </section>
 

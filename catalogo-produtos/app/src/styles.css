@@ -1199,3 +1199,16 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
      Mais baixa, cabe mais produto na tela e a foto continua reconhecível. */
   .cart-card-img { aspect-ratio: 4 / 3; }
 }
+
+/* ===== botão de compartilhar, no banner da tela inicial ================ */
+/* Discreto sobre o verde: é atalho ocasional, não pode competir com a busca. */
+.hero-share {
+  margin-top: 0.9rem; padding: 0.5rem 1.1rem; cursor: pointer;
+  background: rgb(255 255 255 / 0.16); color: #fff; font-family: inherit;
+  border: 1px solid rgb(255 255 255 / 0.5); border-radius: 999px;
+  font-size: 0.88rem; font-weight: 600;
+}
+.hero-share:hover { background: rgb(255 255 255 / 0.28); }
+.hero-aviso {
+  margin: 0.5rem 0 0; font-size: 0.82rem; color: #fff; opacity: 0.95; line-height: 1.4;
+}
