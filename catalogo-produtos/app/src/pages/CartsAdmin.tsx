@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CartItemCard } from '../components/CartItemCard';
-import { getItems, listAllCarts, setItemStatus, type Cart, type CartItemRow } from '../lib/cart';
+import { getItems, listAllCarts, setItemQty, setItemStatus, type Cart, type CartItemRow } from '../lib/cart';
 import { photoSrc, useSignedUrls } from '../lib/photos';
 import { STORES, storeLabel, type StoreId } from '../lib/store';
 
@@ -57,6 +57,13 @@ export function CartsAdmin({ email, loja, carrinho }: Props) {
   }, [carrinho]);
 
   const signed = useSignedUrls(itens ?? []);
+
+  async function mudarQtd(item: CartItemRow, qty: number) {
+    const novo = Math.max(1, Math.round(qty) || 1);
+    if (novo === item.qty) return;
+    setItens((cur) => (cur ?? []).map((x) => (x.id === item.id ? { ...x, qty: novo } : x)));
+    await setItemQty(item.id, novo);
+  }
 
   async function mudarStatus(item: CartItemRow, status: CartItemRow['status'], reason: CartItemRow['reason']) {
     setItens((cur) => (cur ?? []).map((x) => (x.id === item.id ? { ...x, status, reason } : x)));
@@ -136,6 +143,7 @@ export function CartsAdmin({ email, loja, carrinho }: Props) {
               src={photoSrc(i, signed)}
               editable
               onChange={(st, rs) => mudarStatus(i, st, rs)}
+              onQty={(q) => mudarQtd(i, q)}
             />
           ))}
         </ul>

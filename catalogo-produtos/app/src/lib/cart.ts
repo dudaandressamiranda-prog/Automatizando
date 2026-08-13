@@ -39,6 +39,14 @@ export interface CartItemRow {
   status: ItemStatus;
   reason: ItemReason | null;
   resolved_by: string | null;
+  /**
+   * Quantas unidades quem montou a lista precisa.
+   *
+   * É recado, não contabilidade: o catálogo não controla estoque e este
+   * número não entra em conta nenhuma. Serve para quem separa saber que
+   * são 6 e não 1, sem precisar de um bilhete à parte.
+   */
+  qty: number;
   name: string;
   barcode: string | null;
   photo_path: string | null;
@@ -93,7 +101,7 @@ export async function deleteCart(id: string): Promise<void> {
 export async function getItems(cartId: string): Promise<CartItemRow[]> {
   const { data, error } = await supabase
     .from('cart_items')
-    .select('id, product_id, added_by, added_at, status, reason, resolved_by, products(name, barcode, photo_path, photo_source_url)')
+    .select('id, product_id, added_by, added_at, status, reason, resolved_by, qty, products(name, barcode, photo_path, photo_source_url)')
     .eq('cart_id', cartId)
     .order('added_at', { ascending: true });
   if (error) throw error;
@@ -109,6 +117,7 @@ export async function getItems(cartId: string): Promise<CartItemRow[]> {
       status: ((r.status as ItemStatus | null) ?? 'pendente'),
       reason: (r.reason as ItemReason | null) ?? null,
       resolved_by: (r.resolved_by as string | null) ?? null,
+      qty: (r.qty as number | null) ?? 1,
       name: prod?.name ?? '(produto removido)',
       barcode: prod?.barcode ?? null,
       photo_path: prod?.photo_path ?? null,
@@ -125,6 +134,15 @@ export async function addItems(cartId: string, items: NewItem[], email: string |
     onConflict: 'cart_id,product_id',
     ignoreDuplicates: true,
   });
+  if (error) throw error;
+}
+
+/** Quantidade pedida. O banco recusa zero ou negativo (check qty > 0). */
+export async function setItemQty(itemId: string, qty: number): Promise<void> {
+  const { error } = await supabase
+    .from('cart_items')
+    .update({ qty: Math.max(1, Math.round(qty)) })
+    .eq('id', itemId);
   if (error) throw error;
 }
 

@@ -5,6 +5,8 @@ interface Props {
   src: string | null;
   editable?: boolean;
   onChange?: (status: ItemStatus, reason: ItemReason | null) => void;
+  /** Quantidade pedida. Sem isto, o controle de quantidade não aparece. */
+  onQty?: (qty: number) => void;
   onRemove?: () => void;
 }
 
@@ -30,7 +32,7 @@ function badge(i: CartItemRow): { text: string; cls: string } | null {
   return null; // pendente: sem selo
 }
 
-export function CartItemCard({ item, src, editable, onChange, onRemove }: Props) {
+export function CartItemCard({ item, src, editable, onChange, onQty, onRemove }: Props) {
   const b = badge(item);
   const cls =
     item.status === 'reposto' ? 'is-reposto' : item.status === 'nao_reposto' ? 'is-naoreposto' : '';
@@ -45,6 +47,32 @@ export function CartItemCard({ item, src, editable, onChange, onRemove }: Props)
       <div className="cart-card-body">
         <a href={`#/p/${item.product_id}`} className="cart-card-name" title={item.name}>{item.name}</a>
         {item.barcode && <span className="mono tiny muted">{item.barcode}</span>}
+
+        {onQty ? (
+          <div className="qtd">
+            <button
+              type="button"
+              onClick={() => onQty(item.qty - 1)}
+              disabled={item.qty <= 1}
+              aria-label="Menos um"
+            >
+              −
+            </button>
+            <input
+              type="number"
+              min={1}
+              value={item.qty}
+              aria-label={`Quantidade de ${item.name}`}
+              onChange={(e) => onQty(Number(e.target.value))}
+              onBlur={(e) => { if (!Number(e.target.value)) onQty(1); }}
+            />
+            <button type="button" onClick={() => onQty(item.qty + 1)} aria-label="Mais um">+</button>
+            <span className="tiny muted">un.</span>
+          </div>
+        ) : (
+          // sem edição, o número só aparece quando diz algo: "1" é o padrão
+          item.qty > 1 && <span className="qtd-fixa">{item.qty} unidades</span>
+        )}
 
         {editable ? (
           <select

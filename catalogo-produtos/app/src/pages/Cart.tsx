@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CartItemCard } from '../components/CartItemCard';
 import {
-  createCart, deleteCart, getItems, listCarts, removeItem, setItemStatus, useActiveCart,
+  createCart, deleteCart, getItems, listCarts, removeItem, setItemQty, setItemStatus, useActiveCart,
   type Cart as CartT, type CartItemRow, type ItemStatus,
 } from '../lib/cart';
 import { photoSrc, useSignedUrls } from '../lib/photos';
@@ -54,7 +54,10 @@ export function Cart({ store, email }: Props) {
   }
 
   function copiar() {
-    const txt = items.map((i) => `${i.name}${i.barcode ? ` (${i.barcode})` : ''}`).join('\n');
+    // a quantidade só entra quando diz algo: "1x" em toda linha vira ruído
+    const txt = items
+      .map((i) => `${i.qty > 1 ? `${i.qty}x ` : ''}${i.name}${i.barcode ? ` (${i.barcode})` : ''}`)
+      .join('\n');
     navigator.clipboard?.writeText(txt);
   }
 
@@ -71,6 +74,14 @@ export function Cart({ store, email }: Props) {
    */
   const [filtro, setFiltro] = useState<ItemStatus | null>(null);
   const visiveis = filtro ? items.filter((i) => i.status === filtro) : items;
+
+  /** Otimista: o número muda na hora e o banco confirma depois. */
+  async function mudarQtd(i: CartItemRow, qty: number) {
+    const novo = Math.max(1, Math.round(qty) || 1);
+    if (novo === i.qty) return;
+    setItems((cur) => cur.map((x) => (x.id === i.id ? { ...x, qty: novo } : x)));
+    await setItemQty(i.id, novo);
+  }
 
   async function mudarStatus(i: CartItemRow, status: CartItemRow['status'], reason: CartItemRow['reason']) {
     // atualização otimista para a UI responder na hora
@@ -164,6 +175,7 @@ export function Cart({ store, email }: Props) {
                   src={photoSrc(i, signed)}
                   editable
                   onChange={(st, rs) => mudarStatus(i, st, rs)}
+                  onQty={(q) => mudarQtd(i, q)}
                   onRemove={async () => { await removeItem(i.id); await reload(); }}
                 />
               ))}
