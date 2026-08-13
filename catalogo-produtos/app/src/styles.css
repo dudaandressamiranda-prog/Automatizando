@@ -31,8 +31,13 @@ body {
 .error { color: var(--danger); }
 
 /* ===== Shell: topbar + sidebar + main ==================================== */
+/* Rolagem é só vertical. Estouro horizontal quebra a barra do topo e deixa
+   a tela "torta" no celular — melhor cortar do que exibir errado. */
+html, body { overflow-x: hidden; max-width: 100%; }
+
 .shell {
   min-height: 100dvh;
+  overflow-x: clip;
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: var(--topbar-h) 1fr;
@@ -41,6 +46,9 @@ body {
 
 .topbar {
   grid-area: topbar;
+  /* acompanha a janela, não o conteúdo: se algo estourar a largura, a barra
+     continua cobrindo a tela toda em vez de terminar no meio */
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -556,7 +564,17 @@ body {
 .cat-show-subs { display: block; margin: 0.2rem 0 0.9rem; font-size: 0.85rem; }
 
 /* ===== página do carrinho ============================================= */
-.cart-actions { display: flex; gap: 0.6rem; margin: 0.5rem 0 1rem; }
+/*
+ * Quebra de linha aqui não é enfeite: sem ela os três botões somados passam
+ * da largura do celular, a página inteira ganha rolagem horizontal e a barra
+ * verde do topo — que acompanha a largura da janela, não a do conteúdo —
+ * aparece cortada pela metade.
+ */
+.cart-actions {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0.5rem 0 1rem;
+}
+.cart-actions > .muted { flex: 1 1 100%; min-width: 0; overflow-wrap: anywhere; }
+.cart-actions button { flex: 1 1 auto; white-space: nowrap; }
 .cart-list { list-style: none; margin: 0; padding: 0; }
 .cart-row {
   display: flex; align-items: center; gap: 0.6rem;
@@ -566,7 +584,8 @@ body {
 .cart-del { background: none; border: none; color: var(--danger); font-size: 1.1rem; cursor: pointer; flex-shrink: 0; }
 .cart-new { display: flex; gap: 0.6rem; margin: 0.75rem 0; }
 .cart-new input {
-  flex: 1; padding: 0.65rem 0.9rem; border: 1px solid var(--border);
+  flex: 1; min-width: 0; /* sem isto o campo se recusa a encolher e empurra o botão para fora */
+  padding: 0.65rem 0.9rem; border: 1px solid var(--border);
   border-radius: 0.6rem; font-size: 1rem; background: var(--card);
 }
 .cart-tabs { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 1rem; }
@@ -1157,3 +1176,26 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
 .hist-item:hover { border-color: var(--green-light); background: #fafffe; }
 .hist-item.on { border-color: var(--green); background: var(--green-soft); }
 .hist-nome { font-weight: 600; font-size: 0.92rem; }
+
+/* ===== ajustes de celular ============================================== */
+@media (max-width: 560px) {
+  /* Botão que vira duas linhas ocupa o dobro da altura e some do polegar:
+     texto menor e menos folga cabe melhor do que quebrar a palavra. */
+  .cart-actions button { font-size: 0.85rem; padding: 0.55rem 0.7rem; }
+  /* Copiar e Finalizar dividem a linha; Excluir vai inteiro embaixo, longe
+     do dedo que só queria copiar. */
+  .cart-actions button.danger { flex: 1 1 100%; }
+
+  .cart-new { flex-wrap: wrap; }
+  .cart-new input { flex: 1 1 100%; }
+  .cart-new button { flex: 1 1 100%; }
+
+  /* o e-mail de quem criou é longo e não pode empurrar a largura da página */
+  .page-head h1 { font-size: 1.2rem; overflow-wrap: anywhere; }
+
+  .qtd input { width: 2.6rem; }
+
+  /* Foto quadrada num carrinho de quase cem itens vira rolagem sem fim.
+     Mais baixa, cabe mais produto na tela e a foto continua reconhecível. */
+  .cart-card-img { aspect-ratio: 4 / 3; }
+}
