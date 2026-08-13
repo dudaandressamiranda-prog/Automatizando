@@ -1138,3 +1138,22 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
   background: var(--green-soft); color: var(--green);
   border-radius: 999px; padding: 0.1rem 0.5rem; margin-top: 0.15rem;
 }
+
+/* ===== histórico de listas finalizadas ================================ */
+/* Cada lista debaixo do dia em que nasceu, longe do trabalho de hoje. */
+.hist { margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 0.5rem; }
+.hist-dia { margin-bottom: 1rem; }
+.hist-data {
+  font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--muted); margin: 0.8rem 0 0.4rem;
+}
+.hist-lista { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.35rem; }
+.hist-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem;
+  width: 100%; text-align: left; cursor: pointer;
+  padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 0.6rem;
+  background: var(--card); color: inherit; font-family: inherit;
+}
+.hist-item:hover { border-color: var(--green-light); background: #fafffe; }
+.hist-item.on { border-color: var(--green); background: var(--green-soft); }
+.hist-nome { font-weight: 600; font-size: 0.92rem; }

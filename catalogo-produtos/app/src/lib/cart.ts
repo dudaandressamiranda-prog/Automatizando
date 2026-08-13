@@ -93,6 +93,26 @@ export async function createCart(store: StoreId, name: string, email: string | n
   return data as Cart;
 }
 
+/**
+ * Fecha a lista, mesmo com item por repor.
+ *
+ * Exigir tudo resolvido para poder fechar é o que fazia a lista de segunda
+ * ainda estar aberta na sexta: sempre sobra um item que não veio e ninguém
+ * sabe quando virá. A lista é o registro de um dia de trabalho — fecha com
+ * o que ficou pendente, e o pendente aparece na lista do dia seguinte se
+ * ainda for preciso.
+ */
+export async function fecharCarrinho(id: string): Promise<void> {
+  const { error } = await supabase.from('carts').update({ status: 'finalizado' }).eq('id', id);
+  if (error) throw error;
+}
+
+/** Reabre uma lista fechada por engano. */
+export async function reabrirCarrinho(id: string): Promise<void> {
+  const { error } = await supabase.from('carts').update({ status: 'aberto' }).eq('id', id);
+  if (error) throw error;
+}
+
 export async function deleteCart(id: string): Promise<void> {
   const { error } = await supabase.from('carts').delete().eq('id', id);
   if (error) throw error;

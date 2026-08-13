@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CartItemCard } from '../components/CartItemCard';
 import { getItems, listAllCarts, setItemQty, setItemStatus, type Cart, type CartItemRow } from '../lib/cart';
+import { porDia } from '../lib/dias';
 import { photoSrc, useSignedUrls } from '../lib/photos';
 import { STORES, storeLabel, type StoreId } from '../lib/store';
 
@@ -100,6 +101,7 @@ export function CartsAdmin({ email, loja, carrinho }: Props) {
         {c && (
           <p className="muted small">
             {storeLabel(c.store)} · criado por {c.created_by || '—'} · {quando(c.created_at)}
+            {c.status === 'finalizado' && <> · <strong>finalizada</strong></>}
           </p>
         )}
 
@@ -155,6 +157,21 @@ export function CartsAdmin({ email, loja, carrinho }: Props) {
   if (loja) {
     const s = STORES.find((x) => x.id === loja);
     const lista = porLoja.get(loja as StoreId) ?? [];
+    const abertas = lista.filter((c) => c.status !== 'finalizado');
+    const fechadas = lista.filter((c) => c.status === 'finalizado');
+
+    const linhaCarrinho = (c: Cart) => (
+      <li key={c.id}>
+        <a href={`#/carrinhos-lojas?carrinho=${c.id}`} className="cart-lista-item">
+          <span className="cart-lista-nome">
+            {c.status === 'finalizado' ? '🧾' : '🛒'} {c.name}
+          </span>
+          <span className="muted small">{c.created_by || '—'} · {quando(c.created_at)}</span>
+          <span className="cart-lista-seta">›</span>
+        </a>
+      </li>
+    );
+
     return (
       <main className="content">
         <div className="page-head">
@@ -167,17 +184,29 @@ export function CartsAdmin({ email, loja, carrinho }: Props) {
         {loading && <p className="muted center-msg">Carregando…</p>}
         {!loading && lista.length === 0 && <p className="muted center-msg">Nenhum carrinho nesta loja.</p>}
 
-        <ul className="cart-lista">
-          {lista.map((c) => (
-            <li key={c.id}>
-              <a href={`#/carrinhos-lojas?carrinho=${c.id}`} className="cart-lista-item">
-                <span className="cart-lista-nome">🛒 {c.name}</span>
-                <span className="muted small">{c.created_by || '—'} · {quando(c.created_at)}</span>
-                <span className="cart-lista-seta">›</span>
-              </a>
-            </li>
-          ))}
-        </ul>
+        {/*
+          Abertas soltas no topo; finalizadas debaixo do dia em que nasceram.
+          Sem essa separação, a lista de terça some no meio das de um mês
+          inteiro e ninguém acha a de hoje.
+        */}
+        {abertas.length > 0 && (
+          <>
+            <h2 className="section-title">Em andamento</h2>
+            <ul className="cart-lista">{abertas.map(linhaCarrinho)}</ul>
+          </>
+        )}
+
+        {fechadas.length > 0 && (
+          <>
+            <h2 className="section-title">Finalizadas</h2>
+            {porDia(fechadas).map(({ dia, rotulo, itens: doDia }) => (
+              <div key={dia} className="hist-dia">
+                <h3 className="hist-data">{rotulo}</h3>
+                <ul className="cart-lista">{doDia.map(linhaCarrinho)}</ul>
+              </div>
+            ))}
+          </>
+        )}
       </main>
     );
   }
