@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { criarBusca } from '../lib/busca';
 import { useCatalog } from '../lib/catalog';
 import { porDia } from '../lib/dias';
+import { photoSrc, useSignedUrls } from '../lib/photos';
 import {
   TIPO_ICONE, TIPO_LABEL, UNIDADES, apagarRetirada, formataQtd, listarRetiradas,
   registrarRetirada, type Retirada, type TipoRetirada, type Unidade,
@@ -32,7 +33,9 @@ export function Retiradas({ store, email }: Props) {
   const [ok, setOk] = useState<string | null>(null);
 
   const [q, setQ] = useState('');
-  const [escolhido, setEscolhido] = useState<{ id: string | null; nome: string; barcode: string | null } | null>(null);
+  const [escolhido, setEscolhido] = useState<
+    { id: string | null; nome: string; barcode: string | null; foto: string | null } | null
+  >(null);
   const [tipo, setTipo] = useState<TipoRetirada>(
     () => (localStorage.getItem(PREF_TIPO) as TipoRetirada | null) ?? 'banho_tosa',
   );
@@ -65,6 +68,10 @@ export function Retiradas({ store, email }: Props) {
       .filter((p) => casa(`${p.name} ${p.brand ?? ''} ${p.barcode ?? ''}`))
       .slice(0, 8);
   }, [q, products, escolhido]);
+
+  // assina só o que aparece na lista — são no máximo 8, e assinar o catálogo
+  // inteiro para mostrar meia dúzia de miniaturas seria trabalho jogado fora
+  const assinadas = useSignedUrls(resultados);
 
   const quantidade = Number(qtd.replace(',', '.'));
   const podeRegistrar = Boolean(escolhido) && Number.isFinite(quantidade) && quantidade > 0 && !salvando;
@@ -123,6 +130,13 @@ export function Retiradas({ store, email }: Props) {
       <div className="ret-form">
         {escolhido ? (
           <div className="ret-escolhido">
+            <span className="ret-mini">
+              <span aria-hidden>🐾</span>
+              {escolhido.foto && (
+                <img src={escolhido.foto} alt=""
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+              )}
+            </span>
             <span className="ret-escolhido-nome">{escolhido.nome}</span>
             {escolhido.barcode && <span className="mono tiny muted">{escolhido.barcode}</span>}
             <button className="ret-trocar" onClick={() => { setEscolhido(null); setQ(''); }}>
@@ -141,14 +155,30 @@ export function Retiradas({ store, email }: Props) {
             />
             {resultados.length > 0 && (
               <ul className="ret-resultados">
-                {resultados.map((p) => (
-                  <li key={p.id}>
-                    <button onClick={() => setEscolhido({ id: p.id, nome: p.name, barcode: p.barcode })}>
-                      <span>{p.name}</span>
-                      {p.barcode && <span className="mono tiny muted">{p.barcode}</span>}
-                    </button>
-                  </li>
-                ))}
+                {resultados.map((p) => {
+                  const foto = photoSrc(p, assinadas);
+                  return (
+                    <li key={p.id}>
+                      <button
+                        onClick={() =>
+                          setEscolhido({ id: p.id, nome: p.name, barcode: p.barcode, foto })
+                        }
+                      >
+                        <span className="ret-mini">
+                          <span aria-hidden>🐾</span>
+                          {foto && (
+                            <img src={foto} alt="" loading="lazy"
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                          )}
+                        </span>
+                        <span className="ret-res-texto">
+                          <span>{p.name}</span>
+                          {p.barcode && <span className="mono tiny muted">{p.barcode}</span>}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
             {/*
@@ -159,7 +189,7 @@ export function Retiradas({ store, email }: Props) {
             {q.trim().length > 2 && resultados.length === 0 && !carregandoCatalogo && (
               <button
                 className="ret-livre"
-                onClick={() => setEscolhido({ id: null, nome: q.trim(), barcode: null })}
+                onClick={() => setEscolhido({ id: null, nome: q.trim(), barcode: null, foto: null })}
               >
                 Não achei no catálogo — registrar como “{q.trim()}”
               </button>

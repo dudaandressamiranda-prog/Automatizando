@@ -1224,9 +1224,26 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
 }
 .ret-resultados { list-style: none; margin: -0.2rem 0 0; padding: 0; display: grid; gap: 0.25rem; }
 .ret-resultados button {
-  width: 100%; text-align: left; display: grid; gap: 0.1rem; cursor: pointer;
-  padding: 0.45rem 0.7rem; border: 1px solid var(--border); border-radius: 0.5rem;
+  width: 100%; text-align: left; cursor: pointer;
+  display: grid; grid-template-columns: 2.6rem 1fr; gap: 0.6rem; align-items: center;
+  padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 0.5rem;
   background: var(--card); font-family: inherit; font-size: 0.9rem;
+}
+.ret-res-texto { display: grid; gap: 0.1rem; min-width: 0; }
+
+/* Miniatura: numa loja com sete sabonetes de nome parecido, a embalagem
+   distingue mais rápido que o texto. */
+.ret-mini {
+  position: relative;
+  width: 2.6rem; height: 2.6rem; flex-shrink: 0; border-radius: 0.4rem; overflow: hidden;
+  background: var(--green-soft); display: grid; place-items: center; font-size: 1.1rem;
+}
+/* A foto cobre a patinha. Se o link estiver quebrado — e muitos apontam para
+   sites de terceiros — ela some e a patinha reaparece, em vez de sobrar um
+   quadrado vazio que não diz nada. */
+.ret-mini img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: contain; background: #fff;
 }
 .ret-resultados button:hover { border-color: var(--green-light); background: #fafffe; }
 .ret-livre {
