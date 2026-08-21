@@ -69,9 +69,24 @@ export function Retiradas({ store, email }: Props) {
       .slice(0, 8);
   }, [q, products, escolhido]);
 
-  // assina só o que aparece na lista — são no máximo 8, e assinar o catálogo
-  // inteiro para mostrar meia dúzia de miniaturas seria trabalho jogado fora
-  const assinadas = useSignedUrls(resultados);
+  /*
+   * A retirada guarda o nome do produto, não a foto — de propósito, para o
+   * registro sobreviver ao produto sair do catálogo. A imagem vem de volta
+   * aqui, cruzando pelo id: quando o produto ainda existe aparece a foto,
+   * quando não existe mais fica a patinha, e o registro continua legível.
+   */
+  const porId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
+  const doHistorico = useMemo(
+    () =>
+      historico
+        .map((r) => (r.product_id ? porId.get(r.product_id) : undefined))
+        .filter((p): p is (typeof products)[number] => Boolean(p)),
+    [historico, porId],
+  );
+
+  // assina só o que aparece na tela — a busca mostra no máximo 8 — em vez do
+  // catálogo inteiro para exibir meia dúzia de miniaturas
+  const assinadas = useSignedUrls([...resultados, ...doHistorico]);
 
   const quantidade = Number(qtd.replace(',', '.'));
   const podeRegistrar = Boolean(escolhido) && Number.isFinite(quantidade) && quantidade > 0 && !salvando;
@@ -110,6 +125,11 @@ export function Retiradas({ store, email }: Props) {
     await apagarRetirada(r.id);
     await recarregar();
   }
+
+  const fotoDoRegistro = (r: Retirada): string | null => {
+    const p = r.product_id ? porId.get(r.product_id) : undefined;
+    return p ? photoSrc(p, assinadas) : null;
+  };
 
   const hora = (iso: string) =>
     new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -256,7 +276,16 @@ export function Retiradas({ store, email }: Props) {
           <ul className="ret-lista">
             {itens.map((r) => (
               <li key={r.id} className="ret-item">
-                <span className="ret-item-ico" title={TIPO_LABEL[r.tipo]}>{TIPO_ICONE[r.tipo]}</span>
+                <span className="ret-mini ret-item-foto">
+                  <span aria-hidden>🐾</span>
+                  {fotoDoRegistro(r) && (
+                    <img src={fotoDoRegistro(r)!} alt="" loading="lazy"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  )}
+                  {/* o tipo continua à vista, como selo, para dar para varrer
+                      a lista sem ler linha por linha */}
+                  <span className="ret-selo" title={TIPO_LABEL[r.tipo]}>{TIPO_ICONE[r.tipo]}</span>
+                </span>
                 <span className="ret-item-texto">
                   <span className="ret-item-nome">{r.product_name}</span>
                   <span className="tiny muted">
