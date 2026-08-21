@@ -107,13 +107,6 @@ export function Nav({ route, onNavigate, onSignOut, email, admin, store, onChoos
             >
               <span className="nav-ico">🛒</span> Carrinhos
             </a>
-            <a
-              href="#/retiradas"
-              className={`nav-item ${route.page === 'retiradas' ? 'active' : ''}`}
-              onClick={onNavigate}
-            >
-              <span className="nav-ico">📤</span> Retiradas
-            </a>
             <button
               className="nav-expand"
               onClick={(e) => { e.preventDefault(); setCartOpen((v) => !v); }}
@@ -142,6 +135,14 @@ export function Nav({ route, onNavigate, onSignOut, email, admin, store, onChoos
           <span className="nav-ico">🛒</span> Carrinhos
         </a>
       )}
+
+      <a
+        href="#/retiradas"
+        className={`nav-item ${route.page === 'retiradas' ? 'active' : ''}`}
+        onClick={onNavigate}
+      >
+        <span className="nav-ico">📤</span> Retiradas
+      </a>
 
       {admin && (
         <>
