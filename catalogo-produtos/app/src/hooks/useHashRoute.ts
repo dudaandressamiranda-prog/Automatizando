@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  *   #/c/<nome> categoria (nome do grupo, URL-encoded)
  *   #/revisao  produtos sem código de barras (desativados) — admin
  *   #/prateleira cadastros sem foto ou sem código — admin
+ *   #/retiradas  saídas para uso interno da loja
  *   #/logs     atividade recente do catálogo — admin
  *   #/novo     cadastro (aceita ?barcode=... vindo do leitor) — admin
  *   #/p/<id>   edição de um produto
@@ -22,6 +23,7 @@ export type Route =
   | { page: 'nota' }
   | { page: 'review' }
   | { page: 'pendencias' }
+  | { page: 'retiradas' }
   | { page: 'logs' }
   | { page: 'new'; barcode?: string }
   | { page: 'product'; id: string };
@@ -43,6 +45,7 @@ function parseHash(hash: string): Route {
   if (path === '/nota') return { page: 'nota' };
   if (path === '/revisao') return { page: 'review' };
   if (path === '/prateleira') return { page: 'pendencias' };
+  if (path === '/retiradas') return { page: 'retiradas' };
   if (path === '/logs') return { page: 'logs' };
   const p = path?.match(/^\/p\/(.+)$/);
   if (p) return { page: 'product', id: p[1]! };

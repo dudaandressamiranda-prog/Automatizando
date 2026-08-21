@@ -20,6 +20,7 @@ import { Pendencias } from './pages/Pendencias';
 import { Permissions } from './pages/Permissions';
 import { ProductForm } from './pages/ProductForm';
 import { ProductView } from './pages/ProductView';
+import { Retiradas } from './pages/Retiradas';
 import { Review } from './pages/Review';
 
 export function App() {
@@ -101,6 +102,7 @@ export function App() {
           <CategoryPage group={route.group} initialSub={route.sub ?? null} store={active} email={email} admin={admin} />
         )}
         {!blocked && route.page === 'cart' && <Cart store={active} email={email} />}
+        {route.page === 'retiradas' && <Retiradas store={active} email={email} />}
         {!blocked && route.page === 'cartsAdmin' && (
           <CartsAdmin email={email} loja={route.loja} carrinho={route.carrinho} />
         )}
