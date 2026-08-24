@@ -5,7 +5,7 @@ import { porDia } from '../lib/dias';
 import { photoSrc, useSignedUrls } from '../lib/photos';
 import {
   TIPO_ICONE, TIPO_LABEL, UNIDADES, apagarRetirada, formataQtd, listarRetiradas,
-  registrarRetirada, type Retirada, type TipoRetirada, type Unidade,
+  marcarResolvida, registrarRetirada, type Retirada, type TipoRetirada, type Unidade,
 } from '../lib/retiradas';
 import { storeLabel, type StoreId } from '../lib/store';
 
@@ -124,6 +124,22 @@ export function Retiradas({ store, email }: Props) {
     if (!confirm(`Apagar o registro de ${r.product_name} (${formataQtd(r.qty, r.unidade)})?`)) return;
     await apagarRetirada(r.id);
     await recarregar();
+  }
+
+  /*
+   * Otimista: marca na hora e confirma com o banco depois. É o checkbox de
+   * quem está conferindo linha por linha contra outro sistema — esperar a
+   * viagem de rede a cada clique quebraria o ritmo.
+   */
+  async function alternarResolvida(r: Retirada) {
+    const novo = !r.resolved;
+    setHistorico((cur) => cur.map((x) => (x.id === r.id ? { ...x, resolved: novo } : x)));
+    try {
+      await marcarResolvida(r.id, novo, email);
+    } catch (e) {
+      setHistorico((cur) => cur.map((x) => (x.id === r.id ? { ...x, resolved: !novo } : x)));
+      setErro(e instanceof Error ? e.message : String(e));
+    }
   }
 
   const fotoDoRegistro = (r: Retirada): string | null => {
@@ -270,12 +286,19 @@ export function Retiradas({ store, email }: Props) {
         <p className="muted center-msg">Nada registrado ainda.</p>
       )}
 
-      {porDia(historico).map(({ dia, rotulo, itens }) => (
+      {porDia(historico).map(({ dia, rotulo, itens }) => {
+        const feitas = itens.filter((r) => r.resolved).length;
+        return (
         <div key={dia} className="hist-dia">
-          <h3 className="hist-data">{rotulo}</h3>
+          <h3 className="hist-data">
+            {rotulo}
+            <span className="hist-progresso">
+              {feitas === itens.length ? '✓ tudo atualizado' : `${feitas}/${itens.length} atualizados`}
+            </span>
+          </h3>
           <ul className="ret-lista">
             {itens.map((r) => (
-              <li key={r.id} className="ret-item">
+              <li key={r.id} className={`ret-item ${r.resolved ? 'ret-feita' : ''}`}>
                 <span className="ret-mini ret-item-foto">
                   <span aria-hidden>🐾</span>
                   {fotoDoRegistro(r) && (
@@ -295,12 +318,20 @@ export function Retiradas({ store, email }: Props) {
                   {r.notes && <span className="tiny ret-item-obs">{r.notes}</span>}
                 </span>
                 <span className="ret-item-qtd">{formataQtd(r.qty, r.unidade)}</span>
+                <label className="ret-check" title="Já atualizei o estoque no outro sistema">
+                  <input
+                    type="checkbox"
+                    checked={r.resolved}
+                    onChange={() => alternarResolvida(r)}
+                  />
+                </label>
                 <button className="cart-del" onClick={() => apagar(r)} aria-label="Apagar registro">✕</button>
               </li>
             ))}
           </ul>
         </div>
-      ))}
+        );
+      })}
     </main>
   );
 }

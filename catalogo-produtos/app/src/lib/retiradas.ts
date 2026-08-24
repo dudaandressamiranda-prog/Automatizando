@@ -38,6 +38,10 @@ export interface Retirada {
   notes: string | null;
   created_by: string | null;
   created_at: string;
+  /** Já foi usado para dar baixa no outro sistema — conferência de trabalho. */
+  resolved: boolean;
+  resolved_by: string | null;
+  resolved_at: string | null;
 }
 
 export interface NovaRetirada {
@@ -85,6 +89,15 @@ export async function registrarRetirada(
     .single();
   if (error) throw error;
   return data as Retirada;
+}
+
+/** Marca (ou desmarca) que este registro já foi usado para atualizar o outro sistema. */
+export async function marcarResolvida(id: string, resolved: boolean, email: string | null): Promise<void> {
+  const { error } = await supabase
+    .from('retiradas')
+    .update({ resolved, resolved_by: resolved ? email : null, resolved_at: resolved ? new Date().toISOString() : null })
+    .eq('id', id);
+  if (error) throw error;
 }
 
 export async function apagarRetirada(id: string): Promise<void> {
