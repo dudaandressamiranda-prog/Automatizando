@@ -13,6 +13,7 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import ExcelJS from 'exceljs';
+import { nomeParaOrdenar } from './lib/nomeMedicamento.js';
 
 const ARQUIVO = 'medicamentos.xlsx';
 const VERDE = 'FF25756C';
@@ -67,34 +68,82 @@ async function main() {
   }
   console.log(`Produtos encontrados: ${produtos.length}`);
 
-  const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet('Medicamentos');
-  ws.columns = [
-    { header: 'Produto', key: 'nome', width: 52 },
-    { header: 'Subcategoria', key: 'sub', width: 30 },
-    { header: 'Marca', key: 'marca', width: 20 },
-    { header: 'Fornecedor', key: 'fornecedor', width: 22 },
-    { header: 'Código de barras', key: 'codigo', width: 18 },
-    { header: 'Situação', key: 'situacao', width: 14 },
-    { header: 'Tem foto', key: 'foto', width: 10 },
-  ];
-
+  /*
+   * "Produto" é o nome de verdade, do jeito que está cadastrado — nunca
+   * tocado. "Nome para ordenar" é só uma chave auxiliar: tira o tipo/classe
+   * do começo ("Anti-inflamatório", "Suplemento Alimentar", "Antipulgas"…)
+   * para "Flamavet", "Ativi Ourofino", "Advocate" ficarem em ordem
+   * alfabética de verdade. Nenhum produto é apagado ou renomeado — é só
+   * a coluna que decide a ordem das linhas.
+   */
   const situacaoLabel: Record<string, string> = {
     ativo: 'Ativo', desativado: 'Desativado', descontinuado: 'Descontinuado',
   };
 
-  for (const p of produtos) {
+  const linhas = produtos.map((p) => {
     const nomeCat = p.category_id ? deMedicamentos.get(p.category_id) ?? '' : '';
-    const linha = ws.addRow({
-      nome: p.name,
-      sub: sub(nomeCat) || '(categoria principal)',
+    const subcategoria = sub(nomeCat) || '(sem subcategoria)';
+    const { nome: nomeOrdenar, removido } = nomeParaOrdenar(p.name);
+    return {
+      produto: p.name,
+      nomeOrdenar,
+      removido,
+      subcategoria,
       marca: p.brand ?? '',
       fornecedor: p.supplier ?? '',
       codigo: p.barcode ?? '',
       situacao: situacaoLabel[p.status] ?? p.status,
       foto: p.photo_path || p.photo_source_url ? 'sim' : 'não',
-    });
+    };
+  });
+
+  // uma prateleira (subcategoria) de cada vez; "(sem subcategoria)" fica no
+  // fim, por não ser uma seção física de verdade
+  linhas.sort((a, b) => {
+    if (a.subcategoria !== b.subcategoria) {
+      if (a.subcategoria === '(sem subcategoria)') return 1;
+      if (b.subcategoria === '(sem subcategoria)') return -1;
+      return a.subcategoria.localeCompare(b.subcategoria, 'pt-BR');
+    }
+    return a.nomeOrdenar.localeCompare(b.nomeOrdenar, 'pt-BR');
+  });
+
+  const comCorte = linhas.filter((l) => l.removido).length;
+  console.log(`Nome ajustado para ordenar: ${comCorte} de ${linhas.length}.`);
+
+  // uma linha em branco entre prateleiras — monta a lista final já com os
+  // vazios intercalados, para não depender de reler a planilha depois
+  type LinhaOuVazia = (typeof linhas)[number] | null;
+  const comSeparadores: LinhaOuVazia[] = [];
+  for (const l of linhas) {
+    if (comSeparadores.length > 0) {
+      const anterior = comSeparadores[comSeparadores.length - 1];
+      if (anterior && anterior.subcategoria !== l.subcategoria) comSeparadores.push(null);
+    }
+    comSeparadores.push(l);
+  }
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Medicamentos');
+  ws.columns = [
+    { header: 'Produto', key: 'produto', width: 52 },
+    { header: 'Nome para ordenar', key: 'nomeOrdenar', width: 42 },
+    { header: 'Subcategoria (prateleira)', key: 'subcategoria', width: 30 },
+    { header: 'Marca', key: 'marca', width: 20 },
+    { header: 'Fornecedor', key: 'fornecedor', width: 22 },
+    { header: 'Código de barras', key: 'codigo', width: 18 },
+    { header: 'Situação', key: 'situacao', width: 14 },
+    { header: 'Tem foto', key: 'foto', width: 10 },
+    { header: 'Tirado da frente (conferência)', key: 'removido', width: 26 },
+  ];
+
+  for (const l of comSeparadores) {
+    if (l === null) { ws.addRow({}); continue; } // separador entre prateleiras
+    const linha = ws.addRow(l);
     linha.getCell('codigo').numFmt = '@'; // texto, para não comer zero à esquerda
+    if (l.removido) {
+      linha.getCell('removido').font = { italic: true, color: { argb: 'FF6B7280' } };
+    }
   }
 
   const cab = ws.getRow(1);
