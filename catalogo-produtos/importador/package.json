@@ -18,6 +18,7 @@
     "fusao": "tsx src/fusao.ts",
     "admin": "tsx src/admin.ts",
     "fotos-pendentes": "tsx src/fotos-pendentes.ts",
+    "medicamentos-xls": "tsx src/medicamentos-xls.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
