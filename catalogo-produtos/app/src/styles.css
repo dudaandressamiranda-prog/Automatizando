@@ -1152,6 +1152,12 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
 .qtd input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .qtd input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 
+/* variante compacta: dentro do card de produto (grid de 9.5rem mínimo) o
+   controle cheio não cabe ao lado do nome/código — encolhe botão e campo. */
+.pcard-qtd { margin-top: 0.3rem; }
+.pcard-qtd button { width: 1.5rem; height: 1.5rem; font-size: 0.9rem; }
+.pcard-qtd input { width: 2.2rem; font-size: 0.85rem; padding: 0.15rem 0.1rem; }
+
 .qtd-fixa {
   align-self: flex-start; font-size: 0.75rem; font-weight: 700;
   background: var(--green-soft); color: var(--green);

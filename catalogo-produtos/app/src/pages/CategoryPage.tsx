@@ -26,7 +26,7 @@ export function CategoryPage({ group, initialSub, store, email, admin }: Props) 
   const [showSearch, setShowSearch] = useState(false);
   const [q, setQ] = useState('');
   const [brand, setBrand] = useState<string | null>(null);
-  const [picked, setPicked] = useState<Record<string, { name: string; barcode: string | null }>>({});
+  const [picked, setPicked] = useState<Record<string, { name: string; barcode: string | null; qty: number }>>({});
 
   // troca de categoria pelo menu (mesma instância do componente, só props mudam)
   useEffect(() => {
@@ -44,7 +44,7 @@ export function CategoryPage({ group, initialSub, store, email, admin }: Props) 
 
   // mantém o módulo de "seleção pendente" em dia (para o pop-up ao sair)
   useEffect(() => {
-    const items = Object.entries(picked).map(([id, v]) => ({ id, name: v.name, barcode: v.barcode }));
+    const items = Object.entries(picked).map(([id, v]) => ({ id, name: v.name, barcode: v.barcode, qty: v.qty }));
     setPending(store ? { categoria: title, items } : null);
   }, [picked, store, title]);
 
@@ -57,13 +57,19 @@ export function CategoryPage({ group, initialSub, store, email, admin }: Props) 
     setPicked((cur) => {
       const next = { ...cur };
       if (next[id]) delete next[id];
-      else next[id] = { name: p.name, barcode: p.barcode };
+      else next[id] = { name: p.name, barcode: p.barcode, qty: 1 };
       return next;
     });
   }
 
+  // ajusta a quantidade de um item já selecionado, sem precisar abrir o carrinho
+  function setQty(id: string, qty: number) {
+    const val = Math.max(1, Math.round(qty) || 1);
+    setPicked((cur) => (cur[id] ? { ...cur, [id]: { ...cur[id]!, qty: val } } : cur));
+  }
+
   async function salvar() {
-    const items = Object.entries(picked).map(([id, v]) => ({ id, name: v.name, barcode: v.barcode }));
+    const items = Object.entries(picked).map(([id, v]) => ({ id, name: v.name, barcode: v.barcode, qty: v.qty }));
     setSaving(true);
     try {
       await save(items);
@@ -228,6 +234,8 @@ export function CategoryPage({ group, initialSub, store, email, admin }: Props) 
         isSelected={(id) => (catMode ? Boolean(catPicked[id]) : Boolean(picked[id]))}
         onToggle={catMode ? toggleCat : toggle}
         blockNav={catMode}
+        qtyOf={catMode ? undefined : (id) => picked[id]?.qty}
+        onQtyChange={catMode ? undefined : setQty}
       />
 
       {catMode && nCatPicked > 0 && (

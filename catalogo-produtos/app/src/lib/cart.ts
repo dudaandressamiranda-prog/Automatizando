@@ -57,6 +57,8 @@ export interface NewItem {
   id: string; // product_id
   name: string;
   barcode: string | null;
+  /** Quantas unidades a pessoa já indicou ao marcar o produto. 1 se omitida. */
+  qty?: number;
 }
 
 const activeKey = (store: StoreId) => `catalogo.activeCart.${store}`;
@@ -148,7 +150,12 @@ export async function getItems(cartId: string): Promise<CartItemRow[]> {
 
 export async function addItems(cartId: string, items: NewItem[], email: string | null): Promise<void> {
   if (items.length === 0) return;
-  const rows = items.map((i) => ({ cart_id: cartId, product_id: i.id, added_by: email }));
+  const rows = items.map((i) => ({
+    cart_id: cartId,
+    product_id: i.id,
+    added_by: email,
+    qty: Math.max(1, Math.round(i.qty ?? 1)),
+  }));
   // ignoreDuplicates: remarcar um produto já no carrinho não gera erro
   const { error } = await supabase.from('cart_items').upsert(rows, {
     onConflict: 'cart_id,product_id',

@@ -16,9 +16,23 @@ interface Props {
   blockNav?: boolean;
   /** Realce passageiro de quem acabou de ser editado, para achar na lista. */
   destacado?: boolean;
+  /**
+   * Quantidade already indicada ao selecionar para o carrinho. Só faz
+   * sentido junto de `onQtyChange`; sem os dois, o card não mostra o
+   * controle — é o caso da categorização em massa, que não lida com
+   * quantidade nenhuma.
+   */
+  qty?: number;
+  onQtyChange?: (id: string, qty: number) => void;
 }
 
-export function ProductCard({ product: p, src, selectable, selected, onToggle, blockNav, destacado }: Props) {
+export function ProductCard({
+  product: p, src, selectable, selected, onToggle, blockNav, destacado, qty, onQtyChange,
+}: Props) {
+  // Selecionar já é dizer "quero 1"; o controle só aparece depois, para
+  // ajustar sem precisar abrir o carrinho — a etapa que este recurso corta.
+  const mostrarQtd = selected && !blockNav && Boolean(onQtyChange);
+
   const media = (
     <>
       <div className="pcard-img">
@@ -39,6 +53,34 @@ export function ProductCard({ product: p, src, selectable, selected, onToggle, b
         <span className="pcard-name" title={p.name}>{p.name}</span>
         {p.brand && <span className="muted small">{p.brand}</span>}
         {p.barcode && <span className="mono tiny muted">{p.barcode}</span>}
+        {mostrarQtd && (
+          <div
+            className="qtd pcard-qtd"
+            // o card inteiro é um link (ou um botão, no modo em massa); sem
+            // isto, tocar no controle também navegaria ou alternaria a seleção
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          >
+            <button
+              type="button"
+              onClick={() => onQtyChange!(p.id, (qty ?? 1) - 1)}
+              disabled={(qty ?? 1) <= 1}
+              aria-label="Menos um"
+            >
+              −
+            </button>
+            <input
+              type="number"
+              min={1}
+              value={qty ?? 1}
+              aria-label={`Quantidade de ${p.name}`}
+              onChange={(e) => onQtyChange!(p.id, Number(e.target.value))}
+              onBlur={(e) => { if (!Number(e.target.value)) onQtyChange!(p.id, 1); }}
+            />
+            <button type="button" onClick={() => onQtyChange!(p.id, (qty ?? 1) + 1)} aria-label="Mais um">
+              +
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

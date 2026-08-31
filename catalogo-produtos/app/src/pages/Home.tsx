@@ -223,9 +223,14 @@ interface GridProps {
   isSelected?: (id: string) => boolean;
   onToggle?: (id: string) => void;
   blockNav?: boolean;
+  /** Quantidade já indicada para quem está selecionado (montar carrinho). */
+  qtyOf?: (id: string) => number | undefined;
+  onQtyChange?: (id: string, qty: number) => void;
 }
 
-export function CardGrid({ products, signed, selectable, isSelected, onToggle, blockNav }: GridProps) {
+export function CardGrid({
+  products, signed, selectable, isSelected, onToggle, blockNav, qtyOf, onQtyChange,
+}: GridProps) {
   const [limite, setLimite] = useState(PAGINA);
   const chave = products.length > 0 ? products[0]!.id : '';
 
@@ -264,6 +269,8 @@ export function CardGrid({ products, signed, selectable, isSelected, onToggle, b
             onToggle={onToggle}
             blockNav={blockNav}
             destacado={p.id === destaque}
+            qty={qtyOf?.(p.id)}
+            onQtyChange={onQtyChange}
           />
         ))}
       </div>
