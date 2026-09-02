@@ -8,6 +8,7 @@
     "import": "tsx src/import.ts",
     "faltantes": "tsx src/faltantes.ts",
     "fotos": "tsx src/fotos.ts",
+    "fotos-saopet": "tsx src/fotos-saopet.ts",
     "consolidar": "tsx src/consolidar.ts",
     "regras": "tsx src/regras.ts",
     "medicamentos": "tsx src/medicamentos.ts",
