@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { Photo } from '../components/Photo';
-import { eanSvg, isValidEan13, nextInternalEan } from '../lib/ean';
+import { eanSvg, isInternalEan, isValidEan13, nextInternalEan } from '../lib/ean';
+import { buscarFotoPorEan } from '../lib/fotoweb';
 import { cleanBarcode, norm } from '../lib/normalize';
 import { PRODUTO_RECENTE } from '../lib/recentes';
 import { PHOTO_BUCKET, supabase } from '../lib/supabase';
@@ -36,6 +37,8 @@ export function ProductForm({ voltar, productId, initialBarcode }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [gerando, setGerando] = useState(false);
+  const [buscandoFoto, setBuscandoFoto] = useState(false);
+  const [avisoFoto, setAvisoFoto] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -95,6 +98,31 @@ export function ProductForm({ voltar, productId, initialBarcode }: Props) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setGerando(false);
+    }
+  }
+
+  /**
+   * Procura a foto pelo código de barras nas mesmas lojas que a Entrada de
+   * nota já usa — serve para completar aqui um produto que nasceu sem
+   * foto (por exemplo, de antes de a busca automática existir). Só
+   * preenche o campo do link; nada é gravado até clicar em Salvar.
+   */
+  async function buscarFotoAutomatica() {
+    const limpo = barcode.trim();
+    if (!isValidEan13(limpo) || isInternalEan(limpo)) return;
+    setBuscandoFoto(true);
+    setAvisoFoto(null);
+    try {
+      const hit = await buscarFotoPorEan(limpo);
+      if (hit) {
+        setPhotoUrl(hit.image);
+        setPhotoFile(null);
+        setAvisoFoto('Foto encontrada — confira se é o produto certo antes de salvar.');
+      } else {
+        setAvisoFoto('Não encontrei foto para esse código nas lojas de sempre.');
+      }
+    } finally {
+      setBuscandoFoto(false);
     }
   }
 
@@ -357,6 +385,24 @@ export function ProductForm({ voltar, productId, initialBarcode }: Props) {
             disabled={Boolean(photoFile)}
           />
         </label>
+        {isValidEan13(barcode.trim()) && !isInternalEan(barcode.trim()) && (
+          <div className="ean-tools">
+            <button type="button" className="secondary" onClick={buscarFotoAutomatica} disabled={buscandoFoto}>
+              {buscandoFoto ? 'Buscando…' : '🔎 Buscar foto automaticamente'}
+            </button>
+            <span className="muted tiny">
+              {avisoFoto ?? 'Procura pelo código de barras nas mesmas lojas da Entrada de nota.'}
+            </span>
+          </div>
+        )}
+        {photoUrl.trim() && !photoFile && (
+          <img
+            src={photoUrl.trim()}
+            alt=""
+            className="photo"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+        )}
 
         <label>
           Observações
