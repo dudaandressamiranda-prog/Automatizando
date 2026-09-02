@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { criarBusca } from '../lib/busca';
 import { formataChave, formataCnpj, lerChave } from '../lib/chaveNfe';
 import { completeEan13, eanSvg, isInternalEan, isValidEan13, nextInternalEan } from '../lib/ean';
 import { buscarFotoPorCodigoFornecedor, buscarFotoPorEan } from '../lib/fotoweb';
@@ -60,6 +61,15 @@ export function NotaFiscal() {
   const [buscaFotos, setBuscaFotos] = useState<
     { ativo: boolean; feito: number; total: number; achadas: number } | null
   >(null);
+  /**
+   * Filtro da lista de itens + categoria em lote — para uma nota de
+   * fornecedor novo, sem nenhum produto parecido já cadastrado, a sugestão
+   * automática não tem o que sugerir. Filtrar por um pedaço do nome
+   * ("CAMA", "COLEIRA"...) e aplicar a categoria de uma vez pros itens que
+   * aparecerem evita abrir item por item só para escolher a mesma categoria.
+   */
+  const [filtroItens, setFiltroItens] = useState('');
+  const [categoriaLote, setCategoriaLote] = useState('');
 
   const dadosChave = useMemo(() => lerChave(chave), [chave]);
 
@@ -292,6 +302,24 @@ export function NotaFiscal() {
     (s, l) => s + l.etiquetas * Math.max(1, l.variacoes.length),
     0,
   );
+
+  const categoriasOrdenadas = useMemo(
+    () => [...categories].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+    [categories],
+  );
+
+  /** Itens visíveis na lista — filtro serve só para achar um grupo e aplicar categoria em lote. */
+  const linhasFiltradas = useMemo(() => {
+    const casa = criarBusca(filtroItens);
+    return casa ? linhas.filter((l) => casa(l.item.descricao)) : linhas;
+  }, [linhas, filtroItens]);
+
+  /** Aplica a categoria escolhida a todo mundo que está aparecendo no filtro. */
+  function aplicarCategoriaAosFiltrados() {
+    if (!categoriaLote) return;
+    const chaves = new Set(linhasFiltradas.map((l) => l.key));
+    setLinhas((ls) => ls.map((l) => (chaves.has(l.key) ? { ...l, categoriaId: categoriaLote } : l)));
+  }
 
   /** Só deixa gravar quando o essencial está preenchido. */
   const pendencias = useMemo(() => {
@@ -591,8 +619,35 @@ export function NotaFiscal() {
             </p>
           )}
 
+          <div className="nf-cat-lote">
+            <input
+              type="search"
+              placeholder="Filtrar itens por um pedaço do nome — ex.: cama, coleira…"
+              value={filtroItens}
+              onChange={(e) => setFiltroItens(e.target.value)}
+            />
+            <select value={categoriaLote} onChange={(e) => setCategoriaLote(e.target.value)}>
+              <option value="">Categoria…</option>
+              {categoriasOrdenadas.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <button
+              className="secondary"
+              onClick={aplicarCategoriaAosFiltrados}
+              disabled={!categoriaLote || linhasFiltradas.length === 0}
+              title="Aplica a categoria escolhida em todo mundo que está aparecendo com o filtro atual"
+            >
+              Aplicar em {linhasFiltradas.length}
+            </button>
+          </div>
+          <p className="tiny muted nf-cat-lote-dica">
+            Sem produto parecido já cadastrado, a sugestão automática de
+            categoria não tem o que sugerir — filtre por um pedaço do nome
+            (ex.: "cama") e aplica a categoria de uma vez em todo o grupo,
+            em vez de escolher item por item.
+          </p>
+
           <ul className="nf-itens">
-            {linhas.map((l) => {
+            {linhasFiltradas.map((l) => {
               const existente = l.ean ? porEan.get(l.ean) : undefined;
               const unidades = l.item.quantidadeComercial * l.fator;
               return (

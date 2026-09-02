@@ -912,6 +912,18 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
 .nf-cabecalho > div { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
 .nf-acoes-topo { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
 
+/* filtra os itens da nota e aplica uma categoria em todo o grupo de uma vez */
+.nf-cat-lote {
+  display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;
+  background: #f9fafb; border-radius: 0.6rem; padding: 0.6rem 0.7rem; margin-bottom: 0.3rem;
+}
+.nf-cat-lote input[type="search"] { flex: 2 1 14rem; }
+.nf-cat-lote select { flex: 1 1 10rem; }
+.nf-cat-lote input, .nf-cat-lote select {
+  padding: 0.5rem 0.6rem; border: 1px solid var(--border); border-radius: 0.5rem; font-size: 0.9rem;
+}
+.nf-cat-lote-dica { margin: 0.3rem 0 0.8rem; }
+
 .nf-itens { list-style: none; margin: 0; padding: 0 0 6rem; }
 .nf-item {
   background: var(--card); border: 1px solid var(--border); border-radius: 0.8rem;
