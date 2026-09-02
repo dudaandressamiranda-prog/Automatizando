@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formataChave, formataCnpj, lerChave } from '../lib/chaveNfe';
-import { completeEan13, eanSvg, isValidEan13, nextInternalEan } from '../lib/ean';
+import { completeEan13, eanSvg, isInternalEan, isValidEan13, nextInternalEan } from '../lib/ean';
+import { buscarFotoPorEan } from '../lib/fotoweb';
 import { norm } from '../lib/normalize';
 import { parseNfe, type ItemNota, type Nota } from '../lib/nfe';
 import { supabase } from '../lib/supabase';
 import { useCatalog } from '../lib/catalog';
 import { enviarParaEtiquetas, type ItemEtiqueta } from '../lib/zpl';
 import type { ListProduct } from '../lib/types';
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const RASCUNHO = 'catalogo.nota.rascunho';
 
@@ -53,6 +56,10 @@ export function NotaFiscal() {
   const [chave, setChave] = useState('');
   const [xmlColado, setXmlColado] = useState('');
   const [chaveCopiada, setChaveCopiada] = useState(false);
+  /** Progresso da busca automática de fotos — null quando nunca rodou nesta nota. */
+  const [buscaFotos, setBuscaFotos] = useState<
+    { ativo: boolean; feito: number; total: number; achadas: number } | null
+  >(null);
 
   const dadosChave = useMemo(() => lerChave(chave), [chave]);
 
@@ -124,27 +131,34 @@ export function NotaFiscal() {
     try {
       const n = parseNfe(texto);
       setNota(n);
-      setLinhas(
-        n.itens.map((item, i) => {
-          const existente = item.ean ? porEan.get(item.ean) : undefined;
-          return {
-            key: `${item.numero}-${i}`,
-            item,
-            // já cadastrado entra desmarcado: o padrão é não mexer no que existe
-            incluir: !existente,
-            nome: item.descricao,
-            ean: item.ean ?? '',
-            marca: '',
-            categoriaId: existente?.category_id ?? sugerirCategoria(item.descricao),
-            fornecedor: n.fornecedor,
-            photoUrl: '',
-            fator: item.fatorConversao,
-            // uma etiqueta por unidade recebida é o padrão do balcão
-            etiquetas: Math.max(0, Math.round(item.quantidadeComercial * item.fatorConversao)),
-            variacoes: [],
-            aberto: false,
-          };
-        }),
+      const novasLinhas: Linha[] = n.itens.map((item, i) => {
+        const existente = item.ean ? porEan.get(item.ean) : undefined;
+        return {
+          key: `${item.numero}-${i}`,
+          item,
+          // já cadastrado entra desmarcado: o padrão é não mexer no que existe
+          incluir: !existente,
+          nome: item.descricao,
+          ean: item.ean ?? '',
+          marca: '',
+          categoriaId: existente?.category_id ?? sugerirCategoria(item.descricao),
+          fornecedor: n.fornecedor,
+          photoUrl: '',
+          fator: item.fatorConversao,
+          // uma etiqueta por unidade recebida é o padrão do balcão
+          etiquetas: Math.max(0, Math.round(item.quantidadeComercial * item.fatorConversao)),
+          variacoes: [],
+          aberto: false,
+        };
+      });
+      setLinhas(novasLinhas);
+      setBuscaFotos(null);
+      // nota carregada: já sai procurando a foto de cada item novo com
+      // código de barras, sem precisar rodar nada por fora do app
+      void buscarFotosEmLote(
+        novasLinhas
+          .filter((l) => !(l.ean && porEan.has(l.ean)))
+          .map((l) => ({ key: l.key, ean: l.ean })),
       );
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -153,6 +167,49 @@ export function NotaFiscal() {
 
   function editar(key: string, mudanca: Partial<Linha>) {
     setLinhas((ls) => ls.map((l) => (l.key === key ? { ...l, ...mudanca } : l)));
+  }
+
+  /**
+   * Busca a foto de cada item da lista, um de cada vez — mesma cortesia do
+   * robô do importador (uma pausa entre chamadas) para não sair batendo
+   * nas lojas em paralelo. Código interno nunca entra na lista: não existe
+   * em loja nenhuma, a busca só gastaria tempo para sempre voltar vazia.
+   */
+  async function buscarFotosEmLote(itens: { key: string; ean: string }[]) {
+    const alvo = itens.filter((i) => isValidEan13(i.ean) && !isInternalEan(i.ean));
+    if (alvo.length === 0) return;
+    setBuscaFotos({ ativo: true, feito: 0, total: alvo.length, achadas: 0 });
+    let achadas = 0;
+    for (let i = 0; i < alvo.length; i++) {
+      const hit = await buscarFotoPorEan(alvo[i]!.ean);
+      if (hit) {
+        achadas++;
+        editar(alvo[i]!.key, { photoUrl: hit.image });
+      }
+      setBuscaFotos({ ativo: true, feito: i + 1, total: alvo.length, achadas });
+      if (i < alvo.length - 1) await sleep(350);
+    }
+    setBuscaFotos((s) => (s ? { ...s, ativo: false } : s));
+  }
+
+  /** Item sem foto ainda: busca de novo — usado no botão "Buscar fotos". */
+  function buscarFotosPendentes() {
+    const alvo = linhas
+      .filter((l) => !l.photoUrl.trim())
+      .map((l) => ({ key: l.key, ean: l.ean.trim() }));
+    void buscarFotosEmLote(alvo);
+  }
+
+  /**
+   * Troca o código de barras da linha e, se o novo código é um EAN de
+   * verdade (não interno), já dispara a busca da foto na hora — é o que
+   * fecha o ciclo de "preencheu o código que faltava" sem precisar lembrar
+   * de clicar em mais nada depois.
+   */
+  function onEanChange(key: string, novoEan: string) {
+    editar(key, { ean: novoEan });
+    const limpo = novoEan.trim();
+    if (isValidEan13(limpo) && !isInternalEan(limpo)) void buscarFotosEmLote([{ key, ean: limpo }]);
   }
 
   /** Gera código interno e já reserva para não sair repetido na mesma nota. */
@@ -442,7 +499,24 @@ export function NotaFiscal() {
             <button className="secondary" onClick={() => setLinhas((ls) => ls.map((l) => ({ ...l, etiquetas: 0 })))}>
               Zerar etiquetas
             </button>
+            <span className="nf-sep" />
+            <button
+              className="secondary"
+              onClick={buscarFotosPendentes}
+              disabled={buscaFotos?.ativo}
+              title="Procura de novo a foto de quem ainda não tem, pelas mesmas lojas de sempre"
+            >
+              🔎 Buscar fotos
+            </button>
           </div>
+
+          {buscaFotos && (
+            <p className="tiny muted nf-busca-fotos">
+              {buscaFotos.ativo
+                ? `🔎 Buscando foto na internet… ${buscaFotos.feito}/${buscaFotos.total} (${buscaFotos.achadas} encontrada${buscaFotos.achadas === 1 ? '' : 's'} até agora)`
+                : `🔎 Busca de fotos concluída: ${buscaFotos.achadas} de ${buscaFotos.total} encontrada${buscaFotos.achadas === 1 ? '' : 's'} automaticamente.`}
+            </p>
+          )}
 
           <ul className="nf-itens">
             {linhas.map((l) => {
@@ -465,6 +539,28 @@ export function NotaFiscal() {
                         {l.fator !== 1 && ` → ${unidades} un`}
                       </span>
                     </div>
+                    {!existente && !l.ean.trim() && l.variacoes.length === 0 && (
+                      <div className="nf-ean-rapido">
+                        <input
+                          className="mono"
+                          placeholder="Código de barras"
+                          value={l.ean}
+                          onChange={(e) => onEanChange(l.key, e.target.value)}
+                          inputMode="numeric"
+                          aria-label={`Código de barras de ${l.item.descricao}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => onEanChange(l.key, gerarEan())}
+                          title="Gerar código interno"
+                        >
+                          ⊕
+                        </button>
+                      </div>
+                    )}
+                    {l.photoUrl.trim() && (
+                      <span className="badge nf-badge-foto" title="Foto encontrada">📷</span>
+                    )}
                     {existente ? (
                       <span className="badge nf-badge-existe">já no catálogo</span>
                     ) : (
@@ -503,7 +599,7 @@ export function NotaFiscal() {
                           Código de barras
                           <input
                             value={l.ean}
-                            onChange={(e) => editar(l.key, { ean: e.target.value })}
+                            onChange={(e) => onEanChange(l.key, e.target.value)}
                             inputMode="numeric"
                             disabled={l.variacoes.length > 0}
                           />
@@ -511,7 +607,7 @@ export function NotaFiscal() {
                         <button
                           type="button"
                           className="secondary"
-                          onClick={() => editar(l.key, { ean: gerarEan() })}
+                          onClick={() => onEanChange(l.key, gerarEan())}
                           disabled={l.variacoes.length > 0}
                         >
                           ⊕ Gerar interno
@@ -527,7 +623,7 @@ export function NotaFiscal() {
                         <button
                           type="button"
                           className="link-muted"
-                          onClick={() => editar(l.key, { ean: completeEan13(l.ean.trim()) })}
+                          onClick={() => onEanChange(l.key, completeEan13(l.ean.trim()))}
                         >
                           Completar com o dígito verificador → {completeEan13(l.ean.trim())}
                         </button>
@@ -562,6 +658,14 @@ export function NotaFiscal() {
                           placeholder="https://… (sem foto, o produto entra desativado)"
                         />
                       </label>
+                      {l.photoUrl.trim() && (
+                        <img
+                          src={l.photoUrl.trim()}
+                          alt=""
+                          className="nf-foto-preview"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      )}
 
                       <div className="nf-conversao">
                         <span className="muted small">
