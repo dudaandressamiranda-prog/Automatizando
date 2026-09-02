@@ -8,7 +8,7 @@ import { parseNfe, type ItemNota, type Nota } from '../lib/nfe';
 import { supabase } from '../lib/supabase';
 import { useCatalog } from '../lib/catalog';
 import { enviarParaEtiquetas, type ItemEtiqueta } from '../lib/zpl';
-import type { ListProduct } from '../lib/types';
+import { LIST_COLUMNS, type ListProduct } from '../lib/types';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -70,13 +70,36 @@ interface Linha {
  * sem passar por esta tela.
  */
 export function NotaFiscal() {
-  const { products, categories } = useCatalog();
+  const { categories } = useCatalog();
   const [nota, setNota] = useState<Nota | null>(null);
   const [linhas, setLinhas] = useState<Linha[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [resultado, setResultado] = useState<string | null>(null);
   const [eansUsados, setEansUsados] = useState<string[]>([]);
+  /**
+   * TODO produto, de QUALQUER situação — não dá pra usar o `products` do
+   * useCatalog() aqui: aquele hook só traz produto ATIVO (é a vitrine).
+   * Um produto que nasceu desativado (sem foto, por exemplo — o caso mais
+   * comum) ficava invisível pra esta tela, "já no catálogo" nunca
+   * aparecia pra ele, e "Cadastrar" tentava inserir de novo o mesmo
+   * código de barras — daí o erro de "duplicate key" mesmo o produto já
+   * existindo. Carrega direto do banco, sem filtro de status nenhum.
+   */
+  const [todosProdutos, setTodosProdutos] = useState<ListProduct[]>([]);
+  async function carregarTodosProdutos() {
+    const todos: ListProduct[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase.from('products').select(LIST_COLUMNS).range(from, from + 999);
+      if (error) break; // não trava a tela — só fica sem esse reforço na checagem
+      todos.push(...((data ?? []) as ListProduct[]));
+      if (!data || data.length < 1000) break;
+    }
+    setTodosProdutos(todos);
+  }
+  useEffect(() => {
+    void carregarTodosProdutos();
+  }, []);
   const [chave, setChave] = useState('');
   const [xmlColado, setXmlColado] = useState('');
   const [chaveCopiada, setChaveCopiada] = useState(false);
@@ -126,12 +149,12 @@ export function NotaFiscal() {
     if (nota) localStorage.setItem(RASCUNHO, JSON.stringify({ nota, linhas }));
   }, [nota, linhas]);
 
-  /** Produtos do catálogo por código, para reconhecer o que já existe. */
+  /** Produtos do catálogo por código, para reconhecer o que já existe — de QUALQUER situação. */
   const porEan = useMemo(() => {
     const m = new Map<string, ListProduct>();
-    for (const p of products) if (p.barcode) m.set(p.barcode, p);
+    for (const p of todosProdutos) if (p.barcode) m.set(p.barcode, p);
     return m;
-  }, [products]);
+  }, [todosProdutos]);
 
   const catPorId = useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories]);
 
@@ -150,7 +173,7 @@ export function NotaFiscal() {
     const toks = norm(descricao).split(/\s+/).filter((t) => t.length > 2).slice(0, 3);
     if (toks.length === 0) return '';
     const votos = new Map<string, number>();
-    for (const p of products) {
+    for (const p of todosProdutos) {
       if (!p.category_id) continue;
       const n = norm(p.name);
       const acertos = toks.filter((t) => n.includes(t)).length;
@@ -432,6 +455,10 @@ export function NotaFiscal() {
     } catch (e) {
       setErro(mensagemErro(e));
     } finally {
+      // atualiza mesmo quando dá erro no meio: se algum lote já tinha sido
+      // gravado antes de travar, uma nova tentativa precisa enxergar isso
+      // e tratar como "já existe" em vez de tentar inserir de novo.
+      void carregarTodosProdutos();
       setSalvando(false);
     }
   }
