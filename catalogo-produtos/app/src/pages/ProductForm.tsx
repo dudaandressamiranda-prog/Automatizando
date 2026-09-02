@@ -264,6 +264,67 @@ export function ProductForm({ voltar, productId, initialBarcode }: Props) {
     }
   }
 
+  /**
+   * Cria um cadastro novo com os mesmos dados do atual — aproveita nome,
+   * marca, fornecedor, categoria, observações e foto, e já leva direto
+   * para editar a cópia, para só mexer no que muda de verdade (nome
+   * definitivo, código de barras). O original não é tocado.
+   *
+   * Código de barras nunca é copiado: é único no catálogo, então a cópia
+   * nasce sem ele (e por isso desativada, mesma regra de sempre) — quem
+   * duplica sabe que precisa digitar o código do item novo.
+   */
+  async function duplicar() {
+    if (!product) return;
+    const ok = window.confirm(
+      `Duplicar "${product.name}"? Cria um cadastro novo com os mesmos dados (menos o código de barras, que é único) — o original continua como está.`,
+    );
+    if (!ok) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const fields = {
+        name: `${product.name} (cópia)`,
+        barcode: null,
+        brand: product.brand,
+        supplier: product.supplier,
+        category_id: product.category_id,
+        notes: product.notes,
+        source: 'manual',
+        // sem código de barras não dá pra deixar ativo — mesma regra do resto do catálogo
+        status: 'desativado' as const,
+        status_manual: true,
+      };
+      const { data, error: err } = await supabase.from('products').insert(fields).select('id').single();
+      if (err) throw friendlyDbError(err);
+      const newId = data.id as string;
+
+      // a foto fica guardada num caminho por id do produto — não dá pra
+      // simplesmente reaproveitar o arquivo do original, precisa copiar
+      if (product.photo_path) {
+        const ext = product.photo_path.split('.').pop() ?? 'jpg';
+        const newPath = `products/${newId}/${Date.now()}.${ext}`;
+        const { error: copyErr } = await supabase.storage.from(PHOTO_BUCKET).copy(product.photo_path, newPath);
+        if (!copyErr) {
+          await supabase
+            .from('products')
+            .update({ photo_path: newPath, photo_updated_at: new Date().toISOString() })
+            .eq('id', newId);
+        }
+        // se a cópia falhar, a cópia do cadastro segue sem foto — dá pra
+        // completar na hora, já que a tela vai abrir editando ela
+      } else if (product.photo_source_url) {
+        await supabase.from('products').update({ photo_source_url: product.photo_source_url }).eq('id', newId);
+      }
+
+      window.location.hash = `#/p/${newId}`;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function onDelete() {
     if (!productId) return;
     if (!window.confirm(`Excluir "${product?.name ?? 'este produto'}"? Não dá para desfazer.`)) return;
@@ -426,6 +487,17 @@ export function ProductForm({ voltar, productId, initialBarcode }: Props) {
           <button type="button" className="secondary" onClick={voltar} disabled={busy}>
             Cancelar
           </button>
+          {editing && (
+            <button
+              type="button"
+              className="secondary"
+              onClick={duplicar}
+              disabled={busy}
+              title="Cria um produto novo com os mesmos dados, pronto para ajustar"
+            >
+              ⧉ Duplicar
+            </button>
+          )}
           {editing && (
             <button type="button" className="danger" onClick={onDelete} disabled={busy}>
               Excluir

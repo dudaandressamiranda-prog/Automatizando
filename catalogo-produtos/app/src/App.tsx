@@ -116,11 +116,14 @@ export function App() {
         {!blocked && route.page === 'new' && (
           <ProductForm voltar={voltar} initialBarcode={route.barcode} />
         )}
-        {/* funcionário vê a ficha; só admin abre o formulário de edição */}
+        {/* funcionário vê a ficha; só admin abre o formulário de edição.
+            key=id força remontar ao pular de um produto para o outro sem
+            passar pela lista — como faz "Duplicar", que já abre a cópia —
+            senão o formulário ficaria um instante com dado do produto antigo. */}
         {route.page === 'product' && (
           admin
-            ? <ProductForm voltar={voltar} productId={route.id} />
-            : <ProductView voltar={voltar} productId={route.id} />
+            ? <ProductForm key={route.id} voltar={voltar} productId={route.id} />
+            : <ProductView key={route.id} voltar={voltar} productId={route.id} />
         )}
       </div>
 
