@@ -27,3 +27,22 @@ export async function buscarFotoPorEan(ean: string): Promise<FotoEncontrada | nu
     return null;
   }
 }
+
+/**
+ * Busca pelo código do FORNECEDOR (o `cProd` da nota) em vez do código de
+ * barras — para fornecedores como a Bastet/São Pet, cujo site não guarda
+ * EAN, mas usa o mesmo código de produto da nota como referência. Casamento
+ * é sempre exato: nunca vincula a foto de um código diferente.
+ */
+export async function buscarFotoPorCodigoFornecedor(codigo: string): Promise<{ image: string; name: string } | null> {
+  try {
+    const res = await fetch(`/api/foto-fornecedor?codigo=${encodeURIComponent(codigo)}`, {
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { image: string; name: string } | null;
+    return data?.image ? data : null;
+  } catch {
+    return null;
+  }
+}

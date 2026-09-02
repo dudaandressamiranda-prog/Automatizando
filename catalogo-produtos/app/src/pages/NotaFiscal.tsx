@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formataChave, formataCnpj, lerChave } from '../lib/chaveNfe';
 import { completeEan13, eanSvg, isInternalEan, isValidEan13, nextInternalEan } from '../lib/ean';
-import { buscarFotoPorEan } from '../lib/fotoweb';
+import { buscarFotoPorCodigoFornecedor, buscarFotoPorEan } from '../lib/fotoweb';
 import { norm } from '../lib/normalize';
 import { parseNfe, type ItemNota, type Nota } from '../lib/nfe';
 import { supabase } from '../lib/supabase';
@@ -106,6 +106,12 @@ export function NotaFiscal() {
    * Sugere categoria olhando produtos parecidos que já estão no catálogo:
    * se "Ração Golden Adulto 15kg" já existe em Ração Seca, a linha nova da
    * mesma família provavelmente vai no mesmo lugar.
+   *
+   * Sem nenhum produto parecido para votar — o caso de uma linha de
+   * fornecedor inteiramente nova, sem nenhum precedente cadastrado —
+   * tenta uma 2ª pista: a primeira palavra da descrição batendo com o
+   * NOME de alguma categoria já criada ("CAMA..." → categoria "Camas").
+   * Não inventa categoria nenhuma; só acerta quando o nome já existe.
    */
   function sugerirCategoria(descricao: string): string {
     const toks = norm(descricao).split(/\s+/).filter((t) => t.length > 2).slice(0, 3);
@@ -117,8 +123,12 @@ export function NotaFiscal() {
       const acertos = toks.filter((t) => n.includes(t)).length;
       if (acertos >= 2) votos.set(p.category_id, (votos.get(p.category_id) ?? 0) + acertos);
     }
-    const melhor = [...votos.entries()].sort((a, b) => b[1] - a[1])[0];
-    return melhor ? melhor[0] : '';
+    const melhorProduto = [...votos.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (melhorProduto) return melhorProduto[0];
+
+    const primeira = toks[0]!;
+    const porNome = categories.find((c) => norm(c.name).includes(primeira));
+    return porNome?.id ?? '';
   }
 
   async function carregarArquivo(file: File) {
@@ -163,7 +173,9 @@ export function NotaFiscal() {
       // nota carregada: já sai procurando a foto de quem ainda não tem —
       // item novo ou já cadastrado, sem precisar rodar nada por fora do app
       void buscarFotosEmLote(
-        novasLinhas.filter((l) => !l.photoUrl.trim()).map((l) => ({ key: l.key, ean: l.ean })),
+        novasLinhas
+          .filter((l) => !l.photoUrl.trim())
+          .map((l) => ({ key: l.key, ean: l.ean, codigoFornecedor: l.item.codigoFornecedor })),
       );
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -177,19 +189,28 @@ export function NotaFiscal() {
   /**
    * Busca a foto de cada item da lista, um de cada vez — mesma cortesia do
    * robô do importador (uma pausa entre chamadas) para não sair batendo
-   * nas lojas em paralelo. Código interno nunca entra na lista: não existe
-   * em loja nenhuma, a busca só gastaria tempo para sempre voltar vazia.
+   * nas lojas em paralelo.
+   *
+   * Primeiro tenta pelo código de barras (American Pet/Cobasi). Sem
+   * resultado e havendo o código do FORNECEDOR (o `cProd` da nota), tenta
+   * de novo por ele — cobre fornecedores como a Bastet/São Pet, cujo site
+   * não guarda EAN nenhum, mas usa esse mesmo código como referência
+   * própria. Código interno nunca entra na 1ª tentativa: não existe em
+   * loja nenhuma, só gastaria uma chamada à toa.
    */
-  async function buscarFotosEmLote(itens: { key: string; ean: string }[]) {
-    const alvo = itens.filter((i) => isValidEan13(i.ean) && !isInternalEan(i.ean));
+  async function buscarFotosEmLote(itens: { key: string; ean: string; codigoFornecedor?: string }[]) {
+    const alvo = itens.filter((i) => (isValidEan13(i.ean) && !isInternalEan(i.ean)) || i.codigoFornecedor);
     if (alvo.length === 0) return;
     setBuscaFotos({ ativo: true, feito: 0, total: alvo.length, achadas: 0 });
     let achadas = 0;
     for (let i = 0; i < alvo.length; i++) {
-      const hit = await buscarFotoPorEan(alvo[i]!.ean);
+      const item = alvo[i]!;
+      let hit: { image: string } | null = null;
+      if (isValidEan13(item.ean) && !isInternalEan(item.ean)) hit = await buscarFotoPorEan(item.ean);
+      if (!hit && item.codigoFornecedor) hit = await buscarFotoPorCodigoFornecedor(item.codigoFornecedor);
       if (hit) {
         achadas++;
-        editar(alvo[i]!.key, { photoUrl: hit.image });
+        editar(item.key, { photoUrl: hit.image });
       }
       setBuscaFotos({ ativo: true, feito: i + 1, total: alvo.length, achadas });
       if (i < alvo.length - 1) await sleep(350);
@@ -201,7 +222,7 @@ export function NotaFiscal() {
   function buscarFotosPendentes() {
     const alvo = linhas
       .filter((l) => !l.photoUrl.trim())
-      .map((l) => ({ key: l.key, ean: l.ean.trim() }));
+      .map((l) => ({ key: l.key, ean: l.ean.trim(), codigoFornecedor: l.item.codigoFornecedor }));
     void buscarFotosEmLote(alvo);
   }
 
@@ -214,7 +235,10 @@ export function NotaFiscal() {
   function onEanChange(key: string, novoEan: string) {
     editar(key, { ean: novoEan });
     const limpo = novoEan.trim();
-    if (isValidEan13(limpo) && !isInternalEan(limpo)) void buscarFotosEmLote([{ key, ean: limpo }]);
+    if (isValidEan13(limpo) && !isInternalEan(limpo)) {
+      const codigoFornecedor = linhas.find((l) => l.key === key)?.item.codigoFornecedor;
+      void buscarFotosEmLote([{ key, ean: limpo, codigoFornecedor }]);
+    }
   }
 
   /** Gera código interno e já reserva para não sair repetido na mesma nota. */
