@@ -479,7 +479,6 @@
         DIAS_SEMANA[data.getDay()],
         item.inicio && item.fim ? `${item.inicio} às ${item.fim}` : '—',
         `${decimalParaHoras(item.horas)}h`,
-        item.tipo,
         item.obs || '',
       ];
     });
@@ -488,13 +487,13 @@
 
     doc.autoTable({
       startY: y + 8,
-      head: [['Data', 'Dia', 'Horário', 'Horas', 'Tipo', 'Observação']],
+      head: [['Data', 'Dia', 'Horário', 'Horas', 'Observação']],
       body: linhas,
-      foot: [['', '', '', `${decimalParaHoras(totalHoras)}h`, 'Total', '']],
+      foot: [['', '', 'Total', `${decimalParaHoras(totalHoras)}h`, '']],
       styles: { fontSize: 9, cellPadding: 6 },
       headStyles: { fillColor: [31, 41, 55] },
       footStyles: { fillColor: [31, 41, 55], fontStyle: 'bold', textColor: 255 },
-      columnStyles: { 5: { cellWidth: 130 } },
+      columnStyles: { 4: { cellWidth: 160 } },
     });
 
     const nomeArquivo = `horas-extras-${dataVisivel.getFullYear()}-${String(dataVisivel.getMonth() + 1).padStart(2, '0')}.pdf`;
