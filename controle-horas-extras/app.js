@@ -126,6 +126,13 @@
     eTipoFiltro: document.getElementById('eTipoFiltro'),
     btnCancelarExport: document.getElementById('btnCancelarExport'),
 
+    pdfReadyModal: document.getElementById('pdfReadyModal'),
+    pdfReadyNome: document.getElementById('pdfReadyNome'),
+    btnCompartilhar: document.getElementById('btnCompartilhar'),
+    btnBaixarPdf: document.getElementById('btnBaixarPdf'),
+    btnVerPdf: document.getElementById('btnVerPdf'),
+    btnFecharPdfReady: document.getElementById('btnFecharPdfReady'),
+
     settingsModal: document.getElementById('settingsModal'),
     settingsForm: document.getElementById('settingsForm'),
     sNome: document.getElementById('sNome'),
@@ -404,6 +411,37 @@
 
   el.btnCancelarExport.addEventListener('click', () => el.exportModal.close());
 
+  // Ações da tela "PDF pronto".
+  el.btnCompartilhar.addEventListener('click', async () => {
+    if (!pdfAtual || !pdfAtual.file) return;
+    try {
+      await navigator.share({
+        files: [pdfAtual.file],
+        title: pdfAtual.nomeArquivo,
+        text: 'Relatório de horas extras.',
+      });
+    } catch (e) {
+      // usuário cancelou ou não suportado — ignora
+    }
+  });
+
+  el.btnBaixarPdf.addEventListener('click', () => {
+    if (!pdfAtual) return;
+    const a = document.createElement('a');
+    a.href = pdfAtual.url;
+    a.download = pdfAtual.nomeArquivo;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+
+  el.btnVerPdf.addEventListener('click', () => {
+    if (!pdfAtual) return;
+    window.open(pdfAtual.url, '_blank');
+  });
+
+  el.btnFecharPdfReady.addEventListener('click', () => el.pdfReadyModal.close());
+
   el.exportForm.addEventListener('submit', () => {
     settings.nome = el.eNome.value.trim();
     salvarSettings();
@@ -460,7 +498,33 @@
     });
 
     const nomeArquivo = `horas-extras-${dataVisivel.getFullYear()}-${String(dataVisivel.getMonth() + 1).padStart(2, '0')}.pdf`;
-    doc.save(nomeArquivo);
+    apresentarPDF(doc, nomeArquivo);
+  }
+
+  // Guarda o PDF gerado para os botões de compartilhar/baixar/ver.
+  let pdfAtual = null;
+
+  // No celular, downloads automáticos costumam ser bloqueados. Em vez de
+  // baixar direto, mostramos uma tela com opções: compartilhar (abre a tela
+  // nativa do celular, para enviar por e-mail/WhatsApp), baixar e ver.
+  function apresentarPDF(doc, nomeArquivo) {
+    if (pdfAtual && pdfAtual.url) URL.revokeObjectURL(pdfAtual.url);
+
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    let file = null;
+    try {
+      file = new File([blob], nomeArquivo, { type: 'application/pdf' });
+    } catch (e) {
+      file = null;
+    }
+    pdfAtual = { blob, url, file, nomeArquivo };
+
+    const podeCompartilhar = !!(file && navigator.canShare && navigator.canShare({ files: [file] }));
+    el.btnCompartilhar.classList.toggle('hidden', !podeCompartilhar);
+
+    el.pdfReadyNome.textContent = nomeArquivo;
+    el.pdfReadyModal.showModal();
   }
 
   // ---------- Configurações ----------

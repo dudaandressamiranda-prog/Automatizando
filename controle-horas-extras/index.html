@@ -116,6 +116,25 @@
     </form>
   </dialog>
 
+  <!-- Modal: PDF pronto (compartilhar / baixar / ver) -->
+  <dialog id="pdfReadyModal">
+    <form method="dialog">
+      <h2>PDF pronto ✅</h2>
+      <p class="hint">Arquivo: <strong id="pdfReadyNome">—</strong></p>
+      <p class="hint">
+        No celular, use <strong>Enviar / Compartilhar</strong> para mandar direto
+        para a contabilidade (e-mail, WhatsApp etc.). No computador, use
+        <strong>Baixar</strong>.
+      </p>
+      <div class="pdf-ready-actions">
+        <button type="button" id="btnCompartilhar" class="primary-button hidden">Enviar / Compartilhar</button>
+        <button type="button" id="btnBaixarPdf" class="secondary-button full">Baixar PDF</button>
+        <button type="button" id="btnVerPdf" class="secondary-button full">Ver PDF</button>
+        <button type="button" id="btnFecharPdfReady" class="link-button">Fechar</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Modal: configurações -->
   <dialog id="settingsModal">
     <form id="settingsForm" method="dialog">
