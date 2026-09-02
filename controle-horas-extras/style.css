@@ -471,6 +471,22 @@ dialog select {
   flex: 1;
 }
 
+.pdf-ready-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.secondary-button.full {
+  width: 100%;
+}
+
+.pdf-ready-actions .link-button {
+  align-self: center;
+  margin-top: 4px;
+}
+
 @media (max-width: 380px) {
   .day-cell {
     min-height: 52px;
