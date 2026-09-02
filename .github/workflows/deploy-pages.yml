@@ -1,0 +1,38 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: ["claude/smart-gate-mobile-control-axjq9x"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Permite apenas um deploy simultâneo, sem cancelar deploys em andamento.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configura o Pages
+        uses: actions/configure-pages@v5
+        with:
+          # Tenta habilitar o Pages automaticamente na primeira execução.
+          enablement: true
+      - name: Empacota o site (raiz do repositório)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      - name: Publica no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
