@@ -12,6 +12,18 @@ import type { ListProduct } from '../lib/types';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Erro do Supabase (PostgrestError) não é uma instância de `Error` — é um
+ * objeto simples com `.message`. `e instanceof Error` dá falso pra ele, e
+ * `String(e)` vira o inútil "[object Object]" em vez do motivo de
+ * verdade. Esta função pega a mensagem dos dois formatos.
+ */
+function mensagemErro(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === 'object' && 'message' in e) return String((e as { message: unknown }).message);
+  return String(e);
+}
+
 const RASCUNHO = 'catalogo.nota.rascunho';
 
 interface Variacao {
@@ -188,7 +200,7 @@ export function NotaFiscal() {
           .map((l) => ({ key: l.key, ean: l.ean, codigoFornecedor: l.item.codigoFornecedor })),
       );
     } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
+      setErro(mensagemErro(e));
     }
   }
 
@@ -407,7 +419,7 @@ export function NotaFiscal() {
       setLinhas([]);
       localStorage.removeItem(RASCUNHO);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
+      setErro(mensagemErro(e));
     } finally {
       setSalvando(false);
     }
