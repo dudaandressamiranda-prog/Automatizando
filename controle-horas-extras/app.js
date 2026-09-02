@@ -324,9 +324,10 @@
       const eDiaEspecial = ehFimDeSemana(data) || !!feriado;
       el.fTipo.value = eDiaEspecial ? '100%' : '50%';
       el.fTipoOutro.value = '';
-      el.fInicio.value = '';
-      el.fFim.value = '';
-      el.fHoras.value = '';
+      // Horário padrão de hora extra: 18:00 às 20:00 (edite se for diferente).
+      el.fInicio.value = '18:00';
+      el.fFim.value = '20:00';
+      calcularHorasAutomatico();
       el.fObs.value = '';
       el.btnExcluir.classList.add('hidden');
     }
