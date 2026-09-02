@@ -30,9 +30,25 @@ export interface FormatoEtiqueta {
   colunas: number;
   /** Espaço entre uma coluna e a seguinte. */
   gapMm: number;
+  /**
+   * Altura das barras já testada e impressa com sucesso nesta etiqueta —
+   * quando presente, vale no lugar da fração calculada automaticamente
+   * (veja `blocoEtiqueta`). Só faz sentido guardar aqui um valor que já
+   * saiu alinhado e dentro dos limites físicos da etiqueta.
+   */
+  alturaCodigoMm?: number;
 }
 
 export const FORMATOS: FormatoEtiqueta[] = [
+  {
+    id: '33x21x3',
+    label: '33 × 21 mm — 3 colunas (ZD230)',
+    larguraMm: 33,
+    alturaMm: 21,
+    colunas: 3,
+    gapMm: 3,
+    alturaCodigoMm: 15,
+  },
   { id: '33x22x3', label: '33 × 22 mm — 3 colunas', larguraMm: 33, alturaMm: 22, colunas: 3, gapMm: 3 },
   { id: '30x15x3', label: '30 × 15 mm — 3 colunas', larguraMm: 30, alturaMm: 15, colunas: 3, gapMm: 2 },
   { id: '30x15', label: '30 × 15 mm — 1 coluna', larguraMm: 30, alturaMm: 15, colunas: 1, gapMm: 0 },
@@ -151,7 +167,9 @@ function blocoEtiqueta(item: ItemEtiqueta, o: OpcoesZpl, dpi: number, xPt: numbe
    * visível nas duas pontas.
    */
   const util = alturaPt - alturaNome - margem * 2;
-  const alturaBarras = Math.max(20, Math.round(util * 0.7));
+  const alturaBarras = o.formato.alturaCodigoMm
+    ? mmParaPontos(o.formato.alturaCodigoMm, dpi)
+    : Math.max(20, Math.round(util * 0.7));
 
   const linhas: string[] = [];
   if (mostrarNome) {

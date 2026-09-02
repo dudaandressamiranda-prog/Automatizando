@@ -331,7 +331,7 @@ export function Labels() {
               Linguagem
               <select value={linguagem} onChange={(e) => setLinguagem(e.target.value as 'epl' | 'zpl')}>
                 <option value="epl">EPL — TLP 2844, LP 2844, TLP 2824</option>
-                <option value="zpl">ZPL — ZD220, GC420, GK420, ZD421</option>
+                <option value="zpl">ZPL — ZD220, ZD230, GC420, GK420, ZD421</option>
               </select>
             </label>
             {linguagem === 'zpl' && (

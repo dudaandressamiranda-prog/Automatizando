@@ -63,7 +63,9 @@ function blocoEtiqueta(item: ItemEtiqueta, o: OpcoesEpl, dpi: number, xPt: numbe
    * visível nas duas pontas.
    */
   const util = alturaPt - alturaNome - margem * 2;
-  const alturaBarras = Math.max(20, Math.round(util * 0.7));
+  const alturaBarras = o.formato.alturaCodigoMm
+    ? mmParaPontos(o.formato.alturaCodigoMm, dpi)
+    : Math.max(20, Math.round(util * 0.7));
 
   // o EAN-13 gasta 95 módulos; centraliza o que sobra na etiqueta
   const larguraCodigo = 95 * estreita;
