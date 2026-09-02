@@ -1,0 +1,479 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  background: #111827;
+  color: #f9fafb;
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px 16px 48px;
+}
+
+/* ---------- Topbar ---------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.topbar h1 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.icon-button {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  font-size: 1.1rem;
+  color: #f9fafb;
+  cursor: pointer;
+}
+
+/* ---------- Navegação de mês ---------- */
+
+.month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 16px 0 12px;
+}
+
+.nav-button {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 10px;
+  width: 44px;
+  height: 44px;
+  font-size: 1.4rem;
+  color: #f9fafb;
+  cursor: pointer;
+}
+
+.month-label {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.month-label span:first-child {
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+/* ---------- Legenda ---------- */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-bottom: 12px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  background: #374151;
+}
+
+.dot.weekend {
+  background: #4b5563;
+}
+
+.dot.holiday-nacional {
+  background: #f87171;
+}
+
+.dot.holiday-municipal {
+  background: #a78bfa;
+}
+
+.dot.holiday-facultativo {
+  background: #fbbf24;
+}
+
+.dot.has-entry {
+  background: #34d399;
+}
+
+/* ---------- Calendário ---------- */
+
+.calendar-wrap {
+  background: #1f2937;
+  border-radius: 14px;
+  padding: 10px;
+  border: 1px solid #374151;
+}
+
+.weekday-row,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.weekday-row {
+  margin-bottom: 6px;
+  font-size: 0.7rem;
+  color: #9ca3af;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.day-cell {
+  position: relative;
+  min-height: 62px;
+  border-radius: 8px;
+  background: #111827;
+  border: 1px solid transparent;
+  padding: 4px;
+  text-align: left;
+  color: #f9fafb;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.day-cell.outside {
+  visibility: hidden;
+  cursor: default;
+  pointer-events: none;
+}
+
+.day-cell .day-number {
+  font-weight: 600;
+}
+
+.day-cell.weekend {
+  background: #1a2332;
+}
+
+.day-cell.holiday-nacional {
+  box-shadow: inset 0 0 0 1.5px #f87171;
+}
+
+.day-cell.holiday-municipal {
+  box-shadow: inset 0 0 0 1.5px #a78bfa;
+}
+
+.day-cell.holiday-facultativo,
+.day-cell.holiday-personalizado {
+  box-shadow: inset 0 0 0 1.5px #fbbf24;
+}
+
+.day-cell.today .day-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #2563eb;
+}
+
+.day-cell .holiday-tag {
+  font-size: 0.6rem;
+  line-height: 1.1;
+  color: #d1d5db;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.day-cell .entry-badge {
+  margin-top: auto;
+  align-self: flex-start;
+  background: #059669;
+  color: #ecfdf5;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.day-cell:active {
+  transform: scale(0.97);
+}
+
+/* ---------- Resumo ---------- */
+
+.resumo {
+  margin-top: 24px;
+}
+
+.resumo-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.resumo-header h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.resumo-total {
+  font-weight: 700;
+  color: #34d399;
+}
+
+.resumo-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.resumo-vazio {
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+.resumo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.resumo-item .resumo-item-data {
+  font-weight: 600;
+  min-width: 74px;
+}
+
+.resumo-item .resumo-item-info {
+  flex: 1;
+  color: #d1d5db;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resumo-item .resumo-item-horas {
+  font-weight: 700;
+  color: #34d399;
+}
+
+/* ---------- Botões ---------- */
+
+.primary-button {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.primary-button:disabled {
+  background: #374151;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.secondary-button {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #374151;
+  background: #1f2937;
+  color: #f9fafb;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.danger-button {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #7f1d1d;
+  background: #1f2937;
+  color: #fca5a5;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #60a5fa;
+  text-decoration: underline;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.link-button.small {
+  font-size: 0.7rem;
+}
+
+/* ---------- Modais (<dialog>) ---------- */
+
+dialog {
+  border: none;
+  border-radius: 14px;
+  padding: 20px;
+  background: #1f2937;
+  color: #f9fafb;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+dialog h2 {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+dialog h3 {
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+dialog form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #d1d5db;
+}
+
+dialog input,
+dialog select {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #374151;
+  background: #111827;
+  color: #f9fafb;
+  font-size: 1rem;
+}
+
+.time-row {
+  display: flex;
+  gap: 10px;
+}
+
+.time-row label {
+  flex: 1;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.holiday-note {
+  background: #312e15;
+  border: 1px solid #7c6a11;
+  color: #fde68a;
+  font-size: 0.8rem;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin: 0;
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 0;
+}
+
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.modal-actions .spacer {
+  flex: 1;
+}
+
+.custom-holiday-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.custom-holiday-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+}
+
+.custom-holiday-item button {
+  background: none;
+  border: none;
+  color: #fca5a5;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.add-holiday-row {
+  display: flex;
+  gap: 8px;
+}
+
+.add-holiday-row input[type="date"] {
+  flex: 0 0 140px;
+}
+
+.add-holiday-row input[type="text"] {
+  flex: 1;
+}
+
+@media (max-width: 380px) {
+  .day-cell {
+    min-height: 52px;
+    font-size: 0.72rem;
+  }
+}
