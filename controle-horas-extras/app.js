@@ -321,8 +321,8 @@
       el.fObs.value = entry.obs || '';
       el.btnExcluir.classList.remove('hidden');
     } else {
-      const eDiaEspecial = ehFimDeSemana(data) || !!feriado;
-      el.fTipo.value = eDiaEspecial ? '100%' : '50%';
+      // Tipo padrão fixo em 100% (troque no seletor se for outro).
+      el.fTipo.value = '100%';
       el.fTipoOutro.value = '';
       // Horário padrão de hora extra: 18:00 às 20:00 (edite se for diferente).
       el.fInicio.value = '18:00';
