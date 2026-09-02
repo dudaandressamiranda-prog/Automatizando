@@ -741,11 +741,13 @@ export function NotaFiscal() {
               {marcadas.length} item{marcadas.length === 1 ? '' : 's'} → {totalProdutos} produto
               {totalProdutos === 1 ? '' : 's'}
               {totalEtiquetas > 0 && ` · ${totalEtiquetas} etiqueta${totalEtiquetas === 1 ? '' : 's'}`}
+              {buscaFotos?.ativo && ' · aguardando a busca de fotos terminar…'}
             </span>
             <button
               className="selbar-save"
               onClick={importar}
-              disabled={salvando || marcadas.length === 0 || pendencias.length > 0}
+              disabled={salvando || marcadas.length === 0 || pendencias.length > 0 || Boolean(buscaFotos?.ativo)}
+              title={buscaFotos?.ativo ? 'Espere a busca de fotos terminar — senão quem ainda não foi buscado entra sem foto' : undefined}
             >
               {salvando ? 'Gravando…' : 'Cadastrar no catálogo'}
             </button>
