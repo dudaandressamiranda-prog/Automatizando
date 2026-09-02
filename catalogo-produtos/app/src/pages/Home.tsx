@@ -93,6 +93,23 @@ export function Home({ navigate, buscaInicial }: Props) {
   }, [topIds, byId, recent, products]);
   const featuredTitle = featured !== recent ? '✨ Mais pedidos' : '✨ Destaques';
 
+  // produtos que nasceram hoje (created_at não muda em reprocessamento —
+  // só reflete cadastro novo de verdade, não item que só ganhou uma edição)
+  const novosHoje = useMemo(() => {
+    const hoje = new Date();
+    const mesmoDia = (iso: string) => {
+      const d = new Date(iso);
+      return (
+        d.getFullYear() === hoje.getFullYear() &&
+        d.getMonth() === hoje.getMonth() &&
+        d.getDate() === hoje.getDate()
+      );
+    };
+    return products
+      .filter((p) => mesmoDia(p.created_at))
+      .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  }, [products]);
+
   async function compartilhar() {
     const r = await compartilharApp(APP_NAME);
     if (r === 'cancelado') return;
@@ -200,6 +217,12 @@ export function Home({ navigate, buscaInicial }: Props) {
             <>
               <h2 className="section-title">{featuredTitle}</h2>
               <CardGrid products={featured} signed={signed} />
+            </>
+          )}
+          {novosHoje.length > 0 && (
+            <>
+              <h2 className="section-title">🆕 Novos hoje</h2>
+              <CardGrid products={novosHoje} signed={signed} />
             </>
           )}
         </>
