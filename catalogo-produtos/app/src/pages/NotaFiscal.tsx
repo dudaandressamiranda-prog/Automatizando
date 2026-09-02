@@ -17,10 +17,20 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * objeto simples com `.message`. `e instanceof Error` dá falso pra ele, e
  * `String(e)` vira o inútil "[object Object]" em vez do motivo de
  * verdade. Esta função pega a mensagem dos dois formatos.
+ *
+ * `.details` também entra quando existe: é ali que o Postgres diz QUAL
+ * valor bateu de frente — "duplicate key..." sozinho não diz qual
+ * código de barras é o culpado, só o `details` diz
+ * ("Key (barcode)=(789...) already exists."). Sem isso, quem lê o erro
+ * não tem por onde começar a procurar o produto em conflito.
  */
 function mensagemErro(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  if (e && typeof e === 'object' && 'message' in e) return String((e as { message: unknown }).message);
+  if (e && typeof e === 'object') {
+    const obj = e as { message?: unknown; details?: unknown };
+    const msg = 'message' in obj ? String(obj.message) : e instanceof Error ? e.message : String(e);
+    const det = 'details' in obj && obj.details ? ` — ${String(obj.details)}` : '';
+    return msg + det;
+  }
   return String(e);
 }
 
