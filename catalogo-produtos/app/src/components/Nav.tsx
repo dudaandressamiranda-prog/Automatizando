@@ -201,7 +201,7 @@ export function Nav({ route, onNavigate, onSignOut, email, admin, store, onChoos
             className={`nav-item ${route.page === 'review' ? 'active' : ''}`}
             onClick={onNavigate}
           >
-            <span className="nav-ico">🏷️</span> A revisar (sem código)
+            <span className="nav-ico">🏷️</span> A revisar (desativados)
           </a>
           <a
             href="#/logs"
