@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <title>Controle de Horas Extras</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <h1>Controle de Horas Extras</h1>
+      <button id="btnConfig" class="icon-button" title="Configurações" aria-label="Configurações">⚙️</button>
+    </header>
+
+    <section class="month-nav">
+      <button id="btnMesAnterior" class="nav-button" aria-label="Mês anterior">‹</button>
+      <div class="month-label">
+        <span id="mesAtualLabel">—</span>
+        <button id="btnHoje" class="link-button small">hoje</button>
+      </div>
+      <button id="btnMesSeguinte" class="nav-button" aria-label="Próximo mês">›</button>
+    </section>
+
+    <section class="legend">
+      <span class="legend-item"><i class="dot weekend"></i>Fim de semana</span>
+      <span class="legend-item"><i class="dot holiday-nacional"></i>Feriado nacional</span>
+      <span class="legend-item"><i class="dot holiday-municipal"></i>Feriado de Contagem</span>
+      <span class="legend-item"><i class="dot holiday-facultativo"></i>Ponto facultativo</span>
+      <span class="legend-item"><i class="dot has-entry"></i>Hora extra lançada</span>
+    </section>
+
+    <section class="calendar-wrap">
+      <div class="weekday-row" id="weekdayRow"></div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </section>
+
+    <section class="resumo">
+      <div class="resumo-header">
+        <h2>Resumo do mês</h2>
+        <span id="resumoTotal" class="resumo-total">0:00 h</span>
+      </div>
+      <div id="resumoLista" class="resumo-lista">
+        <p class="resumo-vazio">Nenhuma hora extra lançada neste mês. Toque em um dia no calendário para adicionar.</p>
+      </div>
+      <button id="btnExportar" class="primary-button" disabled>Exportar PDF</button>
+    </section>
+  </main>
+
+  <!-- Modal: lançar/editar hora extra de um dia -->
+  <dialog id="dayModal">
+    <form id="dayForm" method="dialog">
+      <h2 id="modalDataTitulo">—</h2>
+      <p id="modalHolidayNote" class="holiday-note hidden"></p>
+
+      <label>Tipo de hora extra
+        <select id="fTipo">
+          <option value="50%">50%</option>
+          <option value="100%">100%</option>
+          <option value="Banco de horas">Banco de horas</option>
+          <option value="Sobreaviso">Sobreaviso</option>
+          <option value="outro">Outro…</option>
+        </select>
+      </label>
+      <label id="fTipoOutroWrap" class="hidden">Especifique o tipo
+        <input type="text" id="fTipoOutro" placeholder="ex: Adicional noturno" />
+      </label>
+
+      <div class="time-row">
+        <label>Início
+          <input type="time" id="fInicio" />
+        </label>
+        <label>Fim
+          <input type="time" id="fFim" />
+        </label>
+      </div>
+
+      <label>Total de horas
+        <input type="text" id="fHoras" placeholder="ex: 2:30" inputmode="decimal" required />
+      </label>
+
+      <label>Observação (opcional)
+        <input type="text" id="fObs" placeholder="ex: plantão, cobertura de turno..." />
+      </label>
+
+      <div class="modal-actions">
+        <button type="button" id="btnExcluir" class="danger-button hidden">Excluir</button>
+        <span class="spacer"></span>
+        <button type="button" id="btnCancelarDia" class="link-button">Cancelar</button>
+        <button type="submit" class="primary-button">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Modal: exportar PDF -->
+  <dialog id="exportModal">
+    <form id="exportForm" method="dialog">
+      <h2>Exportar relatório em PDF</h2>
+      <label>Título do relatório
+        <input type="text" id="eTitulo" required />
+      </label>
+      <label>Nome do(a) colaborador(a)
+        <input type="text" id="eNome" placeholder="opcional" />
+      </label>
+      <label>Filtrar por tipo
+        <select id="eTipoFiltro">
+          <option value="todos">Todos os tipos</option>
+        </select>
+      </label>
+      <div class="modal-actions">
+        <span class="spacer"></span>
+        <button type="button" id="btnCancelarExport" class="link-button">Cancelar</button>
+        <button type="submit" class="primary-button">Gerar PDF</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Modal: configurações -->
+  <dialog id="settingsModal">
+    <form id="settingsForm" method="dialog">
+      <h2>Configurações</h2>
+      <label>Nome do(a) colaborador(a) (usado no PDF)
+        <input type="text" id="sNome" />
+      </label>
+
+      <hr />
+      <h3>Feriados personalizados</h3>
+      <p class="hint">
+        Os feriados nacionais e os de Contagem/MG já vêm calculados automaticamente.
+        Use isto apenas se o calendário oficial da sua empresa tiver alguma
+        diferença (ex.: um feriado específico do setor, ou um decreto local
+        que altere uma data).
+      </p>
+      <div id="customHolidayList" class="custom-holiday-list"></div>
+      <div class="add-holiday-row">
+        <input type="date" id="chData" />
+        <input type="text" id="chNome" placeholder="Nome do feriado" />
+        <button type="button" id="chAdd" class="secondary-button">Adicionar</button>
+      </div>
+
+      <div class="modal-actions">
+        <span class="spacer"></span>
+        <button type="submit" class="primary-button">Fechar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="holidays.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
