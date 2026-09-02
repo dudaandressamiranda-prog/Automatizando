@@ -133,17 +133,24 @@ export function NotaFiscal() {
       setNota(n);
       const novasLinhas: Linha[] = n.itens.map((item, i) => {
         const existente = item.ean ? porEan.get(item.ean) : undefined;
+        const semFoto = !existente || !(existente.photo_path || existente.photo_source_url);
         return {
           key: `${item.numero}-${i}`,
           item,
-          // já cadastrado entra desmarcado: o padrão é não mexer no que existe
-          incluir: !existente,
-          nome: item.descricao,
+          // já cadastrado e completo entra desmarcado — não mexe no que já
+          // está pronto. Já cadastrado mas sem foto entra marcado: é
+          // exatamente para reprocessar esse caso (achar a foto e ativar,
+          // sem duplicar o cadastro) que dá pra carregar a mesma nota de novo.
+          incluir: semFoto,
+          // vem do cadastro atual quando o produto já existe — reprocessar
+          // a nota não pode apagar nome, marca ou categoria que alguém já
+          // tenha corrigido à mão desde a primeira entrada.
+          nome: existente?.name ?? item.descricao,
           ean: item.ean ?? '',
-          marca: '',
+          marca: existente?.brand ?? '',
           categoriaId: existente?.category_id ?? sugerirCategoria(item.descricao),
           fornecedor: n.fornecedor,
-          photoUrl: '',
+          photoUrl: existente?.photo_source_url ?? '',
           fator: item.fatorConversao,
           // uma etiqueta por unidade recebida é o padrão do balcão
           etiquetas: Math.max(0, Math.round(item.quantidadeComercial * item.fatorConversao)),
@@ -153,12 +160,10 @@ export function NotaFiscal() {
       });
       setLinhas(novasLinhas);
       setBuscaFotos(null);
-      // nota carregada: já sai procurando a foto de cada item novo com
-      // código de barras, sem precisar rodar nada por fora do app
+      // nota carregada: já sai procurando a foto de quem ainda não tem —
+      // item novo ou já cadastrado, sem precisar rodar nada por fora do app
       void buscarFotosEmLote(
-        novasLinhas
-          .filter((l) => !(l.ean && porEan.has(l.ean)))
-          .map((l) => ({ key: l.key, ean: l.ean })),
+        novasLinhas.filter((l) => !l.photoUrl.trim()).map((l) => ({ key: l.key, ean: l.ean })),
       );
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -254,6 +259,11 @@ export function NotaFiscal() {
   const marcadas = linhas.filter((l) => l.incluir);
   const jaExistem = linhas.filter((l) => l.ean && porEan.has(l.ean)).length;
   const totalProdutos = marcadas.reduce((s, l) => s + Math.max(1, l.variacoes.length), 0);
+  // já cadastrado (achado pelo código) e sem variação vira atualização do
+  // que já existe, não um produto novo — a nota pode ter dos dois tipos
+  // ao mesmo tempo quando é um reprocessamento parcial.
+  const totalAtualizar = marcadas.filter((l) => l.ean && porEan.has(l.ean) && l.variacoes.length === 0).length;
+  const totalNovos = totalProdutos - totalAtualizar;
   const totalEtiquetas = marcadas.reduce(
     (s, l) => s + l.etiquetas * Math.max(1, l.variacoes.length),
     0,
@@ -283,25 +293,45 @@ export function NotaFiscal() {
     setErro(null);
     try {
       const novos: Record<string, unknown>[] = [];
+      const atualizacoes: { id: string; fields: Record<string, unknown> }[] = [];
       for (const l of marcadas) {
+        const existente = l.ean ? porEan.get(l.ean) : undefined;
         const base = {
           brand: l.marca.trim() || null,
-          supplier: l.fornecedor.trim() || null,
           category_id: l.categoriaId || null,
           photo_source_url: l.photoUrl.trim() || null,
-          source: 'manual',
-          notes: `Entrada pela NF ${nota?.numero ?? ''} — ${l.item.codigoFornecedor}`,
-          // produto só nasce ativo com foto; sem foto entra desativado e
-          // aparece em "A revisar", conforme a regra do catálogo
+          // produto só fica ativo com foto; sem foto (nova ou reprocessada)
+          // fica desativado e aparece em "A completar", conforme a regra do catálogo
           status: l.photoUrl.trim() ? 'ativo' : 'desativado',
           status_manual: true,
         };
+        // já existe pelo código de barras: é reprocessamento — atualiza o
+        // cadastro que já tem (a foto que faltava, e o que foi corrigido
+        // na tela) em vez de tentar duplicar, o que ia esbarrar no código
+        // de barras repetido.
+        if (existente && l.variacoes.length === 0) {
+          atualizacoes.push({
+            id: existente.id,
+            fields: {
+              ...base,
+              name: l.nome.trim(),
+              notes: `Reprocessado pela NF ${nota?.numero ?? ''} — ${l.item.codigoFornecedor}`,
+            },
+          });
+          continue;
+        }
+        const baseNovo = {
+          ...base,
+          supplier: l.fornecedor.trim() || null,
+          source: 'manual',
+          notes: `Entrada pela NF ${nota?.numero ?? ''} — ${l.item.codigoFornecedor}`,
+        };
         if (l.variacoes.length > 0) {
           for (const v of l.variacoes) {
-            novos.push({ ...base, name: `${l.nome.trim()} - ${v.nome.trim()}`, barcode: v.ean });
+            novos.push({ ...baseNovo, name: `${l.nome.trim()} - ${v.nome.trim()}`, barcode: v.ean });
           }
         } else {
-          novos.push({ ...base, name: l.nome.trim(), barcode: l.ean.trim() || null });
+          novos.push({ ...baseNovo, name: l.nome.trim(), barcode: l.ean.trim() || null });
         }
       }
 
@@ -311,7 +341,16 @@ export function NotaFiscal() {
         if (error) throw error;
         gravados += Math.min(50, novos.length - i);
       }
-      setResultado(`${gravados} produto${gravados === 1 ? '' : 's'} cadastrado${gravados === 1 ? '' : 's'}.`);
+      let atualizados = 0;
+      for (const a of atualizacoes) {
+        const { error } = await supabase.from('products').update(a.fields).eq('id', a.id);
+        if (error) throw error;
+        atualizados++;
+      }
+      const partes: string[] = [];
+      if (gravados > 0) partes.push(`${gravados} produto${gravados === 1 ? '' : 's'} cadastrado${gravados === 1 ? '' : 's'}`);
+      if (atualizados > 0) partes.push(`${atualizados} produto${atualizados === 1 ? '' : 's'} atualizado${atualizados === 1 ? '' : 's'}`);
+      setResultado(partes.length > 0 ? `${partes.join(' · ')}.` : 'Nada para gravar.');
       setNota(null);
       setLinhas([]);
       localStorage.removeItem(RASCUNHO);
@@ -465,6 +504,16 @@ export function NotaFiscal() {
             <button className="link-muted" onClick={descartar}>Descartar nota</button>
           </div>
 
+          {jaExistem > 0 && (
+            <div className="notice">
+              {jaExistem} item{jaExistem === 1 ? ' já está' : 'ns já estão'} cadastrado
+              {jaExistem === 1 ? '' : 's'} — quem ainda está sem foto veio <strong>marcado</strong>{' '}
+              para reprocessar (busca a foto e ativa, sem duplicar o cadastro). Nome, marca e
+              categoria vieram do cadastro atual, não da nota — o que você já corrigiu à mão
+              continua valendo, e dá pra ajustar de novo se precisar.
+            </div>
+          )}
+
           <div className="nf-acoes-topo">
             <button className="secondary" onClick={() => setLinhas((ls) => ls.map((l) => ({ ...l, incluir: true })))}>
               Marcar todos
@@ -562,7 +611,9 @@ export function NotaFiscal() {
                       <span className="badge nf-badge-foto" title="Foto encontrada">📷</span>
                     )}
                     {existente ? (
-                      <span className="badge nf-badge-existe">já no catálogo</span>
+                      <span className="badge nf-badge-existe" title="Já cadastrado — marcado, vai atualizar em vez de duplicar">
+                        {l.incluir && l.variacoes.length === 0 ? 'atualizar' : 'já no catálogo'}
+                      </span>
                     ) : (
                       <span className="badge nf-badge-novo">novo</span>
                     )}
@@ -601,14 +652,15 @@ export function NotaFiscal() {
                             value={l.ean}
                             onChange={(e) => onEanChange(l.key, e.target.value)}
                             inputMode="numeric"
-                            disabled={l.variacoes.length > 0}
+                            disabled={l.variacoes.length > 0 || Boolean(existente)}
+                            title={existente ? 'Já cadastrado com este código — é ele que faz a linha achar o produto certo' : undefined}
                           />
                         </label>
                         <button
                           type="button"
                           className="secondary"
                           onClick={() => onEanChange(l.key, gerarEan())}
-                          disabled={l.variacoes.length > 0}
+                          disabled={l.variacoes.length > 0 || Boolean(existente)}
                         >
                           ⊕ Gerar interno
                         </button>
@@ -738,8 +790,8 @@ export function NotaFiscal() {
 
           <div className="selbar selbar-cat">
             <span>
-              {marcadas.length} item{marcadas.length === 1 ? '' : 's'} → {totalProdutos} produto
-              {totalProdutos === 1 ? '' : 's'}
+              {marcadas.length} item{marcadas.length === 1 ? '' : 's'} → {totalNovos} novo{totalNovos === 1 ? '' : 's'}
+              {totalAtualizar > 0 && ` · ${totalAtualizar} atualizado${totalAtualizar === 1 ? '' : 's'}`}
               {totalEtiquetas > 0 && ` · ${totalEtiquetas} etiqueta${totalEtiquetas === 1 ? '' : 's'}`}
               {buscaFotos?.ativo && ' · aguardando a busca de fotos terminar…'}
             </span>

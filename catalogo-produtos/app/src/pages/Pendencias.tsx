@@ -7,7 +7,7 @@ import { LIST_COLUMNS, STATUS_LABEL, type ListProduct } from '../lib/types';
 const PAGE = 1000;
 
 type Filtro = 'todos' | 'foto' | 'codigo' | 'ambos';
-type Campo = 'nome' | 'marca' | 'situacao';
+type Campo = 'nome' | 'marca' | 'situacao' | 'recente';
 
 const temFoto = (p: ListProduct) => Boolean(p.photo_path || p.photo_source_url);
 const temCodigo = (p: ListProduct) => Boolean(p.barcode);
@@ -68,6 +68,16 @@ export function Pendencias() {
       return true;
     });
 
+    // "recente" ordena por quando o cadastro mudou por último — é o que
+    // acha rápido quem acabou de entrar por uma nota, sem precisar rolar
+    // uma lista de milhares em ordem alfabética
+    if (campo === 'recente') {
+      return [...filtrados].sort((a, b) => {
+        const cmp = a.updated_at.localeCompare(b.updated_at);
+        return crescente ? cmp : -cmp;
+      });
+    }
+
     const chave = (p: ListProduct) =>
       campo === 'marca' ? p.brand ?? '' : campo === 'situacao' ? p.status : p.name;
     return filtrados.sort((a, b) => {
@@ -93,7 +103,9 @@ export function Pendencias() {
     if (c === campo) setCrescente((v) => !v);
     else {
       setCampo(c);
-      setCrescente(true);
+      // "recente" começa do mais novo pro mais velho — é pra isso que
+      // alguém escolhe essa ordem; os outros campos começam A→Z de sempre
+      setCrescente(c !== 'recente');
     }
   }
 
@@ -142,6 +154,7 @@ export function Pendencias() {
       <div className="pend-ordem">
         <span className="muted small">Ordenar por</span>
         {([
+          ['recente', 'Mais recente'],
           ['nome', 'Produto'],
           ['marca', 'Marca'],
           ['situacao', 'Situação'],
