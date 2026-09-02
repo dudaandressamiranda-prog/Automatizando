@@ -14,22 +14,23 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Erro do Supabase (PostgrestError) não é uma instância de `Error` — é um
- * objeto simples com `.message`. `e instanceof Error` dá falso pra ele, e
- * `String(e)` vira o inútil "[object Object]" em vez do motivo de
- * verdade. Esta função pega a mensagem dos dois formatos.
+ * objeto simples com `.message`, `.details`, `.hint` e `.code`.
+ * `e instanceof Error` dá falso pra ele, e `String(e)` vira o inútil
+ * "[object Object]" em vez do motivo de verdade.
  *
- * `.details` também entra quando existe: é ali que o Postgres diz QUAL
- * valor bateu de frente — "duplicate key..." sozinho não diz qual
- * código de barras é o culpado, só o `details` diz
- * ("Key (barcode)=(789...) already exists."). Sem isso, quem lê o erro
- * não tem por onde começar a procurar o produto em conflito.
+ * Junta TODOS os campos que vierem preenchidos — não só `.message` — para
+ * nunca esconder a pista que importa. É no `.details` que o Postgres diz
+ * QUAL valor bateu de frente ("Key (barcode)=(789...) already exists.");
+ * sem ele, "duplicate key..." sozinho não diz qual produto é o culpado.
  */
 function mensagemErro(e: unknown): string {
+  if (e instanceof Error && !('details' in e) && !('hint' in e) && !('code' in e)) return e.message;
   if (e && typeof e === 'object') {
-    const obj = e as { message?: unknown; details?: unknown };
-    const msg = 'message' in obj ? String(obj.message) : e instanceof Error ? e.message : String(e);
-    const det = 'details' in obj && obj.details ? ` — ${String(obj.details)}` : '';
-    return msg + det;
+    const obj = e as Record<string, unknown>;
+    const partes = ['message', 'details', 'hint', 'code']
+      .map((campo) => (obj[campo] ? `${campo}: ${String(obj[campo])}` : null))
+      .filter((x): x is string => Boolean(x));
+    if (partes.length > 0) return partes.join(' — ');
   }
   return String(e);
 }
