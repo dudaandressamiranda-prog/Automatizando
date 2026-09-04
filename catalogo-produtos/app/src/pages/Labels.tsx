@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { diagnosticar, enviarParaImpressora, nomeImpressora, type Diagnostico, type Impressora } from '../lib/browserprint';
 import { eanSvg, isValidEan13 } from '../lib/ean';
-import { eplCalibrar, gerarEpl, gerarEplTeste } from '../lib/epl';
+import { eplCalibrar, gerarEpl, gerarEplFileiras, gerarEplTeste } from '../lib/epl';
 import { useCatalog } from '../lib/catalog';
 import { criarBusca } from '../lib/busca';
 import {
@@ -9,12 +9,15 @@ import {
   FORMATOS,
   type FormatoEtiqueta,
   gerarZpl,
+  gerarZplFileiras,
   gerarZplTeste,
   larguraFitaMm,
   moduloParaLargura,
   zplCalibrar,
   type ItemEtiqueta,
 } from '../lib/zpl';
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Impressão de etiquetas de código de barras na Zebra.
@@ -151,6 +154,19 @@ export function Labels() {
         : gerarZpl(itens, { formato, darkness, mostrarNome, ribbon }),
     [itens, formato, darkness, mostrarNome, linguagem, ribbon],
   );
+  /**
+   * Uma fileira por elemento — é o que vai pra impressão direta. Mandar a
+   * fila inteira (etiquetagem grande, 60-70+ etiquetas) num só `/write` já
+   * derrubou o Browser Print com erro 500; fileira por fileira cada
+   * chamada é pequena e a impressora processa conforme chega.
+   */
+  const zplFileiras = useMemo(
+    () =>
+      linguagem === 'epl'
+        ? gerarEplFileiras(itens, { formato, densidade: darkness, mostrarNome })
+        : gerarZplFileiras(itens, { formato, darkness, mostrarNome, ribbon }),
+    [itens, formato, darkness, mostrarNome, linguagem, ribbon],
+  );
 
   function addProduto(nome: string, barcode: string) {
     setFila((f) => ({
@@ -216,6 +232,36 @@ export function Labels() {
     try {
       const r = await enviarParaImpressora(z, conteudo);
       setAviso(r.ok ? `Enviado para ${nomeImpressora(z)}.` : `Não consegui imprimir — ${r.erro}`);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  /**
+   * Manda a fila inteira, fileira por fileira, em vez de um payload só —
+   * ver o comentário de `zplFileiras`. Para no primeiro erro e conta pra
+   * quem está vendo quantas já saíram, já que um lote grande pode ter
+   * ido em parte antes de travar.
+   */
+  async function imprimirTudo() {
+    const z = zebras.find((p) => p.uid === zebraUid);
+    if (!z || zplFileiras.length === 0) return;
+    setEnviando(true);
+    setAviso(null);
+    try {
+      for (let i = 0; i < zplFileiras.length; i++) {
+        const r = await enviarParaImpressora(z, zplFileiras[i]!);
+        if (!r.ok) {
+          setAviso(
+            `Enviei ${i} de ${zplFileiras.length} fileiras e travou — ${r.erro}. ` +
+              'As etiquetas já enviadas devem ter saído; tente de novo para o resto.',
+          );
+          return;
+        }
+        setAviso(`Enviando… ${i + 1}/${zplFileiras.length}`);
+        if (i < zplFileiras.length - 1) await sleep(150);
+      }
+      setAviso(`Enviado para ${nomeImpressora(z)} — ${zplFileiras.length} fileira${zplFileiras.length === 1 ? '' : 's'}.`);
     } finally {
       setEnviando(false);
     }
@@ -419,7 +465,7 @@ export function Labels() {
                     {zebras.map((z) => <option key={z.uid} value={z.uid}>{nomeImpressora(z)}</option>)}
                   </select>
                 )}
-                <button className="primary" onClick={() => imprimirDireto()} disabled={enviando}>
+                <button className="primary" onClick={imprimirTudo} disabled={enviando}>
                   {enviando ? 'Enviando…' : '🖨️ Imprimir na Zebra'}
                 </button>
                 <button className="secondary" onClick={() => window.print()}>Imprimir pelo navegador</button>

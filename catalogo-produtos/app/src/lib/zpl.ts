@@ -201,7 +201,15 @@ function expandir(itens: ItemEtiqueta[]): ItemEtiqueta[] {
   return todas;
 }
 
-export function gerarZpl(itens: ItemEtiqueta[], o: OpcoesZpl): string {
+/**
+ * Uma fileira (^XA...^XZ) por elemento — é o que a impressão direta usa
+ * para mandar aos poucos em vez de um payload só. Mandar uma etiquetagem
+ * grande (uma fila de 60-70 etiquetas, por exemplo) inteira num só
+ * `/write` já derrubou o Browser Print com erro 500: o programa não
+ * gosta de payload enorme numa chamada. Fileira por fileira, cada uma é
+ * pequena e a impressora vai processando conforme chega.
+ */
+export function gerarZplFileiras(itens: ItemEtiqueta[], o: OpcoesZpl): string[] {
   const dpi = o.dpi ?? DPI_PADRAO;
   const f = o.formato;
   const passoPt = mmParaPontos(f.larguraMm + f.gapMm, dpi);
@@ -219,7 +227,11 @@ export function gerarZpl(itens: ItemEtiqueta[], o: OpcoesZpl): string {
     fileiras.push(linhas.join('\n'));
   }
 
-  return fileiras.join('\n');
+  return fileiras;
+}
+
+export function gerarZpl(itens: ItemEtiqueta[], o: OpcoesZpl): string {
+  return gerarZplFileiras(itens, o).join('\n');
 }
 
 /**

@@ -108,7 +108,8 @@ function cabecalho(o: OpcoesEpl, dpi: number): string[] {
   ];
 }
 
-export function gerarEpl(itens: ItemEtiqueta[], o: OpcoesEpl): string {
+/** Uma fileira por elemento — ver o comentário equivalente em zpl.ts. */
+export function gerarEplFileiras(itens: ItemEtiqueta[], o: OpcoesEpl): string[] {
   const dpi = o.dpi ?? 203;
   const f = o.formato;
   const passoPt = mmParaPontos(f.larguraMm + f.gapMm, dpi);
@@ -124,7 +125,11 @@ export function gerarEpl(itens: ItemEtiqueta[], o: OpcoesEpl): string {
     fileiras.push(linhas.join('\n'));
   }
 
-  return fileiras.join('\n');
+  return fileiras;
+}
+
+export function gerarEpl(itens: ItemEtiqueta[], o: OpcoesEpl): string {
+  return gerarEplFileiras(itens, o).join('\n');
 }
 
 /**
