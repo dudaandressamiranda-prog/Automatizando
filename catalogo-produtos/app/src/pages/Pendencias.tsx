@@ -61,7 +61,7 @@ export function Pendencias() {
   const lista = useMemo(() => {
     const casa = criarBusca(q);
     const filtrados = produtos.filter((p) => {
-      if (casa && !casa(`${p.name} ${p.brand ?? ''}`)) return false;
+      if (casa && !casa(`${p.name} ${p.brand ?? ''} ${p.barcode ?? ''}`)) return false;
       if (filtro === 'foto') return !temFoto(p);
       if (filtro === 'codigo') return !temCodigo(p);
       if (filtro === 'ambos') return !temFoto(p) && !temCodigo(p);
@@ -128,7 +128,7 @@ export function Pendencias() {
       <div className="filtros">
         <input
           type="search"
-          placeholder="Buscar por nome ou marca — use % entre palavras"
+          placeholder="Buscar por nome, marca ou código de barras"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />

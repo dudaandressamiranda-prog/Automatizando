@@ -77,7 +77,11 @@ export function Review() {
 
   const filtered = useMemo(() => {
     const casa = criarBusca(q);
-    const base = casa ? products.filter((p) => casa(`${p.name} ${p.brand ?? ''}`)) : products;
+    // código de barras entra na busca: é como alguém acha o produto
+    // "sumido" que trava um cadastro novo por código duplicado — sem
+    // achar aqui (a única tela que mostra QUALQUER situação), não tinha
+    // como saber quem já é dono daquele código.
+    const base = casa ? products.filter((p) => casa(`${p.name} ${p.brand ?? ''} ${p.barcode ?? ''}`)) : products;
     if (ordem === 'nome') return base;
     // mais recente primeiro — acha na hora quem acabou de entrar ou de
     // ganhar foto, sem rolar uma lista grande em ordem alfabética
@@ -100,7 +104,7 @@ export function Review() {
       <div className="searchbar">
         <input
           type="search"
-          placeholder="Filtrar por nome ou marca — use % entre palavras"
+          placeholder="Filtrar por nome, marca ou código de barras"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
