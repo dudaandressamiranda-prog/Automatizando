@@ -1,18 +1,22 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { Photo } from '../components/Photo';
+import { eanSvg, isInternalEan, isValidEan13, nextInternalEan } from '../lib/ean';
+import { buscarFotoPorEan } from '../lib/fotoweb';
 import { cleanBarcode, norm } from '../lib/normalize';
+import { PRODUTO_RECENTE } from '../lib/recentes';
 import { PHOTO_BUCKET, supabase } from '../lib/supabase';
 import { STATUS_LABEL, type Category, type Product, type ProductStatus } from '../lib/types';
 
 const NEW_CATEGORY = '__nova__';
 
 interface Props {
-  navigate: (hash: string) => void;
+  /** Devolve para a tela de origem — a categoria de onde o produto foi aberto. */
+  voltar: () => void;
   productId?: string;
   initialBarcode?: string;
 }
 
-export function ProductForm({ navigate, productId, initialBarcode }: Props) {
+export function ProductForm({ voltar, productId, initialBarcode }: Props) {
   const editing = Boolean(productId);
 
   const [loaded, setLoaded] = useState(!editing);
@@ -32,6 +36,9 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [gerando, setGerando] = useState(false);
+  const [buscandoFoto, setBuscandoFoto] = useState(false);
+  const [avisoFoto, setAvisoFoto] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -66,6 +73,58 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
         setLoaded(true);
       });
   }, [productId]);
+
+  /**
+   * Gera o próximo código interno livre. Consulta os que já existem para
+   * continuar a contagem — dois produtos nunca recebem o mesmo número.
+   */
+  async function gerarInterno() {
+    setGerando(true);
+    setError(null);
+    try {
+      const usados: string[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data, error: err } = await supabase
+          .from('products')
+          .select('barcode')
+          .like('barcode', '2%')
+          .range(from, from + 999);
+        if (err) throw err;
+        usados.push(...(data ?? []).map((r) => r.barcode as string).filter(Boolean));
+        if (!data || data.length < 1000) break;
+      }
+      setBarcode(nextInternalEan(usados));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setGerando(false);
+    }
+  }
+
+  /**
+   * Procura a foto pelo código de barras nas mesmas lojas que a Entrada de
+   * nota já usa — serve para completar aqui um produto que nasceu sem
+   * foto (por exemplo, de antes de a busca automática existir). Só
+   * preenche o campo do link; nada é gravado até clicar em Salvar.
+   */
+  async function buscarFotoAutomatica() {
+    const limpo = barcode.trim();
+    if (!isValidEan13(limpo) || isInternalEan(limpo)) return;
+    setBuscandoFoto(true);
+    setAvisoFoto(null);
+    try {
+      const hit = await buscarFotoPorEan(limpo);
+      if (hit) {
+        setPhotoUrl(hit.image);
+        setPhotoFile(null);
+        setAvisoFoto('Foto encontrada — confira se é o produto certo antes de salvar.');
+      } else {
+        setAvisoFoto('Não encontrei foto para esse código nas lojas de sempre.');
+      }
+    } finally {
+      setBuscandoFoto(false);
+    }
+  }
 
   /** Cria a categoria (ou reaproveita uma existente que só difere em acento/caixa). */
   async function resolveCategory(): Promise<string | null> {
@@ -164,6 +223,11 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
     setBusy(true);
     try {
       const catId = await resolveCategory();
+      // Mexeu na situação aqui na tela? A decisão passa a ser sua: os
+      // importadores respeitam status_manual e não a desfazem na próxima
+      // planilha. Só marca quando o status realmente mudou, para salvar
+      // uma correção de nome não travar o produto sem querer.
+      const mudouStatus = !editing || (product != null && status !== product.status);
       const fields = {
         name: cleanName,
         barcode: barcodeValue,
@@ -172,6 +236,7 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
         category_id: catId,
         status,
         notes: notes.trim() || null,
+        ...(mudouStatus ? { status_manual: true } : {}),
       };
 
       let id = productId;
@@ -189,9 +254,72 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
       }
 
       await savePhoto(id!);
-      navigate('/');
+      // deixa o rastro para a lista rolar até este produto e destacá-lo
+      sessionStorage.setItem(PRODUTO_RECENTE, id!);
+      voltar();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * Cria um cadastro novo com os mesmos dados do atual — aproveita nome,
+   * marca, fornecedor, categoria, observações e foto, e já leva direto
+   * para editar a cópia, para só mexer no que muda de verdade (nome
+   * definitivo, código de barras). O original não é tocado.
+   *
+   * Código de barras nunca é copiado: é único no catálogo, então a cópia
+   * nasce sem ele (e por isso desativada, mesma regra de sempre) — quem
+   * duplica sabe que precisa digitar o código do item novo.
+   */
+  async function duplicar() {
+    if (!product) return;
+    const ok = window.confirm(
+      `Duplicar "${product.name}"? Cria um cadastro novo com os mesmos dados (menos o código de barras, que é único) — o original continua como está.`,
+    );
+    if (!ok) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const fields = {
+        name: `${product.name} (cópia)`,
+        barcode: null,
+        brand: product.brand,
+        supplier: product.supplier,
+        category_id: product.category_id,
+        notes: product.notes,
+        source: 'manual',
+        // sem código de barras não dá pra deixar ativo — mesma regra do resto do catálogo
+        status: 'desativado' as const,
+        status_manual: true,
+      };
+      const { data, error: err } = await supabase.from('products').insert(fields).select('id').single();
+      if (err) throw friendlyDbError(err);
+      const newId = data.id as string;
+
+      // a foto fica guardada num caminho por id do produto — não dá pra
+      // simplesmente reaproveitar o arquivo do original, precisa copiar
+      if (product.photo_path) {
+        const ext = product.photo_path.split('.').pop() ?? 'jpg';
+        const newPath = `products/${newId}/${Date.now()}.${ext}`;
+        const { error: copyErr } = await supabase.storage.from(PHOTO_BUCKET).copy(product.photo_path, newPath);
+        if (!copyErr) {
+          await supabase
+            .from('products')
+            .update({ photo_path: newPath, photo_updated_at: new Date().toISOString() })
+            .eq('id', newId);
+        }
+        // se a cópia falhar, a cópia do cadastro segue sem foto — dá pra
+        // completar na hora, já que a tela vai abrir editando ela
+      } else if (product.photo_source_url) {
+        await supabase.from('products').update({ photo_source_url: product.photo_source_url }).eq('id', newId);
+      }
+
+      window.location.hash = `#/p/${newId}`;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -207,7 +335,7 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
       setError(`Não foi possível excluir: ${err.message}`);
       return;
     }
-    navigate('/');
+    voltar();
   }
 
   if (!loaded) return <main><p className="muted">Carregando…</p></main>;
@@ -217,7 +345,7 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
       <button
         type="button"
         className="back back-btn"
-        onClick={() => (window.history.length > 1 ? window.history.back() : navigate('/'))}
+        onClick={voltar}
       >
         ‹ Voltar
       </button>
@@ -244,6 +372,22 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
             placeholder="6 a 14 dígitos (opcional)"
           />
         </label>
+        <div className="ean-tools">
+          <button type="button" className="secondary" onClick={gerarInterno} disabled={gerando}>
+            {gerando ? 'Gerando…' : '⊕ Gerar código interno'}
+          </button>
+          <span className="muted tiny">
+            Para produto sem EAN do fornecedor, ou quando o fornecedor repete o
+            mesmo código em variações diferentes. Usa a faixa 2, reservada para
+            uso interno — não colide com código de fabricante.
+          </span>
+        </div>
+        {isValidEan13(barcode.trim()) && (
+          <div
+            className="ean-preview"
+            dangerouslySetInnerHTML={{ __html: eanSvg(barcode.trim(), { modulo: 2, altura: 48 }) }}
+          />
+        )}
 
         <label>
           Marca
@@ -302,6 +446,24 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
             disabled={Boolean(photoFile)}
           />
         </label>
+        {isValidEan13(barcode.trim()) && !isInternalEan(barcode.trim()) && (
+          <div className="ean-tools">
+            <button type="button" className="secondary" onClick={buscarFotoAutomatica} disabled={buscandoFoto}>
+              {buscandoFoto ? 'Buscando…' : '🔎 Buscar foto automaticamente'}
+            </button>
+            <span className="muted tiny">
+              {avisoFoto ?? 'Procura pelo código de barras nas mesmas lojas da Entrada de nota.'}
+            </span>
+          </div>
+        )}
+        {photoUrl.trim() && !photoFile && (
+          <img
+            src={photoUrl.trim()}
+            alt=""
+            className="photo"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+        )}
 
         <label>
           Observações
@@ -322,7 +484,20 @@ export function ProductForm({ navigate, productId, initialBarcode }: Props) {
           <button type="submit" className="primary" disabled={busy}>
             {busy ? 'Salvando…' : 'Salvar'}
           </button>
-          <a href="#/" className="secondary button-link">Cancelar</a>
+          <button type="button" className="secondary" onClick={voltar} disabled={busy}>
+            Cancelar
+          </button>
+          {editing && (
+            <button
+              type="button"
+              className="secondary"
+              onClick={duplicar}
+              disabled={busy}
+              title="Cria um produto novo com os mesmos dados, pronto para ajustar"
+            >
+              ⧉ Duplicar
+            </button>
+          )}
           {editing && (
             <button type="button" className="danger" onClick={onDelete} disabled={busy}>
               Excluir

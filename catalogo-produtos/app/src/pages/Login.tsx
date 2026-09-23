@@ -11,14 +11,27 @@ export function Login() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+    // O teclado do celular põe maiúscula na primeira letra e o preenchimento
+    // automático costuma deixar um espaço no fim — os dois fazem o servidor
+    // recusar o endereço como "formato inválido", que é um erro difícil de
+    // adivinhar olhando a tela.
+    const limpo = email.trim().toLowerCase();
+    const { error: err } = await supabase.auth.signInWithPassword({ email: limpo, password });
     setBusy(false);
     if (err) {
-      setError(
-        err.message === 'Invalid login credentials'
-          ? 'Email ou senha incorretos.'
-          : `Não foi possível entrar: ${err.message}`,
-      );
+      const m = err.message.toLowerCase();
+      if (m.includes('invalid login credentials')) {
+        setError(
+          'Email ou senha incorretos — ou este email ainda não tem acesso criado. ' +
+            'Confira com o responsável se a conta já foi cadastrada.',
+        );
+      } else if (m.includes('validate email') || m.includes('invalid format')) {
+        setError('Este email não parece válido. Confira se não faltou o @ ou sobrou espaço.');
+      } else if (m.includes('email not confirmed')) {
+        setError('Conta criada, mas o email ainda não foi confirmado. Peça ao responsável para confirmar.');
+      } else {
+        setError(`Não foi possível entrar: ${err.message}`);
+      }
     }
   }
 
@@ -34,6 +47,10 @@ export function Login() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="username"
+            inputMode="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             required
           />
         </label>

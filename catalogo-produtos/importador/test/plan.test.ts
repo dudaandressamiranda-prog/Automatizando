@@ -16,6 +16,7 @@ function row(partial: Partial<ImportRow> & { name: string }): ImportRow {
     photoUrl: 'https://foto.exemplo/p.jpg', // regra: produto novo só entra com foto
     status: null,
     stock: null,
+    storeStock: null,
     ...partial,
   };
 }
@@ -30,6 +31,7 @@ function product(partial: Partial<ExistingProduct> & { id: string; name: string 
     external_id: null,
     photo_source_url: 'https://foto.exemplo/p.jpg', // igual ao row(): reimportação idêntica não gera mudança
     status: 'ativo',
+    status_manual: false,
     dedupe_key: dedupeKey(partial.name, partial.brand ?? null),
     ...partial,
   };
@@ -155,6 +157,169 @@ describe('buildPlan', () => {
     );
     expect(plan.inserts).toHaveLength(1);
     expect(plan.warnings[0]).toMatch(/mesmo código de barras/);
+  });
+
+  it('estoque na loja física reativa produto que o ERP marcou inativo', () => {
+    // Caso real: areia Pipicat está "Inativo/0" no Tiny (a loja online não
+    // vende) e tem 134 unidades no Eldorado. O catálogo serve o balcão.
+    const existing = [product({ id: 'p1', name: 'Areia Pipicat 4kg', barcode: '7891111111111', status: 'desativado' })];
+    const plan = buildPlan(
+      [row({ name: 'Areia Pipicat 4kg', barcode: '7891111111111', status: 'desativado', stock: 0, storeStock: 134 })],
+      existing,
+      [],
+      'site_admin',
+    );
+    expect(plan.updates).toHaveLength(1);
+    expect(plan.updates[0]!.changes.status).toBe('ativo');
+  });
+
+  it('desativado na mão NÃO volta, nem com estoque na loja', () => {
+    // A curadoria feita na tela é definitiva: sem isso, toda importação
+    // ressuscitaria o que foi tirado da vitrine de propósito.
+    const existing = [
+      product({
+        id: 'p1',
+        name: 'Produto tirado da vitrine',
+        barcode: '7891111111111',
+        status: 'desativado',
+        status_manual: true,
+      }),
+    ];
+    const plan = buildPlan(
+      [row({ name: 'Produto tirado da vitrine', barcode: '7891111111111', status: 'ativo', stock: 90, storeStock: 90 })],
+      existing,
+      [],
+      'site_admin',
+    );
+    expect(plan.updates).toHaveLength(0);
+    expect(plan.unchanged).toBe(1);
+  });
+
+  it('trava do status não impede atualizar nome, marca e foto', () => {
+    const existing = [
+      product({
+        id: 'p1',
+        name: 'Nome antigo',
+        barcode: '7891111111111',
+        status: 'desativado',
+        status_manual: true,
+      }),
+    ];
+    const plan = buildPlan(
+      [row({ name: 'Nome novo', barcode: '7891111111111', brand: 'Marca', status: 'ativo', storeStock: 5 })],
+      existing,
+      [],
+      'site_admin',
+    );
+    expect(plan.updates[0]!.changes.name).toBe('Nome novo');
+    expect(plan.updates[0]!.changes.brand).toBe('Marca');
+    expect(plan.updates[0]!.changes.status).toBeUndefined();
+  });
+
+  it('sem estoque nas lojas, a situação do ERP continua valendo', () => {
+    const existing = [product({ id: 'p1', name: 'Ração X', barcode: '7891111111111', status: 'ativo' })];
+    const plan = buildPlan(
+      [row({ name: 'Ração X', barcode: '7891111111111', status: 'desativado', stock: 0, storeStock: 0 })],
+      existing,
+      [],
+      'site_admin',
+    );
+    expect(plan.updates[0]!.changes.status).toBe('desativado');
+  });
+
+  it('produto novo inativo no ERP entra se tiver saldo na loja física', () => {
+    const plan = buildPlan(
+      [row({ name: 'Areia Pipicat 4kg', barcode: '7891111111111', status: 'desativado', stock: 55, storeStock: 55 })],
+      [],
+      [],
+      'site_admin',
+    );
+    expect(plan.inserts).toHaveLength(1);
+    expect(plan.inactiveSkipped).toBe(0);
+  });
+
+  it('produto que só vende no e-commerce entra, mesmo zerado nas lojas', () => {
+    // estoque só no depósito da loja online: total 5, lojas físicas 0
+    const plan = buildPlan(
+      [row({ name: 'Item só do site', barcode: '7891111111111', status: 'ativo', stock: 5, storeStock: 0 })],
+      [],
+      [],
+      'site_admin',
+    );
+    expect(plan.inserts).toHaveLength(1);
+    expect(plan.noStockSkipped).toBe(0);
+  });
+
+  it('zerado em todo lugar continua barrado', () => {
+    const plan = buildPlan(
+      [row({ name: 'Item parado', barcode: '7891111111111', status: 'ativo', stock: 0, storeStock: 0 })],
+      [],
+      [],
+      'site_admin',
+    );
+    expect(plan.inserts).toHaveLength(0);
+    expect(plan.noStockSkipped).toBe(1);
+  });
+
+  it('código repetido no arquivo: vale a ficha ativa com saldo, não a primeira', () => {
+    // Caso real do ERP: cadastro antigo (inativo, zerado) e cadastro em uso
+    // dividem o mesmo GTIN. Pegar a primeira linha desativava o produto vivo.
+    const existing = [product({ id: 'p1', name: 'Guia Marine G', barcode: '7891111111111', status: 'ativo' })];
+    const plan = buildPlan(
+      [
+        row({ name: 'CONJ. GUIA MARINE (antigo)', barcode: '7891111111111', status: 'desativado', stock: 0 }),
+        row({ name: 'Guia Marine G', barcode: '7891111111111', status: 'ativo', stock: 4 }),
+      ],
+      existing,
+      [],
+      'erp',
+    );
+    expect(plan.updates).toHaveLength(0); // nome e status já batem com a ficha viva
+    expect(plan.unchanged).toBe(1);
+    expect(plan.warnings[0]).toMatch(/mais viva no ERP/);
+  });
+
+  it('código repetido e fichas igualmente vivas: ganha o nome melhor escrito', () => {
+    const plan = buildPlan(
+      [
+        row({ name: 'CONJ. PEITORAL H E GUIA G MARINE', barcode: '7891111111111', status: 'ativo', stock: 4 }),
+        row({ name: 'Conjunto Peitoral H e Guia G Marine', barcode: '7891111111111', status: 'ativo', stock: 4 }),
+      ],
+      [],
+      [],
+      'erp',
+    );
+    expect(plan.inserts).toHaveLength(1);
+    expect(plan.inserts[0]!.name).toBe('Conjunto Peitoral H e Guia G Marine');
+  });
+
+  it('nome melhor escrito não passa por cima da ficha mais viva', () => {
+    const plan = buildPlan(
+      [
+        row({ name: 'Conjunto Peitoral H e Guia G Marine', barcode: '7891111111111', status: 'desativado', stock: 0 }),
+        row({ name: 'CONJ. PEITORAL H E GUIA G MARINE', barcode: '7891111111111', status: 'ativo', stock: 4 }),
+      ],
+      [],
+      [],
+      'erp',
+    );
+    expect(plan.inserts).toHaveLength(1);
+    expect(plan.inserts[0]!.name).toBe('CONJ. PEITORAL H E GUIA G MARINE');
+  });
+
+  it('código repetido e produto no banco desativado: a ficha viva reativa', () => {
+    const existing = [product({ id: 'p1', name: 'Guia Marine G', barcode: '7891111111111', status: 'desativado' })];
+    const plan = buildPlan(
+      [
+        row({ name: 'CONJ. GUIA MARINE (antigo)', barcode: '7891111111111', status: 'desativado', stock: 0 }),
+        row({ name: 'Guia Marine G', barcode: '7891111111111', status: 'ativo', stock: 4 }),
+      ],
+      existing,
+      [],
+      'erp',
+    );
+    expect(plan.updates).toHaveLength(1);
+    expect(plan.updates[0]!.changes.status).toBe('ativo');
   });
 
   it('categoria do ERP só preenche produto sem categoria (curadoria manual vence)', () => {

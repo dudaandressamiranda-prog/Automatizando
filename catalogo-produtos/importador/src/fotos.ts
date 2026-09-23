@@ -19,56 +19,7 @@ import { applyPlan, fetchExisting } from './lib/apply.js';
 import { isIgnorado, loadIgnorados } from './lib/ignorados.js';
 import { parseFile } from './lib/parse.js';
 import { buildPlan } from './lib/plan.js';
-import { classifyByStorePath } from './lib/storecat.js';
-
-/** Lojas com API pública de catálogo (VTEX) consultável por EAN. */
-const SHOPS = ['www.americanpet.com.br', 'www.cobasi.com.br'];
-
-const UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
-
-interface Hit {
-  image: string;
-  storeName: string;
-  storeCategory: string | null; // categoria que a loja usa (2ª evidência da classificação)
-  shop: string;
-}
-
-async function vtexByEan(shop: string, ean: string): Promise<Hit | null> {
-  const url = `https://${shop}/api/catalog_system/pub/products/search?fq=alternateIds_Ean:${ean}`;
-  let res: Response;
-  try {
-    res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(20000) });
-  } catch {
-    return null;
-  }
-  if (!res.ok) return null;
-  let data: unknown;
-  try {
-    data = await res.json();
-  } catch {
-    return null;
-  }
-  if (!Array.isArray(data)) return null;
-  for (const prod of data) {
-    for (const item of prod.items ?? []) {
-      // só aceita se o EAN da loja bate exatamente com o nosso
-      if (item.ean === ean || prod.productReference === ean) {
-        const image = item.images?.[0]?.imageUrl;
-        if (image) {
-          const storeCategory =
-            (prod.categories ?? [])
-              .map((c: string) => classifyByStorePath(c))
-              .find((c: string | null) => c) ?? null;
-          return { image, storeName: prod.productName, storeCategory, shop };
-        }
-      }
-    }
-  }
-  return null;
-}
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+import { SHOPS, type Hit, sleep, vtexByEan } from './lib/fotoweb.js';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -93,12 +44,16 @@ async function main() {
   const inCatalogBarcodes = new Set(existing.products.map((p) => p.barcode).filter(Boolean));
   const inCatalogIds = new Set(existing.products.map((p) => p.external_id).filter(Boolean));
 
-  // alvo: ativo (ou sem situação), sem foto na planilha, com EAN, fora do catálogo
+  // Alvo: ativo (ou sem situação), COM estoque em alguma loja, sem foto na
+  // planilha, com EAN, fora do catálogo. O filtro de estoque acompanha a
+  // regra do importador — sem ele o robô gastaria horas procurando foto de
+  // cadastro parado, que seria recusado na hora de gravar.
   const ignorados = loadIgnorados();
   const alvo = parsed.rows.filter(
     (r) =>
       !isIgnorado(ignorados, r) &&
       (!r.status || r.status === 'ativo') &&
+      !(r.stock !== null && r.stock <= 0) &&
       !r.photoUrl &&
       r.barcode &&
       !inCatalogBarcodes.has(r.barcode) &&

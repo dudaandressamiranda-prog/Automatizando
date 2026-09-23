@@ -62,6 +62,47 @@ for reconhecida:
 npm run import -- produtos.xlsx --map name="Descrição do Item" --map barcode="EAN13"
 ```
 
+### A ordem importa: ERP primeiro, painel depois
+
+Quando for importar as duas planilhas, rode **primeiro a do Tiny** e
+**depois a do painel**:
+
+```bash
+npm run import -- tiny.csv --apply --source=erp
+npm run import -- estoque.xlsx --apply --source=site_admin
+```
+
+O Tiny é a loja **online** e marca "Inativo/zerado" o que não vende pela
+internet — mesmo que o produto gire no balcão. A areia Pipicat, por
+exemplo, está inativa e zerada lá, com 19 unidades no Centro e 134 no
+Eldorado.
+
+Quem sabe da prateleira é a planilha do painel, que separa o estoque por
+depósito ("🐾 Centro (CP)", "🏥 Eldorado (CV)", "📦 Tiny"). O importador
+soma as **lojas físicas** e usa esse saldo como prova de que o produto
+existe no balcão: ele reativa o produto e o protege de ser desativado
+pela situação do ERP. Por isso o painel vem por último, corrigindo o que
+veio do Tiny.
+
+Já a regra que barra produto **sem estoque** olha o **total**, somando o
+depósito da loja online — existe o caminho inverso, produto que só vende
+no e-commerce e fica zerado nas duas lojas físicas. Ele continua sendo
+produto do catálogo; só sai quando está zerado em todo lugar.
+
+### O que você decide na mão fica decidido
+
+Ativar ou desativar um produto **pela tela** grava `status_manual` nele. A
+partir daí nenhum script mexe na situação desse produto: nem a
+importação, nem o `npm run regras`. Sem essa trava, desativar um item na
+mão seria trabalho perdido — a próxima planilha com estoque o traria de
+volta para a vitrine sozinho.
+
+A trava é só da **situação**. Nome, marca, foto e categoria continuam
+sendo atualizados normalmente pelas planilhas.
+
+Vale para as duas telas que mexem em status: a edição do produto e a
+seleção em massa (🏷️ → Desativar).
+
 ### Como o importador evita duplicar (reimportações)
 
 Cada linha é casada com a base nesta ordem:
@@ -259,6 +300,50 @@ npm run consolidar -- --apply # remove só os FORTE (backup em .csv)
 ```
 
 Rode sempre sem `--apply` primeiro e confira o CSV.
+
+### Foto obrigatória para ficar ativo (`npm run regras`)
+
+Regra do catálogo: produto **ativo precisa ter foto** — sem imagem
+ninguém reconhece o item na tela. Quem estiver ativo sem foto é
+desativado, some da vitrine e cai em **A revisar** no app. Nada é
+apagado, só muda o status.
+
+O código de barras é desejável, mas não derruba o produto: muito item que
+gira nas lojas ainda não tem EAN no cadastro, e tirá-lo da vitrine
+atrapalha mais do que ajuda. Use `--exigir-ean` quando quiser a regra
+estrita (foto **e** código).
+
+```bash
+npm run regras                        # lista o que está irregular
+npm run regras -- --apply             # desativa (backup em regras-desativados.csv)
+npm run regras -- --exigir-ean        # regra estrita: exige foto E código
+npm run regras -- --reativar --apply  # devolve à vitrine quem regularizou
+```
+
+O `--reativar` só desfaz o que este script desativou (a lista sai do
+próprio `regras-desativados.csv`) — produto desativado por outro motivo,
+como inativo no ERP ou decisão manual na tela, nunca é revertido sozinho.
+
+Vale rodar depois de cada importação, já que a planilha do ERP traz
+cadastros incompletos.
+
+### Recuperar EAN de outra planilha (`npm run recuperar-ean`)
+
+O ERP às vezes não tem o código de barras que a planilha do painel tem.
+Este script cruza os dois e preenche o que faltava:
+
+```bash
+npm run recuperar-ean -- planilha.xlsx           # relatório
+npm run recuperar-ean -- planilha.xlsx --apply   # grava os seguros
+```
+
+Só atribui quando os dois nomes têm exatamente as mesmas palavras (a
+pontuação pode diferir) **e** o casamento aponta para um único EAN. Isso é
+proposital: "MORDEDOR SUPER BOWL LED" não pode herdar o código de
+"MORDEDOR SUPER BOWL LED - Rosa", e um cadastro "pai" como o NexGard, que
+existe em 1 e em 3 comprimidos, não pode ficar com o EAN de uma das
+versões. O que sobra vai para `recuperar-ean-variacoes.csv`, para
+conferência manual.
 
 ## Decisões sobre a estrutura proposta
 

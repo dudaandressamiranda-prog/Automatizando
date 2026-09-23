@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { handleAuthError } from './authError';
 import { supabase } from './supabase';
-import { LIST_COLUMNS, type Category, type ListProduct } from './types';
+import { LIST_COLUMNS, type Category, type ListProduct, type ProductStatus } from './types';
 
 /** O Supabase devolve no máximo 1000 linhas por requisição. */
 const PAGE = 1000;
@@ -18,6 +18,12 @@ export function subLevel(name: string): string | null {
   return i === -1 ? null : name.slice(i + 1).trim();
 }
 
+/** Tudo depois do 1º nível, formatado bonito ("Sub > SubSub" → "Sub › SubSub"). */
+export function subPath(name: string): string | null {
+  const sub = subLevel(name);
+  return sub ? sub.split('>').map((s) => s.trim()).join(' › ') : null;
+}
+
 /**
  * Carrega o catálogo inteiro (uma vez) — a base é pequena (centenas de
  * produtos), então buscar tudo e filtrar no aparelho é mais rápido do
@@ -28,9 +34,11 @@ export function useCatalog() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let alive = true;
+    setLoading(true);
 
     async function load() {
       const cats = await supabase.from('categories').select('id, name').order('name');
@@ -71,7 +79,90 @@ export function useCatalog() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [reloadKey]);
 
-  return { products, categories, loading, error };
+  const reload = () => setReloadKey((k) => k + 1);
+
+  return { products, categories, loading, error, reload };
+}
+
+/** Cria uma categoria nova (uso do admin). Nome duplicado vira erro amigável. */
+export async function createCategory(name: string): Promise<void> {
+  const clean = name.trim();
+  if (!clean) throw new Error('Nome da categoria não pode ser vazio.');
+  const { error } = await supabase.from('categories').insert({ name: clean });
+  if (error) {
+    if (error.code === '23505') throw new Error('Essa categoria já existe.');
+    throw new Error(error.message);
+  }
+}
+
+/** Renomeia uma categoria (uso do admin). Nome duplicado vira erro amigável. */
+export async function renameCategory(id: string, name: string): Promise<void> {
+  const clean = name.trim();
+  if (!clean) throw new Error('Nome da categoria não pode ser vazio.');
+  const { error } = await supabase.from('categories').update({ name: clean }).eq('id', id);
+  if (error) {
+    if (error.code === '23505') throw new Error('Já existe uma categoria com esse nome.');
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * Exclui uma categoria (uso do admin). Produtos que estavam nela ficam sem
+ * categoria (caem em "Outros produtos") — não são apagados.
+ */
+export async function deleteCategory(id: string): Promise<void> {
+  const { error } = await supabase.from('categories').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+/** Conta quantos produtos existem em cada categoria (todas, não só ativas). */
+export async function countByCategory(): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('products')
+      .select('category_id')
+      .range(from, from + PAGE - 1);
+    if (error) break;
+    for (const r of (data ?? []) as { category_id: string | null }[]) {
+      if (r.category_id) counts.set(r.category_id, (counts.get(r.category_id) ?? 0) + 1);
+    }
+    if (!data || data.length < PAGE) break;
+  }
+  return counts;
+}
+
+/**
+ * Atribui uma categoria para vários produtos de uma vez (uso do admin, para
+ * corrigir categorização em massa). Faz em lotes para não estourar o limite
+ * de uma única requisição.
+ */
+export async function bulkSetCategory(ids: string[], categoryId: string): Promise<void> {
+  for (let i = 0; i < ids.length; i += 80) {
+    const { error } = await supabase
+      .from('products')
+      .update({ category_id: categoryId })
+      .in('id', ids.slice(i, i + 80));
+    if (error) throw error;
+  }
+}
+
+/**
+ * Muda o status de vários produtos de uma vez (uso do admin, ex.: desativar
+ * em massa). Produto desativado some da vitrine mas continua salvo — dá
+ * pra reativar depois. Faz em lotes para não estourar o limite da requisição.
+ *
+ * Marca `status_manual`: decisão tomada aqui na tela é definitiva, e os
+ * scripts de importação não a desfazem na próxima planilha.
+ */
+export async function bulkSetStatus(ids: string[], status: ProductStatus): Promise<void> {
+  for (let i = 0; i < ids.length; i += 80) {
+    const { error } = await supabase
+      .from('products')
+      .update({ status, status_manual: true })
+      .in('id', ids.slice(i, i + 80));
+    if (error) throw error;
+  }
 }

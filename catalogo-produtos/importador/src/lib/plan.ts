@@ -13,6 +13,8 @@ export interface ExistingProduct {
   external_id: string | null;
   photo_source_url: string | null;
   status: string;
+  /** Situação definida por uma pessoa no app — o importador não encosta. */
+  status_manual?: boolean;
   dedupe_key: string;
 }
 
@@ -65,6 +67,24 @@ export interface PlanOptions {
 }
 
 /**
+ * Nota de "capricho" do nome, usada só para desempatar fichas que dividem o
+ * mesmo código de barras. O nome vencedor é o que o cliente vê na tela, então
+ * entre dois cadastros igualmente válidos vale o mais bem escrito.
+ *
+ * Os sinais são os do próprio ERP: cadastro feito com pressa sai TODO EM
+ * CAIXA ALTA e cheio de abreviação ("CONJ. PEITORAL H E GUIA G MARINE"),
+ * enquanto o cadastro caprichado vem com acentuação e palavras inteiras
+ * ("Conjunto Peitoral H e Guia G Marine").
+ */
+export function qualidadeNome(nome: string): number {
+  let nota = 0;
+  if (nome !== nome.toUpperCase()) nota += 2; // tem minúscula: não é caixa alta
+  if (/[áàâãéêíóôõúüç]/i.test(nome)) nota += 1; // acentuação preservada
+  if (!/\b[A-Za-z]{2,6}\.(\s|$)/.test(nome)) nota += 1; // sem abreviação com ponto
+  return nota;
+}
+
+/**
  * Decide o que fazer com cada linha da planilha, sem tocar no banco.
  *
  * Ordem de casamento com produtos existentes:
@@ -107,9 +127,37 @@ export function buildPlan(
   const newCategories = new Map<string, string>(); // norm → nome original
 
   // Dentro da própria planilha também pode haver duplicata.
-  const seenBarcode = new Map<string, number>();
   const seenExternal = new Map<string, number>();
   const seenDedupe = new Map<string, number>();
+
+  /**
+   * O mesmo código de barras aparece em mais de uma ficha quando o ERP tem
+   * cadastro antigo e novo convivendo (ex.: "CONJ. PEITORAL H E GUIA G
+   * MARINE" inativo e "GUIA+PEITORAL H MARINE G" ativo com saldo, ambos com
+   * o mesmo GTIN). Vale a ficha viva — ativa e com estoque —, não a que
+   * aparecer primeiro na planilha, senão o produto entra desativado por
+   * causa de um cadastro que ninguém usa mais.
+   */
+  const vivacidade = (r: ImportRow): number => {
+    const ativo = r.status === 'ativo' ? 2 : r.status === null ? 1 : 0;
+    const saldo = r.stock !== null && r.stock > 0 ? 1 : 0;
+    return ativo * 2 + saldo;
+  };
+  const melhorPorBarcode = new Map<string, ImportRow>();
+  for (const row of rows) {
+    if (!row.barcode) continue;
+    const atual = melhorPorBarcode.get(row.barcode);
+    if (!atual) {
+      melhorPorBarcode.set(row.barcode, row);
+      continue;
+    }
+    const dif = vivacidade(row) - vivacidade(atual);
+    // Empatadas na "vivacidade", ganha a que está melhor escrita — é o
+    // nome que vai aparecer para o cliente na tela.
+    if (dif > 0 || (dif === 0 && qualidadeNome(row.name) > qualidadeNome(atual.name))) {
+      melhorPorBarcode.set(row.barcode, row);
+    }
+  }
 
   const inserts: ProductInsert[] = [];
   const updates: ProductUpdate[] = [];
@@ -126,12 +174,14 @@ export function buildPlan(
       seenExternal.set(row.externalId, row.line);
     }
     if (row.barcode) {
-      const prev = seenBarcode.get(row.barcode);
-      if (prev !== undefined) {
-        warnings.push(`Linha ${row.line}: mesmo código de barras (${row.barcode}) da linha ${prev} — ignorada.`);
+      const melhor = melhorPorBarcode.get(row.barcode)!;
+      if (melhor !== row) {
+        warnings.push(
+          `Linha ${row.line}: mesmo código de barras (${row.barcode}) da linha ${melhor.line} — ` +
+            `usada a linha ${melhor.line}, que está mais viva no ERP.`,
+        );
         continue;
       }
-      seenBarcode.set(row.barcode, row.line);
     }
     if (!row.externalId && !row.barcode) {
       const key = dedupeKey(row.name, row.brand);
@@ -175,10 +225,16 @@ export function buildPlan(
     }
 
     if (!match) {
-      if (requireActive && row.status && row.status !== 'ativo') {
+      // "na prateleira" vale mais que a situação do ERP: o Tiny inativa o
+      // que a loja online não vende, mesmo com o produto girando no balcão.
+      const naPrateleira = row.storeStock !== null && row.storeStock > 0;
+      if (requireActive && row.status && row.status !== 'ativo' && !naPrateleira) {
         inactiveSkipped++;
         continue;
       }
+      // Estoque zerado só barra quando está zerado em TODO lugar, somando a
+      // loja online: há produto que só vende no e-commerce e fica zerado nas
+      // duas lojas físicas — ele continua sendo produto do catálogo.
       if (requireStock && row.stock !== null && row.stock <= 0) {
         noStockSkipped++;
         continue;
@@ -207,10 +263,18 @@ export function buildPlan(
     const changes: ProductUpdate['changes'] = {};
     if (row.name && row.name !== match.name) changes.name = row.name;
     if (row.barcode && row.barcode !== match.barcode) {
+      const dono = byBarcode.get(row.barcode);
       if (match.barcode && matchedBy !== 'barcode') {
         warnings.push(
           `Linha ${row.line} ("${row.name}"): código da planilha (${row.barcode}) difere do cadastrado ` +
             `(${match.barcode}) — código NÃO alterado, confira manualmente.`,
+        );
+      } else if (dono && dono.id !== match.id) {
+        // O EAN já pertence a outro produto (tipicamente a variação "filho"
+        // do mesmo item). Gravar aqui violaria a unicidade do código.
+        warnings.push(
+          `Linha ${row.line} ("${row.name}"): código ${row.barcode} já pertence a "${dono.name}" ` +
+            `— código NÃO atribuído, confira se são o mesmo produto.`,
         );
       } else if (!match.barcode) {
         changes.barcode = row.barcode;
@@ -227,7 +291,29 @@ export function buildPlan(
     if (row.externalId && !match.external_id) changes.external_id = row.externalId;
     if (row.externalUrl) changes.external_url = row.externalUrl;
     if (row.photoUrl && row.photoUrl !== match.photo_source_url) changes.photo_source_url = row.photoUrl;
-    if (row.status && row.status !== match.status) changes.status = row.status;
+
+    /*
+     * Situação. Duas regras, nesta ordem:
+     *
+     * 1. Quem decidiu na mão manda. Produto com `status_manual` teve a
+     *    situação definida por uma pessoa na tela — desativar um item que
+     *    não se quer mais na vitrine é trabalho de curadoria, e planilha
+     *    nenhuma pode desfazer isso na importação seguinte.
+     *
+     * 2. Sem decisão humana, a planilha que sabe do estoque das lojas manda
+     *    mais do que a situação do ERP: o Tiny marca "Inativo" o que a loja
+     *    ONLINE não vende, mas o catálogo serve o balcão — a areia Pipicat
+     *    está inativa e zerada no Tiny e tem 134 unidades no Eldorado.
+     */
+    if (!match.status_manual) {
+      const naPrateleira = row.storeStock !== null && row.storeStock > 0;
+      if (naPrateleira && match.status === 'desativado') {
+        changes.status = 'ativo';
+      } else if (row.status && row.status !== match.status) {
+        // sem informação de prateleira, segue a situação da planilha
+        if (!(row.status !== 'ativo' && naPrateleira)) changes.status = row.status;
+      }
+    }
 
     if (Object.keys(changes).length === 0) {
       unchanged++;

@@ -41,6 +41,24 @@ const AUTO: Array<[Field, string[]]> = [
 
 export type ColumnMap = Partial<Record<Field, string>>;
 
+/** Nomes das lojas físicas como aparecem no cabeçalho da planilha do painel. */
+const LOJAS_FISICAS = ['centro', 'eldorado'];
+
+/**
+ * Colunas de estoque das LOJAS FÍSICAS, quando a planilha separa por
+ * depósito (ex.: "🐾 Centro (CP)", "🏥 Eldorado (CV)", "📦 Tiny", "Total").
+ *
+ * O depósito do Tiny fica de fora de propósito: é a loja online, que não
+ * vende todo o catálogo. Produto zerado lá pode estar cheio na prateleira —
+ * a areia Pipicat, por exemplo, tem 0 no Tiny e 134 no Eldorado.
+ */
+export function detectStoreColumns(headers: string[]): string[] {
+  return headers.filter((h) => {
+    const n = norm(h);
+    return LOJAS_FISICAS.some((loja) => n.includes(loja));
+  });
+}
+
 /**
  * Descobre qual coluna da planilha corresponde a cada campo.
  * `overrides` (vindos de --map campo="Coluna") têm prioridade.

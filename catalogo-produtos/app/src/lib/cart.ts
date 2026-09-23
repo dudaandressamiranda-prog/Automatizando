@@ -13,11 +13,19 @@ export interface Cart {
 }
 
 export type ItemStatus = 'pendente' | 'reposto' | 'nao_reposto';
-export type ItemReason = 'fora_estoque' | 'descontinuado' | 'aguardando';
+export type ItemReason = 'fora_estoque' | 'sem_galpao' | 'descontinuado' | 'aguardando';
 
-/** Rótulos das situações de reposição (usados na UI). */
+/**
+ * Rótulos das situações de reposição (usados na UI).
+ *
+ * "Fora de estoque" e "não tem no galpão" parecem a mesma coisa e não são:
+ * o primeiro diz que o produto acabou, o segundo que ele existe e é
+ * vendido, mas não estava naquele depósito na hora de separar. Juntar os
+ * dois faria o relatório acusar ruptura onde havia só um remanejamento.
+ */
 export const REASON_LABEL: Record<ItemReason, string> = {
   fora_estoque: 'Fora de estoque',
+  sem_galpao: 'Não tem no galpão',
   descontinuado: 'Não trabalhamos mais',
   aguardando: 'Aguardando reposição',
 };
@@ -31,6 +39,14 @@ export interface CartItemRow {
   status: ItemStatus;
   reason: ItemReason | null;
   resolved_by: string | null;
+  /**
+   * Quantas unidades quem montou a lista precisa.
+   *
+   * É recado, não contabilidade: o catálogo não controla estoque e este
+   * número não entra em conta nenhuma. Serve para quem separa saber que
+   * são 6 e não 1, sem precisar de um bilhete à parte.
+   */
+  qty: number;
   name: string;
   barcode: string | null;
   photo_path: string | null;
@@ -41,6 +57,8 @@ export interface NewItem {
   id: string; // product_id
   name: string;
   barcode: string | null;
+  /** Quantas unidades a pessoa já indicou ao marcar o produto. 1 se omitida. */
+  qty?: number;
 }
 
 const activeKey = (store: StoreId) => `catalogo.activeCart.${store}`;
@@ -77,6 +95,26 @@ export async function createCart(store: StoreId, name: string, email: string | n
   return data as Cart;
 }
 
+/**
+ * Fecha a lista, mesmo com item por repor.
+ *
+ * Exigir tudo resolvido para poder fechar é o que fazia a lista de segunda
+ * ainda estar aberta na sexta: sempre sobra um item que não veio e ninguém
+ * sabe quando virá. A lista é o registro de um dia de trabalho — fecha com
+ * o que ficou pendente, e o pendente aparece na lista do dia seguinte se
+ * ainda for preciso.
+ */
+export async function fecharCarrinho(id: string): Promise<void> {
+  const { error } = await supabase.from('carts').update({ status: 'finalizado' }).eq('id', id);
+  if (error) throw error;
+}
+
+/** Reabre uma lista fechada por engano. */
+export async function reabrirCarrinho(id: string): Promise<void> {
+  const { error } = await supabase.from('carts').update({ status: 'aberto' }).eq('id', id);
+  if (error) throw error;
+}
+
 export async function deleteCart(id: string): Promise<void> {
   const { error } = await supabase.from('carts').delete().eq('id', id);
   if (error) throw error;
@@ -85,7 +123,7 @@ export async function deleteCart(id: string): Promise<void> {
 export async function getItems(cartId: string): Promise<CartItemRow[]> {
   const { data, error } = await supabase
     .from('cart_items')
-    .select('id, product_id, added_by, added_at, status, reason, resolved_by, products(name, barcode, photo_path, photo_source_url)')
+    .select('id, product_id, added_by, added_at, status, reason, resolved_by, qty, products(name, barcode, photo_path, photo_source_url)')
     .eq('cart_id', cartId)
     .order('added_at', { ascending: true });
   if (error) throw error;
@@ -101,6 +139,7 @@ export async function getItems(cartId: string): Promise<CartItemRow[]> {
       status: ((r.status as ItemStatus | null) ?? 'pendente'),
       reason: (r.reason as ItemReason | null) ?? null,
       resolved_by: (r.resolved_by as string | null) ?? null,
+      qty: (r.qty as number | null) ?? 1,
       name: prod?.name ?? '(produto removido)',
       barcode: prod?.barcode ?? null,
       photo_path: prod?.photo_path ?? null,
@@ -111,12 +150,26 @@ export async function getItems(cartId: string): Promise<CartItemRow[]> {
 
 export async function addItems(cartId: string, items: NewItem[], email: string | null): Promise<void> {
   if (items.length === 0) return;
-  const rows = items.map((i) => ({ cart_id: cartId, product_id: i.id, added_by: email }));
+  const rows = items.map((i) => ({
+    cart_id: cartId,
+    product_id: i.id,
+    added_by: email,
+    qty: Math.max(1, Math.round(i.qty ?? 1)),
+  }));
   // ignoreDuplicates: remarcar um produto já no carrinho não gera erro
   const { error } = await supabase.from('cart_items').upsert(rows, {
     onConflict: 'cart_id,product_id',
     ignoreDuplicates: true,
   });
+  if (error) throw error;
+}
+
+/** Quantidade pedida. O banco recusa zero ou negativo (check qty > 0). */
+export async function setItemQty(itemId: string, qty: number): Promise<void> {
+  const { error } = await supabase
+    .from('cart_items')
+    .update({ qty: Math.max(1, Math.round(qty)) })
+    .eq('id', itemId);
   if (error) throw error;
 }
 

@@ -1,36 +1,50 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CardGrid } from './Home';
-import { SEM_CATEGORIA, subLevel, topLevel, useCatalog } from '../lib/catalog';
+import { SEM_CATEGORIA, bulkSetCategory, bulkSetStatus, topLevel, useCatalog } from '../lib/catalog';
 import { availableBrands, productHasBrand } from '../lib/brands';
 import { useCartSaver } from '../lib/cart';
+import { criarBusca } from '../lib/busca';
 import { norm } from '../lib/normalize';
-import { photoSrc, useSignedUrls } from '../lib/photos';
+import { useSignedUrls } from '../lib/photos';
 import { setPending } from '../lib/pending';
 import type { StoreId } from '../lib/store';
 
 interface Props {
   group: string; // 1º nível ("Acessórios") ou SEM_CATEGORIA
+  initialSub?: string | null; // veio de um link direto de subcategoria (menu lateral)
   store: StoreId | null;
   email: string | null;
+  admin: boolean;
 }
 
-export function CategoryPage({ group, store, email }: Props) {
-  const { products, categories, loading, error } = useCatalog();
+export function CategoryPage({ group, initialSub, store, email, admin }: Props) {
+  const { products, categories, loading, error, reload } = useCatalog();
   const signed = useSignedUrls(products);
   const { save } = useCartSaver(store, email);
   const [saving, setSaving] = useState(false);
-  const [sub, setSub] = useState<string | null>(null); // id da categoria filtrada
+  const [sub, setSub] = useState<string | null>(initialSub ?? null); // id da categoria filtrada
   const [showSearch, setShowSearch] = useState(false);
   const [q, setQ] = useState('');
   const [brand, setBrand] = useState<string | null>(null);
-  const [picked, setPicked] = useState<Record<string, { name: string; barcode: string | null }>>({});
+  const [picked, setPicked] = useState<Record<string, { name: string; barcode: string | null; qty: number }>>({});
+
+  // troca de categoria pelo menu (mesma instância do componente, só props mudam)
+  useEffect(() => {
+    setSub(initialSub ?? null);
+  }, [group, initialSub]);
+
+  // modo "categorizar em massa" — só admin, para corrigir cadastros errados
+  const [catMode, setCatMode] = useState(false);
+  const [catPicked, setCatPicked] = useState<Record<string, true>>({});
+  const [targetCat, setTargetCat] = useState('');
+  const [applying, setApplying] = useState(false);
 
   const isOthers = group === SEM_CATEGORIA;
   const title = group === SEM_CATEGORIA ? 'Outros produtos' : group;
 
   // mantém o módulo de "seleção pendente" em dia (para o pop-up ao sair)
   useEffect(() => {
-    const items = Object.entries(picked).map(([id, v]) => ({ id, name: v.name, barcode: v.barcode }));
+    const items = Object.entries(picked).map(([id, v]) => ({ id, name: v.name, barcode: v.barcode, qty: v.qty }));
     setPending(store ? { categoria: title, items } : null);
   }, [picked, store, title]);
 
@@ -43,13 +57,19 @@ export function CategoryPage({ group, store, email }: Props) {
     setPicked((cur) => {
       const next = { ...cur };
       if (next[id]) delete next[id];
-      else next[id] = { name: p.name, barcode: p.barcode };
+      else next[id] = { name: p.name, barcode: p.barcode, qty: 1 };
       return next;
     });
   }
 
+  // ajusta a quantidade de um item já selecionado, sem precisar abrir o carrinho
+  function setQty(id: string, qty: number) {
+    const val = Math.max(1, Math.round(qty) || 1);
+    setPicked((cur) => (cur[id] ? { ...cur, [id]: { ...cur[id]!, qty: val } } : cur));
+  }
+
   async function salvar() {
-    const items = Object.entries(picked).map(([id, v]) => ({ id, name: v.name, barcode: v.barcode }));
+    const items = Object.entries(picked).map(([id, v]) => ({ id, name: v.name, barcode: v.barcode, qty: v.qty }));
     setSaving(true);
     try {
       await save(items);
@@ -60,7 +80,61 @@ export function CategoryPage({ group, store, email }: Props) {
     }
   }
 
+  function toggleCat(id: string) {
+    setCatPicked((cur) => {
+      const next = { ...cur };
+      if (next[id]) delete next[id];
+      else next[id] = true;
+      return next;
+    });
+  }
+
+  function toggleCatMode() {
+    setCatMode((v) => !v);
+    setCatPicked({});
+    setTargetCat('');
+  }
+
+  async function aplicarCategoria() {
+    if (!targetCat) return;
+    const ids = Object.keys(catPicked);
+    setApplying(true);
+    try {
+      await bulkSetCategory(ids, targetCat);
+      setCatPicked({});
+      setTargetCat('');
+      setCatMode(false);
+      reload();
+    } finally {
+      setApplying(false);
+    }
+  }
+
+  async function desativarSelecionados() {
+    const ids = Object.keys(catPicked);
+    if (ids.length === 0) return;
+    const ok = confirm(
+      `Desativar ${ids.length} produto${ids.length === 1 ? '' : 's'}? Eles saem da vitrine, mas continuam salvos — dá pra reativar depois em "A revisar".`,
+    );
+    if (!ok) return;
+    setApplying(true);
+    try {
+      await bulkSetStatus(ids, 'desativado');
+      setCatPicked({});
+      setTargetCat('');
+      setCatMode(false);
+      reload();
+    } finally {
+      setApplying(false);
+    }
+  }
+
   const nPicked = Object.keys(picked).length;
+  const nCatPicked = Object.keys(catPicked).length;
+  const allCatsSorted = useMemo(
+    () => [...categories].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+    [categories],
+  );
   const groupCats = useMemo(
     () => categories.filter((c) => norm(topLevel(c.name)) === norm(group)),
     [categories, group],
@@ -83,36 +157,30 @@ export function CategoryPage({ group, store, email }: Props) {
 
   // aplica busca por texto e filtro de marca
   const scoped = useMemo(() => {
-    const term = norm(q);
+    const casa = criarBusca(q);
     const marca = brands.find((m) => m.label === brand) ?? null;
     return scopedBase.filter((p) => {
-      if (term && !norm(`${p.name} ${p.brand ?? ''}`).includes(term)) return false;
+      if (casa && !casa(`${p.name} ${p.brand ?? ''}`)) return false;
       if (marca && !productHasBrand(p, marca)) return false;
       return true;
     });
   }, [scopedBase, q, brand, brands]);
 
-  /** Subcategorias com foto — só quando o grupo tem mais de uma. */
-  const subTiles = useMemo(() => {
-    if (isOthers || groupCats.length <= 1) return [];
-    return groupCats.map((c) => {
-      const inCat = products.filter((p) => p.category_id === c.id);
-      const withPhoto = inCat.find((p) => photoSrc(p, signed));
-      return {
-        id: c.id,
-        label: subLevel(c.name) ?? c.name,
-        count: inCat.length,
-        photo: withPhoto ? photoSrc(withPhoto, signed) : null,
-      };
-    }).sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
-  }, [isOthers, groupCats, products, signed]);
-
   return (
-    <main className={nPicked > 0 ? 'has-selbar' : ''}>
+    <main className={nPicked > 0 || nCatPicked > 0 ? 'has-selbar' : ''}>
       <div className="page-head">
         <a href="#/" className="back">‹ Início</a>
         <h2>{title}</h2>
         <span className="muted small">{scoped.length} produto{scoped.length === 1 ? '' : 's'}</span>
+        {admin && (
+          <button
+            className={`search-toggle ${catMode ? 'active' : ''}`}
+            onClick={toggleCatMode}
+            title="Selecionar vários produtos para mudar a categoria em massa"
+          >
+            🏷️
+          </button>
+        )}
         <button
           className="search-toggle"
           onClick={() => { setShowSearch((v) => !v); if (showSearch) { setQ(''); setBrand(null); } }}
@@ -122,11 +190,17 @@ export function CategoryPage({ group, store, email }: Props) {
         </button>
       </div>
 
+      {catMode && (
+        <div className="notice">
+          Modo de categorização em massa: toque nos produtos para selecionar e, lá embaixo, mude a categoria deles ou desative-os de uma vez.
+        </div>
+      )}
+
       {showSearch && (
         <div className="cat-search">
           <input
             type="search"
-            placeholder={`Buscar em ${title}…`}
+            placeholder={`Buscar em ${title} — use % entre palavras`}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             autoFocus
@@ -150,48 +224,39 @@ export function CategoryPage({ group, store, email }: Props) {
       {error && <p className="error">{error}</p>}
       {loading && <p className="muted center-msg">Carregando…</p>}
 
-      {subTiles.length > 0 && (
-        <div className="cat-grid subcats">
-          <button className={`cat-tile ${sub === null ? 'active' : ''}`} onClick={() => setSub(null)}>
-            <span className="cat-photo"><span aria-hidden>✳️</span></span>
-            <span className="cat-name">Tudo</span>
-          </button>
-          {subTiles.map((t) => (
-            <button
-              key={t.id}
-              className={`cat-tile ${sub === t.id ? 'active' : ''}`}
-              onClick={() => setSub(sub === t.id ? null : t.id)}
-            >
-              <span className="cat-photo">
-                <span aria-hidden>🐾</span>
-                {t.photo && (
-                  <img
-                    src={t.photo}
-                    alt=""
-                    loading="lazy"
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                  />
-                )}
-              </span>
-              <span className="cat-name">{t.label}</span>
-              <span className="tiny muted">{t.count}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
       {!loading && scoped.length === 0 && !error && (
         <p className="muted center-msg">Nenhum produto nesta categoria.</p>
       )}
       <CardGrid
         products={scoped}
         signed={signed}
-        selectable={Boolean(store)}
-        isSelected={(id) => Boolean(picked[id])}
-        onToggle={toggle}
+        selectable={catMode || Boolean(store)}
+        isSelected={(id) => (catMode ? Boolean(catPicked[id]) : Boolean(picked[id]))}
+        onToggle={catMode ? toggleCat : toggle}
+        blockNav={catMode}
+        qtyOf={catMode ? undefined : (id) => picked[id]?.qty}
+        onQtyChange={catMode ? undefined : setQty}
       />
 
-      {nPicked > 0 && (
+      {catMode && nCatPicked > 0 && (
+        <div className="selbar selbar-cat">
+          <span>{nCatPicked} selecionado{nCatPicked === 1 ? '' : 's'}</span>
+          <select value={targetCat} onChange={(e) => setTargetCat(e.target.value)}>
+            <option value="">Mover para…</option>
+            {allCatsSorted.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <button className="selbar-save" onClick={aplicarCategoria} disabled={applying || !targetCat}>
+            {applying ? 'Aplicando…' : 'Aplicar'}
+          </button>
+          <button className="selbar-danger" onClick={desativarSelecionados} disabled={applying}>
+            Desativar
+          </button>
+        </div>
+      )}
+
+      {!catMode && nPicked > 0 && (
         <div className="selbar">
           <span>{nPicked} selecionado{nPicked === 1 ? '' : 's'}</span>
           <button className="selbar-save" onClick={salvar} disabled={saving}>

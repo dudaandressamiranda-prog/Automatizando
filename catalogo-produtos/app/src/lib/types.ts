@@ -30,11 +30,20 @@ export interface Product {
  */
 export type ListProduct = Pick<
   Product,
-  'id' | 'name' | 'barcode' | 'brand' | 'category_id' | 'photo_path' | 'photo_source_url' | 'status' | 'updated_at'
+  | 'id'
+  | 'name'
+  | 'barcode'
+  | 'brand'
+  | 'category_id'
+  | 'photo_path'
+  | 'photo_source_url'
+  | 'status'
+  | 'created_at'
+  | 'updated_at'
 >;
 
 export const LIST_COLUMNS =
-  'id, name, barcode, brand, category_id, photo_path, photo_source_url, status, updated_at';
+  'id, name, barcode, brand, category_id, photo_path, photo_source_url, status, created_at, updated_at';
 
 export const STATUS_LABEL: Record<ProductStatus, string> = {
   ativo: 'Ativo',
