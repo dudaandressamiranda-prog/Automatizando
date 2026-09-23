@@ -1,4 +1,4 @@
-// Rode com: node --test lotes-validades/test/
+// Rode com: node --test lotes-validades/test/*.test.js
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { interpretar, lerDataDigitada } = require("../parser.js");
