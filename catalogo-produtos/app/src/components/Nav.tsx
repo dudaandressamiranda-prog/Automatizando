@@ -144,6 +144,14 @@ export function Nav({ route, onNavigate, onSignOut, email, admin, store, onChoos
         <span className="nav-ico">📤</span> Retiradas
       </a>
 
+      <a
+        href="#/validades"
+        className={`nav-item ${route.page === 'validades' ? 'active' : ''}`}
+        onClick={onNavigate}
+      >
+        <span className="nav-ico">📅</span> Lotes e validades
+      </a>
+
       {admin && (
         <>
           <div className="nav-section">Administração</div>
