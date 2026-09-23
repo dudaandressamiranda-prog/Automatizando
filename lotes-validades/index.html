@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>Lotes e Validades</title>
+
+  <!-- App instalável (ícone próprio, abre em tela cheia) -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Lotes" />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- ================= Tela 1: lista de lotes e validades ================= -->
+  <main id="telaLista" class="tela app">
+    <header class="topbar">
+      <h1>Lotes e Validades</h1>
+      <button id="btnMenu" class="icon-button" title="Opções" aria-label="Opções">⚙️</button>
+    </header>
+
+    <button id="btnBipar" class="primary-button grande">
+      <span aria-hidden="true">▮▯▮▮▯▮</span> Bipar código de barras
+    </button>
+
+    <form id="formCodigo" class="linha-codigo" autocomplete="off">
+      <input id="inputCodigo" type="text" inputmode="numeric" placeholder="ou digite / use o leitor" aria-label="Código de barras" />
+      <button type="submit" class="secondary-button">OK</button>
+    </form>
+
+    <p id="statusOcr" class="status-ocr">Preparando leitor de texto…</p>
+
+    <section class="resumo" id="resumo"></section>
+
+    <input id="busca" type="search" class="busca" placeholder="Buscar por produto, código ou lote" />
+
+    <ul id="lista" class="lista"></ul>
+    <p id="vazio" class="vazio hidden">Nenhum lote registrado ainda.<br />Toque em <strong>Bipar código de barras</strong> para começar.</p>
+  </main>
+
+  <!-- ================= Tela 2: leitura do código de barras ================= -->
+  <section id="telaBarcode" class="tela camera-tela hidden">
+    <video id="videoBarcode" class="camera-video" playsinline muted autoplay></video>
+    <div class="mira mira-barcode"><span class="laser"></span></div>
+    <div class="camera-topo">
+      <p>Aponte para o <strong>código de barras</strong> do produto</p>
+    </div>
+    <div class="camera-rodape">
+      <button id="btnLanternaBarcode" class="round-button hidden" aria-label="Lanterna">🔦</button>
+      <button id="btnCancelarBarcode" class="secondary-button">Cancelar</button>
+    </div>
+    <p id="erroBarcode" class="camera-erro hidden"></p>
+  </section>
+
+  <!-- ================= Tela 3: leitura do lote e validade ================= -->
+  <section id="telaLote" class="tela hidden">
+    <div class="camera-box">
+      <video id="videoLote" class="camera-video" playsinline muted autoplay></video>
+      <div class="mira mira-texto" id="miraTexto"></div>
+      <div class="camera-topo">
+        <p id="dicaLote">Mire no <strong>lote</strong> e na <strong>validade</strong></p>
+      </div>
+      <div class="camera-acoes">
+        <button id="btnLanternaLote" class="round-button hidden" aria-label="Lanterna">🔦</button>
+        <button id="btnLerDeNovo" class="round-button" aria-label="Ler de novo" title="Ler de novo">⟳</button>
+      </div>
+      <p id="erroLote" class="camera-erro hidden"></p>
+    </div>
+
+    <form id="formLote" class="app form-lote" autocomplete="off">
+      <div class="produto-info">
+        <span class="ean" id="loteEan">—</span>
+        <input id="loteProduto" type="text" placeholder="Nome do produto (opcional)" aria-label="Nome do produto" />
+      </div>
+
+      <div class="campos">
+        <label>
+          <span class="rotulo">Lote <span class="leitura" id="estadoLote">lendo…</span></span>
+          <input id="loteLote" type="text" autocapitalize="characters" spellcheck="false" />
+        </label>
+        <label>
+          <span class="rotulo">Validade <span class="leitura" id="estadoValidade">lendo…</span></span>
+          <input id="loteValidade" type="text" placeholder="dd/mm/aaaa ou mm/aaaa" inputmode="numeric" spellcheck="false" />
+        </label>
+      </div>
+
+      <details class="texto-lido">
+        <summary>Ver texto lido pela câmera</summary>
+        <pre id="textoLido">—</pre>
+      </details>
+
+      <p id="erroForm" class="erro hidden"></p>
+
+      <div class="botoes">
+        <button type="button" id="btnCancelarLote" class="secondary-button">Cancelar</button>
+        <button type="submit" id="btnSalvar" class="secondary-button">Salvar</button>
+      </div>
+      <button type="button" id="btnSalvarProximo" class="primary-button">Salvar e bipar o próximo</button>
+    </form>
+  </section>
+
+  <!-- ================= Diálogos ================= -->
+  <dialog id="dlgEditar" class="dialogo">
+    <form method="dialog" id="formEditar">
+      <h2>Editar registro</h2>
+      <label>Código de barras <input id="edEan" type="text" inputmode="numeric" /></label>
+      <label>Produto <input id="edProduto" type="text" /></label>
+      <label>Lote <input id="edLote" type="text" autocapitalize="characters" /></label>
+      <label>Validade <input id="edValidade" type="text" placeholder="dd/mm/aaaa ou mm/aaaa" /></label>
+      <p id="edErro" class="erro hidden"></p>
+      <div class="botoes">
+        <button type="button" id="edExcluir" class="danger-button">Excluir</button>
+        <button type="button" id="edCancelar" class="secondary-button">Cancelar</button>
+        <button type="submit" id="edSalvar" class="primary-button" value="salvar">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgMenu" class="dialogo">
+    <form method="dialog">
+      <h2>Opções</h2>
+      <button type="button" id="btnExportar" class="primary-button">Exportar planilha (CSV)</button>
+      <button type="button" id="btnImportarProdutos" class="secondary-button">Importar lista de produtos (CSV)</button>
+      <p class="ajuda">A lista de produtos é um CSV com <code>código;descrição</code> por linha. Ela preenche o nome do produto ao bipar.</p>
+      <input id="arquivoProdutos" type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden" />
+      <button type="button" id="btnLimpar" class="danger-button">Apagar todos os registros</button>
+      <button value="fechar" class="secondary-button">Fechar</button>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <script src="parser.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
