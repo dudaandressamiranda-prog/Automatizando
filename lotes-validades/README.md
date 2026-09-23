@@ -71,4 +71,4 @@ planilha para guardar ou enviar.
 - `parser.js`: regras que separam lote e validade do texto lido (e o
   leitor de GS1).
 - `app.js`: telas, câmera, leitor de código de barras e OCR.
-- Testes do parser: `node --test lotes-validades/test/`.
+- Testes do parser: `node --test lotes-validades/test/*.test.js`.
