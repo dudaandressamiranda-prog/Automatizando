@@ -22,6 +22,7 @@ import { ProductForm } from './pages/ProductForm';
 import { ProductView } from './pages/ProductView';
 import { Retiradas } from './pages/Retiradas';
 import { Review } from './pages/Review';
+import { Validades } from './pages/Validades';
 
 export function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -103,6 +104,7 @@ export function App() {
         )}
         {!blocked && route.page === 'cart' && <Cart store={active} email={email} />}
         {route.page === 'retiradas' && <Retiradas store={active} email={email} />}
+        {route.page === 'validades' && <Validades store={active} email={email} />}
         {!blocked && route.page === 'cartsAdmin' && (
           <CartsAdmin email={email} loja={route.loja} carrinho={route.carrinho} />
         )}

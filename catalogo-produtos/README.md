@@ -261,6 +261,30 @@ Acesso por RLS, a partir dos metadados do login:
 Funcionário sem loja vinculada vê um aviso pedindo para o responsável
 liberar, e não acessa carrinho nenhum (o RLS barra).
 
+## Lotes e validades (`#/validades`)
+
+Conferência de prateleira pelo celular, no menu **📅 Lotes e validades**
+(funcionário e admin, cada um na sua loja):
+
+1. **Bipar produto** abre a câmera e lê o código de barras (ou digite o
+   código).
+2. Achado o produto, a **mesma câmera** continua ligada: mire a moldura no
+   lote e na validade impressos na embalagem. O app lê o texto (OCR com
+   Tesseract.js, no próprio aparelho) e preenche os campos; quando a mesma
+   leitura se repete, o campo fica verde e o celular vibra.
+3. Confira, corrija digitando se precisar, e **Salvar** ou **Salvar e
+   bipar o próximo**.
+
+Só o **texto** é gravado (tabela `validades`, migration
+`20260923000010_validades.sql`) — nenhuma foto. Não há quantidade: é
+conferência, não estoque. A lista fica ordenada pelo que vence primeiro,
+com filtros de vencidos / vencem em 30 dias e exportação para planilha.
+Produto fora do catálogo também pode ser registrado (digita o nome).
+DataMatrix de medicamento já traz lote e validade no próprio código.
+
+As regras que separam lote e validade do texto ficam em
+`app/src/lib/loteParser.ts` (testes: `npm test` dentro de `app/`).
+
 ## Área administrativa
 
 A barra lateral do app tem uma seção **Administração** (Cadastrar produto,
