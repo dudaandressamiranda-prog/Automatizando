@@ -2,7 +2,8 @@
 
 App (um único arquivo `index.html`) para controlar **vacinas, injetáveis de
 geladeira e insumos** do consultório: entrada, saída, descarte, lotes/validade
-e as contagens diárias da geladeira.
+e as contagens diárias do consultório (vacinas, injetáveis de geladeira,
+testes e o que mais precisar ser contado).
 
 ## Como usar (sem login)
 
@@ -20,7 +21,8 @@ arquivo: quem tem o arquivo acessa os dados do consultório, e mais ninguém.
 3. Em ⚙️ Configurações, informe o nome de quem usa aquele aparelho (vai em
    cada lançamento).
 4. Em 📦 Itens → *+ Adicionar itens*, busque os produtos do Consulveter, marque
-   os que ficam no consultório e escolha **Geladeira** ou **Insumo**.
+   os que ficam no consultório e escolha **Contagem do consultório** (entra nas
+   contagens diárias) ou **Insumo**.
 5. Lance o saldo inicial de cada item em 🔄 Entrada (motivo "Saldo inicial"),
    com lote e validade.
 

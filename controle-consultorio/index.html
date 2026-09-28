@@ -475,7 +475,7 @@ async function ajustarPara(item, novo, extra) {
    ===================================================================== */
 const VIEWS = {
   painel:     { ic: '🏠', t: 'Painel' },
-  contagem:   { ic: '🧊', t: 'Contagem da geladeira', s: 'Contagem' },
+  contagem:   { ic: '📋', t: 'Contagem do consultório', s: 'Contagem' },
   movimentar: { ic: '🔄', t: 'Entrada / Saída' },
   validades:  { ic: '⏳', t: 'Validades' },
   diario:     { ic: '📅', t: 'Diário' },
@@ -487,19 +487,19 @@ let current = 'painel';
 let viewState = {};
 
 function alertCount() {
-  let n = 0;
+  let val = 0;
   S.lotes.forEach(l => {
     const q = saldoLote.get(l.item_id + '|' + l.id) || 0; const it = itemById(l.item_id);
-    if (q > 0 && it && it.ativo !== false) { const d = daysUntil(l.validade); if (d !== null && d <= cfg.diasAlerta) n++; }
+    if (q > 0 && it && it.ativo !== false) { const d = daysUntil(l.validade); if (d !== null && d <= cfg.diasAlerta) val++; }
   });
-  ativos().forEach(i => { if ((+i.estoque_minimo || 0) > 0 && saldo(i.id) < +i.estoque_minimo) n++; });
-  return n;
+  const min = ativos().filter(i => (+i.estoque_minimo || 0) > 0 && saldo(i.id) < +i.estoque_minimo).length;
+  return { validades: val, itens: min };
 }
 
 function renderNav() {
   const a = alertCount();
   $('#nav').innerHTML = Object.entries(VIEWS).map(([k, v]) =>
-    `<button data-v="${k}" class="${k === current ? 'on' : ''}"><span class="ic">${v.ic}</span><span>${v.s || v.t}</span>${k === 'validades' && a ? `<span class="badge">${a}</span>` : ''}</button>`).join('');
+    `<button data-v="${k}" class="${k === current ? 'on' : ''}"><span class="ic">${v.ic}</span><span>${v.s || v.t}</span>${a[k] ? `<span class="badge" title="${k === 'itens' ? 'Abaixo do estoque mínimo' : 'Vencidos ou perto de vencer'}">${a[k]}</span>` : ''}</button>`).join('');
   $$('#nav button').forEach(b => b.onclick = () => go(b.dataset.v));
   $('#sideFoot').innerHTML = `${h(DB.label())}<br>${cfg.responsavel ? 'Responsável: ' + h(cfg.responsavel) : '<span class="warn">Defina o responsável em ⚙️</span>'}`;
   $('#modeTag').textContent = DB.kind === 'remote' ? '☁️ Consulveter' : '📱 Local';
@@ -565,7 +565,7 @@ function vPainel(el) {
     <div class="kpi" data-go="historico"><small>Saídas hoje</small><b>${fmtN(saidasHoje)}</b></div>
   </div>
 
-  <div class="card"><h2>🧊 Contagens de hoje <span class="sp"></span><button class="btn pri sm" data-go="contagem">Fazer contagem</button></h2>
+  <div class="card"><h2>📋 Contagens de hoje <span class="sp"></span><button class="btn pri sm" data-go="contagem">Fazer contagem</button></h2>
     <div class="turnos">${tds.map(t => `<div class="turno ${t.contagem ? 'done' : t.atrasado ? 'late' : ''}">
       <b>${h(t.nome)}</b><span class="muted small">previsto ${h(t.hora)}</span><br>
       ${t.contagem ? `<span class="pill ${t.contagem.divergencias ? 'bad' : 'ok'}">${t.contagem.divergencias ? t.contagem.divergencias + ' divergência(s)' : '✓ tudo confere'}</span>
@@ -588,11 +588,11 @@ function vPainel(el) {
     </div>
   </div>
 
-  <div class="card"><h2>🧊 Geladeira agora <span class="sp"></span><span class="muted small">${gel.length} itens</span></h2>
+  <div class="card"><h2>📋 Itens da contagem agora <span class="sp"></span><span class="muted small">${gel.length} itens</span></h2>
     ${gel.length ? `<div class="stock-grid">${gel.map(i => { const s = saldo(i.id), pv = proxValidade(i.id), st = pv ? statusValidade(pv) : null;
       return `<div class="stk ${s <= 0 ? 'zero' : (+i.estoque_minimo && s < +i.estoque_minimo) ? 'low' : ''}"><div class="nm">${h(i.nome)}</div><div class="q">${fmtN(s)}</div>
         ${st ? `<span class="pill ${st.cls}">${fmtD(pv)}</span>` : '<span class="small muted">—</span>'}</div>`; }).join('')}</div>`
-      : '<div class="empty">Nenhum item de geladeira cadastrado.</div>'}
+      : '<div class="empty">Nenhum item da contagem cadastrado.</div>'}
   </div>`;
   $$('[data-go]', el).forEach(b => b.onclick = (e) => { e.preventDefault(); go(b.dataset.go); });
 }
@@ -621,7 +621,7 @@ function vContagem(el) {
       <label class="f"><span>Data</span><input type="date" id="ctData" value="${st.data}" max="${today()}"></label>
       <label class="f"><span>Contagem</span><select id="ctTurno">${cfg.turnos.map(t => `<option ${t.nome === st.turno ? 'selected' : ''}>${h(t.nome)}</option>`).join('')}</select></label>
       <label class="f"><span>O que contar</span><select id="ctTipo">
-        <option value="geladeira" ${st.tipo === 'geladeira' ? 'selected' : ''}>Geladeira (vacinas/injetáveis)</option>
+        <option value="geladeira" ${st.tipo === 'geladeira' ? 'selected' : ''}>Itens da contagem</option>
         <option value="insumo" ${st.tipo === 'insumo' ? 'selected' : ''}>Insumos</option>
         <option value="todos" ${st.tipo === 'todos' ? 'selected' : ''}>Tudo</option></select></label>
     </div>
@@ -654,10 +654,10 @@ function vContagem(el) {
     <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <button class="btn ok big" id="ctSave">Salvar contagem</button><span id="ctSum" class="muted"></span>
     </div>` : `<div class="empty">
-      <p style="margin-top:0"><b>Ainda não há itens ${st.tipo === 'insumo' ? 'de insumo' : st.tipo === 'geladeira' ? 'de geladeira' : ''} para contar.</b></p>
+      <p style="margin-top:0"><b>Ainda não há itens ${st.tipo === 'insumo' ? 'de insumo' : st.tipo === 'geladeira' ? 'na contagem' : ''} para contar.</b></p>
       <p class="small">A contagem lista os itens cadastrados no consultório. Para começar:<br>
         1) adicione os itens (vêm do cadastro do Consulveter) &nbsp;·&nbsp; 2) lance o saldo atual de cada um em Entrada &nbsp;·&nbsp; 3) volte aqui para contar.</p>
-      <button class="btn pri" id="ctAddItens">+ Adicionar itens ${st.tipo === 'insumo' ? 'de insumo' : 'da geladeira'}</button></div>`}
+      <button class="btn pri" id="ctAddItens">+ Adicionar itens ${st.tipo === 'insumo' ? 'de insumo' : 'da contagem'}</button></div>`}
   </div>`;
 
   const upd = () => {
@@ -732,7 +732,7 @@ const TIPO_LBL = { entrada: 'Entrada', saida: 'Saída', descarte: 'Descarte', aj
 
 function itemSelectHTML(sel) {
   const grp = (tipo, lbl) => { const its = ativos(tipo); return its.length ? `<optgroup label="${lbl}">${its.map(i => `<option value="${i.id}" ${i.id === sel ? 'selected' : ''}>${h(i.nome)} — saldo ${fmtN(saldo(i.id))}</option>`).join('')}</optgroup>` : ''; };
-  return `<option value="">Selecione…</option>${grp('geladeira', '🧊 Geladeira')}${grp('insumo', '📦 Insumos')}`;
+  return `<option value="">Selecione…</option>${grp('geladeira', '📋 Contagem do consultório')}${grp('insumo', '📦 Insumos')}`;
 }
 
 function vMovimentar(el) {
@@ -818,7 +818,7 @@ async function salvarMov(el) {
   try {
     const motivo = st.motivo || MOTIVOS[st.tipo][0];
     if (st.tipo === 'entrada') {
-      if (it.tipo === 'geladeira' && (!String(st.lote || '').trim() || !st.validade)) throw new Error('Para itens de geladeira informe lote e validade.');
+      if (it.tipo === 'geladeira' && (!String(st.lote || '').trim() || !st.validade)) throw new Error('Para itens da contagem informe lote e validade.');
       if (st.validade && daysUntil(st.validade) < 0 && !(await confirmBox('Lote vencido', `A validade ${fmtD(st.validade)} já passou. Registrar mesmo assim?`))) { btn.disabled = false; return; }
       const lote = await acharOuCriarLote(it, st.lote, st.validade);
       await registrar([{ item_id: it.id, lote_id: lote ? lote.id : null, tipo: 'entrada', delta: q, motivo, documento: st.doc || null, obs: st.obs || null }]);
@@ -886,7 +886,7 @@ function vValidades(el) {
   el.innerHTML = `<div class="card">
     <div class="row" style="margin-bottom:12px">
       <div class="seg">${[['atencao', `Vencidos + ${cfg.diasAlerta} dias`], ['vencidos', 'Só vencidos'], ['90', 'Até 90 dias'], ['todos', 'Todos']].map(([k, t]) => `<button data-f="${k}" class="${st.f === k ? 'on' : ''}">${t}</button>`).join('')}</div>
-      <select id="vTipo" style="width:auto"><option value="">Geladeira + insumos</option><option value="geladeira" ${st.tipo === 'geladeira' ? 'selected' : ''}>Só geladeira</option><option value="insumo" ${st.tipo === 'insumo' ? 'selected' : ''}>Só insumos</option></select>
+      <select id="vTipo" style="width:auto"><option value="">Contagem + insumos</option><option value="geladeira" ${st.tipo === 'geladeira' ? 'selected' : ''}>Só itens da contagem</option><option value="insumo" ${st.tipo === 'insumo' ? 'selected' : ''}>Só insumos</option></select>
     </div>
     ${filt.length ? `<div class="tbl-wrap"><table><tr><th>Item</th><th>Lote</th><th>Validade</th><th>Situação</th><th class="n">Saldo</th><th></th></tr>
       ${filt.map(r => `<tr><td>${h(r.it.nome)} <span class="pill mut">${r.it.tipo}</span></td><td>${r.l ? h(r.l.lote) : '<span class="muted">sem lote</span>'}</td><td>${fmtD(r.l?.validade)}</td>
@@ -927,7 +927,7 @@ function vDiario(el) {
       <label class="f" style="max-width:180px"><span>Dia</span><input type="date" id="dData" value="${dia}"></label>
       <button class="btn" id="dNext">▶</button>
       <label class="f" style="max-width:220px"><span>Itens</span><select id="dTipo">
-        <option value="geladeira" ${st.tipo === 'geladeira' ? 'selected' : ''}>Geladeira</option><option value="insumo" ${st.tipo === 'insumo' ? 'selected' : ''}>Insumos</option><option value="todos" ${st.tipo === 'todos' ? 'selected' : ''}>Tudo</option></select></label>
+        <option value="geladeira" ${st.tipo === 'geladeira' ? 'selected' : ''}>Itens da contagem</option><option value="insumo" ${st.tipo === 'insumo' ? 'selected' : ''}>Insumos</option><option value="todos" ${st.tipo === 'todos' ? 'selected' : ''}>Tudo</option></select></label>
       <div style="flex:1"></div>
       <button class="btn" id="dPrint">🖨️ Imprimir</button><button class="btn" id="dCsv">⬇️ CSV</button>
   </div></div>
@@ -1017,14 +1017,14 @@ function vItens(el) {
   el.innerHTML = `<div class="card">
     <div class="row" style="margin-bottom:12px">
       <label class="f" style="flex:2"><span>Buscar</span><input id="iQ" value="${h(st.q || '')}"></label>
-      <label class="f"><span>Tipo</span><select id="iTipo"><option value="">Todos</option><option value="geladeira" ${st.tipo === 'geladeira' ? 'selected' : ''}>Geladeira</option><option value="insumo" ${st.tipo === 'insumo' ? 'selected' : ''}>Insumos</option></select></label>
+      <label class="f"><span>Tipo</span><select id="iTipo"><option value="">Todos</option><option value="geladeira" ${st.tipo === 'geladeira' ? 'selected' : ''}>Itens da contagem</option><option value="insumo" ${st.tipo === 'insumo' ? 'selected' : ''}>Insumos</option></select></label>
       <label style="display:flex;gap:6px;align-items:center;padding-bottom:10px"><input type="checkbox" id="iIn" ${st.inativos ? 'checked' : ''}> inativos</label>
       <button class="btn pri" id="iAdd">+ Adicionar itens</button>
     </div>
     ${list.length ? `<div class="tbl-wrap"><table><tr><th>Item</th><th>Tipo</th><th class="n">Saldo</th><th class="n">Mínimo</th><th>Próx. validade</th><th></th></tr>
       ${list.map(i => { const pv = proxValidade(i.id); const s = saldo(i.id);
         return `<tr style="${i.ativo === false ? 'opacity:.5' : ''}"><td>${h(i.nome)}${i.barcode ? `<div class="small muted">${h(i.barcode)}</div>` : ''}</td>
-        <td><span class="pill ${i.tipo === 'geladeira' ? 'info' : 'mut'}">${i.tipo === 'geladeira' ? '🧊 geladeira' : '📦 insumo'}</span></td>
+        <td><span class="pill ${i.tipo === 'geladeira' ? 'info' : 'mut'}">${i.tipo === 'geladeira' ? '📋 contagem' : '📦 insumo'}</span></td>
         <td class="n ${+i.estoque_minimo && s < +i.estoque_minimo ? 'neg' : ''}">${fmtN(s)} <span class="small muted">${h(i.unidade || '')}</span></td><td class="n">${fmtN(i.estoque_minimo)}</td>
         <td>${pv ? `<span class="pill ${statusValidade(pv).cls}">${fmtD(pv)}</span>` : '—'}</td>
         <td style="white-space:nowrap"><button class="btn sm" data-ed="${i.id}">Editar</button></td></tr>`; }).join('')}
@@ -1066,7 +1066,7 @@ async function addItensModal(tipoPadrao) {
     <div class="row" style="margin-top:12px"><label class="f" style="flex:2"><span>Ou digite um nome manualmente</span><input id="aNome" placeholder="Nome do item"></label>
       <button class="btn" id="aAddMan">Adicionar à seleção</button></div>
     <div class="row" style="margin-top:12px">
-      <label class="f"><span>Tipo dos itens marcados</span><select id="aTipo"><option value="geladeira">🧊 Geladeira (vacina/injetável)</option><option value="insumo" ${tipoPadrao === 'insumo' ? 'selected' : ''}>📦 Insumo</option></select></label>
+      <label class="f"><span>Tipo dos itens marcados</span><select id="aTipo"><option value="geladeira">📋 Contagem do consultório (vacinas, injetáveis, testes…)</option><option value="insumo" ${tipoPadrao === 'insumo' ? 'selected' : ''}>📦 Insumo</option></select></label>
       <label class="f"><span>Estoque mínimo</span><input id="aMin" inputmode="decimal" value="0"></label>
     </div>
     <p class="small" id="aSel"></p>
@@ -1102,7 +1102,7 @@ function editItemModal(it) {
   modal(`<h3>Editar item</h3>
     <label class="f"><span>Nome</span><input id="eN" value="${h(it.nome)}"></label>
     <div class="row" style="margin-top:10px">
-      <label class="f"><span>Tipo</span><select id="eT"><option value="geladeira" ${it.tipo === 'geladeira' ? 'selected' : ''}>🧊 Geladeira</option><option value="insumo" ${it.tipo === 'insumo' ? 'selected' : ''}>📦 Insumo</option></select></label>
+      <label class="f"><span>Tipo</span><select id="eT"><option value="geladeira" ${it.tipo === 'geladeira' ? 'selected' : ''}>📋 Contagem do consultório</option><option value="insumo" ${it.tipo === 'insumo' ? 'selected' : ''}>📦 Insumo</option></select></label>
       <label class="f"><span>Unidade</span><input id="eU" value="${h(it.unidade || '')}"></label>
       <label class="f"><span>Estoque mínimo</span><input id="eM" inputmode="decimal" value="${h(it.estoque_minimo ?? 0)}"></label>
       <label class="f"><span>Ordem na contagem</span><input id="eO" inputmode="numeric" value="${h(it.ordem ?? 0)}"></label>
@@ -1136,7 +1136,7 @@ function vConfig(el) {
     <div class="row"><label class="f"><span>Nome do responsável (vai em cada lançamento e contagem)</span><input id="cResp" value="${h(cfg.responsavel)}" placeholder="Ex.: Ana"></label>
     <button class="btn pri" id="cRespSave">Salvar</button></div>
   </div>
-  <div class="card"><h2>🧊 Contagens do dia e alertas</h2>
+  <div class="card"><h2>📋 Contagens do dia e alertas</h2>
     <label class="f"><span>Contagens (uma por linha: nome | horário previsto)</span>
       <textarea id="cTurnos" rows="4">${h(cfg.turnos.map(t => `${t.nome} | ${t.hora}`).join('\n'))}</textarea></label>
     <div class="row" style="margin-top:10px">
