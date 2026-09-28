@@ -4,26 +4,33 @@ App (um único arquivo `index.html`) para controlar **vacinas, injetáveis de
 geladeira e insumos** do consultório: entrada, saída, descarte, lotes/validade
 e as contagens diárias da geladeira com temperatura.
 
-## Como usar
+## Como usar (sem login)
 
-1. Baixe `index.html` e abra no navegador (Chrome/Edge/Safari) — no computador
-   ou no celular. Também funciona hospedado (GitHub Pages, Netlify…).
-2. Entre com o **mesmo e-mail e senha do Consulveter Estoque**.
-   - Os produtos são lidos direto do cadastro do Consulveter (só nome, código de
-     barras, categoria e unidade — estoque e preço do Consulveter **não** são
-     usados nem alterados).
-   - Membros da equipe já vinculados à conta no Consulveter veem os mesmos dados.
-3. **Uma única vez**, crie as tabelas do consultório: no painel do Supabase do
-   Consulveter → *SQL Editor* → cole o conteúdo de `supabase.sql` → *Run*.
-   (O app avisa se isso ainda não foi feito.)
-4. Em ⚙️ Configurações, cada aparelho informa o nome de quem está usando.
-5. Em 📦 Itens → *+ Adicionar itens*, busque os produtos do Consulveter, marque
+O app não pede login nem senha. Ele usa uma **chave da loja** embutida no
+arquivo: quem tem o arquivo acessa os dados do consultório, e mais ninguém.
+
+1. No painel do Supabase do Consulveter → *SQL Editor*, rode (uma vez só):
+   1. `supabase.sql` — cria as tabelas do consultório;
+   2. `supabase-sem-login.sql` — grava a chave da loja e libera o acesso por
+      ela. **Use a versão com a chave de verdade**, não a deste repositório
+      (aqui fica só `__CHAVE_DA_LOJA__`).
+2. Abra o `index.html` **com a mesma chave embutida** (troque
+   `__CHAVE_DA_LOJA__` pela chave) no navegador de cada aparelho. Se o arquivo
+   vier sem chave, o app pede a chave uma vez.
+3. Em ⚙️ Configurações, informe o nome de quem usa aquele aparelho (vai em
+   cada lançamento).
+4. Em 📦 Itens → *+ Adicionar itens*, busque os produtos do Consulveter, marque
    os que ficam no consultório e escolha **Geladeira** ou **Insumo**.
-6. Lance o saldo inicial de cada item em 🔄 Entrada (motivo "Saldo inicial"),
+5. Lance o saldo inicial de cada item em 🔄 Entrada (motivo "Saldo inicial"),
    com lote e validade.
 
-Sem login também funciona ("Usar sem login"), mas aí os dados ficam só naquele
-navegador — bom para testar.
+A chave só dá acesso às tabelas `cc_*` e aos nomes/códigos dos produtos.
+Estoque, custo e preço do Consulveter continuam protegidos pelo login dele.
+Para trocar a chave (se o arquivo vazar), rode de novo o
+`supabase-sem-login.sql` com uma chave nova e distribua o arquivo novo.
+
+Também existe o modo "Usar só neste aparelho", sem internet — os dados ficam
+apenas naquele navegador.
 
 ## O que mudou em relação à planilha
 
@@ -50,7 +57,8 @@ navegador — bom para testar.
 ## Como os dados ficam guardados
 
 Tabelas novas no mesmo Supabase do Consulveter (`cc_itens`, `cc_lotes`,
-`cc_movs`, `cc_contagens`), protegidas pelas mesmas regras de acesso da conta.
+`cc_movs`, `cc_contagens`), acessíveis só com a chave da loja (ou pela conta
+do Consulveter logada).
 O saldo não é um número gravado: é a soma das movimentações. Assim duas pessoas
 lançando ao mesmo tempo nunca apagam o lançamento uma da outra, e todo saldo
 tem histórico que explica de onde veio.

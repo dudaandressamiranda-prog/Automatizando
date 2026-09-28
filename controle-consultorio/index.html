@@ -167,18 +167,15 @@
 <div id="login" class="login hidden">
   <div class="box card">
     <h1>💉 Consultório Centro</h1>
-    <p class="muted" style="margin-top:0">Controle de vacinas, injetáveis de geladeira e insumos.</p>
+    <p class="muted" style="margin-top:0">Este arquivo veio sem a chave da loja. Cole a chave abaixo (só uma vez neste aparelho).</p>
     <form id="loginForm">
-      <label class="f"><span>E-mail (mesma conta do Consulveter Estoque)</span><input id="lgEmail" type="email" autocomplete="username" required /></label>
-      <div style="height:10px"></div>
-      <label class="f"><span>Senha</span><input id="lgPass" type="password" autocomplete="current-password" required /></label>
+      <label class="f"><span>Chave da loja</span><input id="lgChave" autocomplete="off" required /></label>
       <div style="height:14px"></div>
-      <button class="btn pri big" style="width:100%;justify-content:center" type="submit">Entrar</button>
+      <button class="btn pri big" style="width:100%;justify-content:center" type="submit">Continuar</button>
       <p id="lgErr" class="neg small"></p>
     </form>
     <div class="divider">ou</div>
-    <button class="btn" style="width:100%;justify-content:center" id="btnLocal">Usar sem login (dados só neste aparelho)</button>
-    <p class="muted small" style="margin-bottom:0">Com login, a equipe toda vê os mesmos dados e os produtos vêm do cadastro do Consulveter.</p>
+    <button class="btn" style="width:100%;justify-content:center" id="btnLocal">Usar só neste aparelho (sem compartilhar)</button>
   </div>
 </div>
 
@@ -213,6 +210,10 @@ const CONSULVETER = {
   url: 'https://owjdsqzbalorlrpovzmo.supabase.co',
   key: 'sb_publishable_AnZCJF789lQEezlP0lcaNQ_JB4zFzoY',
 };
+// Chave da loja: a mesma gravada no Supabase pelo supabase-sem-login.sql.
+// Quem tem o arquivo com a chave acessa os dados do consultório — não publique.
+const CHAVE_DA_LOJA = '__CHAVE_DA_LOJA__';
+const chaveEmbutida = () => (/^__/.test(CHAVE_DA_LOJA) ? '' : CHAVE_DA_LOJA);
 const CFG_KEY = 'cc_cfg_v1';
 const LOCAL_DB_KEY = 'cc_localdb_v1';
 const LOCAL_PROD_KEY = 'cc_localprod_v1';
@@ -220,6 +221,7 @@ const TABLES = ['cc_itens', 'cc_lotes', 'cc_movs', 'cc_contagens'];
 
 const DEFAULT_CFG = {
   mode: null,              // 'remote' | 'local'
+  chave: '',               // usada só se o arquivo vier sem chave embutida
   responsavel: '',
   turnos: [
     { nome: '1ª contagem', hora: '09:30' },
@@ -321,18 +323,18 @@ const Local = {
 };
 
 const Remote = {
-  kind: 'remote', client: null, user: null,
+  kind: 'remote', client: null,
+  chave() { return chaveEmbutida() || cfg.chave; },
   init() {
     if (!window.supabase) throw new Error('Não foi possível carregar a biblioteca do Supabase (verifique a internet).');
-    this.client = this.client || window.supabase.createClient(cfg.url, cfg.key, { auth: { persistSession: true, storageKey: 'cc-consulveter-auth' } });
+    this.client = this.client || window.supabase.createClient(cfg.url, cfg.key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { 'x-cc-chave': this.chave() } },
+    });
   },
-  async session() { this.init(); const { data } = await this.client.auth.getSession(); this.user = data.session?.user || null; return data.session; },
-  async signIn(email, password) {
-    this.init();
-    const { data, error } = await this.client.auth.signInWithPassword({ email, password });
-    if (error) throw error; this.user = data.user; return data;
-  },
-  async signOut() { this.init(); await this.client.auth.signOut(); this.user = null; },
+  /** true = chave aceita; false = chave errada; lança erro se o SQL ainda não foi rodado. */
+  async ping() { this.init(); const { data, error } = await this.client.rpc('cc_ping'); if (error) throw error; return data === true; },
+  async signOut() {},
   async _all(q) {
     const out = []; const step = 1000;
     for (let from = 0; ; from += step) {
@@ -350,16 +352,8 @@ const Remote = {
     const { data, error } = await this.client.from(t).update(patch).eq('id', id).select(); if (error) throw error; return data[0];
   },
   async remove(t, id) { const { error } = await this.client.from(t).delete().eq('id', id); if (error) throw error; },
-  async products() {
-    let rows;
-    try {
-      rows = await this._all(() => this.client.from('products').select('id,name,barcode,category,unit,active').order('name'));
-    } catch (e) {
-      rows = await this._all(() => this.client.from('products').select('id,name,barcode,category,unit').order('name'));
-    }
-    return rows.filter(p => p.active !== false);
-  },
-  label() { return this.user?.email || 'Consulveter'; },
+  async products() { return this._all(() => this.client.rpc('cc_produtos').order('name')); },
+  label() { return 'Consultório (compartilhado)'; },
 };
 
 let DB = Local;
@@ -414,19 +408,20 @@ function statusValidade(iso) {
 }
 
 async function loadAll() {
-  S.setupMissing = false;
+  S.setupMissing = false; S.chaveErrada = false;
   try {
+    if (DB.kind === 'remote' && !(await DB.ping())) { S.chaveErrada = true; recalc(); return; }
     const [itens, lotes, movs, contagens] = await Promise.all(TABLES.map(t => DB.list(t)));
     Object.assign(S, { itens, lotes, movs, contagens });
   } catch (e) {
     const m = errMsg(e);
-    if (/cc_|schema cache|does not exist|relation/i.test(m)) S.setupMissing = true; else toast('Erro ao carregar: ' + m, 'err');
+    if (/cc_|schema cache|does not exist|relation|function/i.test(m)) S.setupMissing = true; else toast('Erro ao carregar: ' + m, 'err');
   }
   recalc();
 }
 
 /* ---------- gravação de movimentações ---------- */
-const resp = () => cfg.responsavel || (DB.kind === 'remote' ? DB.label() : '');
+const resp = () => cfg.responsavel || '';
 
 async function registrar(movs) {
   const rows = movs.map(m => ({ responsavel: resp(), ...m }));
@@ -517,9 +512,11 @@ function go(v, state) {
 function render() {
   renderNav();
   $('#title').textContent = VIEWS[current].t;
-  $('#setupWarn').innerHTML = S.setupMissing
-    ? `<div class="alert bad"><b>Falta criar as tabelas do consultório no Supabase.</b><br>
-       Abra o painel do Supabase do Consulveter → <b>SQL Editor</b> → cole o conteúdo do arquivo <code>supabase.sql</code> (que veio junto com este app) → <b>Run</b>. Depois toque em ⟳ Atualizar.</div>` : '';
+  $('#setupWarn').innerHTML = S.chaveErrada
+    ? `<div class="alert bad"><b>A chave da loja não confere com a do Supabase.</b> Confira se o <code>supabase-sem-login.sql</code> rodado é o que veio junto com este arquivo.</div>`
+    : S.setupMissing
+    ? `<div class="alert bad"><b>Falta preparar o Supabase para o consultório.</b><br>
+       Abra o painel do Supabase do Consulveter → <b>SQL Editor</b> → rode o <code>supabase.sql</code> e depois o <code>supabase-sem-login.sql</code> que veio junto com este arquivo. Depois toque em ⟳ Atualizar.</div>` : '';
   const fn = { painel: vPainel, contagem: vContagem, movimentar: vMovimentar, validades: vValidades, diario: vDiario, historico: vHistorico, itens: vItens, config: vConfig }[current];
   fn($('#view'));
 }
@@ -1167,9 +1164,9 @@ function vConfig(el) {
     <div class="row">
       <button class="btn" id="cBackup">⬇️ Baixar backup (JSON)</button>
       ${DB.kind === 'local' ? `<button class="btn" id="cRestore">⬆️ Restaurar backup</button><input type="file" id="cFile" accept=".json" class="hidden">` : ''}
-      <button class="btn bad" id="cOut">${DB.kind === 'remote' ? 'Sair da conta' : 'Trocar modo / entrar com conta'}</button>
+      ${DB.kind === 'local' ? '<button class="btn bad" id="cOut">Trocar para o modo compartilhado</button>' : ''}
     </div>
-    ${DB.kind === 'local' ? '<p class="small muted">No modo local, se limpar os dados do navegador tudo é perdido. Faça backup com frequência ou use o login do Consulveter.</p>' : ''}
+    ${DB.kind === 'local' ? '<p class="small muted">No modo local, se limpar os dados do navegador tudo é perdido. Faça backup com frequência ou use o modo compartilhado.</p>' : ''}
   </div>
   <div class="card"><h2>🔌 Conexão (avançado)</h2>
     <div class="row"><label class="f" style="flex:2"><span>URL do Supabase</span><input id="cUrl" value="${h(cfg.url)}"></label>
@@ -1189,7 +1186,7 @@ function vConfig(el) {
       try { const d = JSON.parse(await f.text()); if (!(await confirmBox('Restaurar backup?', 'Isso substitui todos os dados locais atuais.', 'Restaurar', true))) return;
         Local._save({ cc_itens: d.itens || [], cc_lotes: d.lotes || [], cc_movs: d.movs || [], cc_contagens: d.contagens || [] }); await loadAll(); render(); toast('Backup restaurado.', 'ok'); }
       catch (err) { toast('Arquivo inválido: ' + errMsg(err), 'err'); } }; }
-  $('#cOut', el).onclick = async () => { await DB.signOut(); cfg.mode = null; saveCfg(); location.reload(); };
+  const co = $('#cOut', el); if (co) co.onclick = () => { cfg.mode = null; saveCfg(); location.reload(); };
   $('#cConn', el).onclick = () => { cfg.url = $('#cUrl', el).value.trim() || CONSULVETER.url; cfg.key = $('#cKey', el).value.trim() || CONSULVETER.key; saveCfg(); toast('Conexão salva. Recarregando…'); setTimeout(() => location.reload(), 800); };
 }
 
@@ -1207,10 +1204,9 @@ function showLogin() { $('#app').classList.add('hidden'); $('#login').classList.
 
 $('#loginForm').onsubmit = async (e) => {
   e.preventDefault(); $('#lgErr').textContent = '';
-  const b = $('#loginForm button'); b.disabled = true; b.textContent = 'Entrando…';
-  try { await Remote.signIn($('#lgEmail').value.trim(), $('#lgPass').value); DB = Remote; cfg.mode = 'remote'; saveCfg(); await startApp(); }
-  catch (err) { $('#lgErr').textContent = /invalid/i.test(errMsg(err)) ? 'E-mail ou senha incorretos.' : errMsg(err); }
-  finally { b.disabled = false; b.textContent = 'Entrar'; }
+  cfg.chave = $('#lgChave').value.trim(); Remote.client = null;
+  try { if (!(await Remote.ping())) throw new Error('Chave inválida.'); DB = Remote; cfg.mode = 'remote'; saveCfg(); await startApp(); }
+  catch (err) { $('#lgErr').textContent = errMsg(err); }
 };
 $('#btnLocal').onclick = () => { DB = Local; cfg.mode = 'local'; saveCfg(); startApp(); };
 $('#btnReload').onclick = async () => { S.products = null; await loadAll(); render(); toast('Dados atualizados.'); };
@@ -1225,9 +1221,7 @@ document.addEventListener('visibilitychange', async () => {
 
 (async function boot() {
   if (cfg.mode === 'local') { DB = Local; return startApp(); }
-  if (cfg.mode === 'remote') {
-    try { if (await Remote.session()) { DB = Remote; return startApp(); } } catch (e) { console.warn(e); }
-  }
+  if (Remote.chave()) { DB = Remote; return startApp(); }
   showLogin();
 })();
 </script>
