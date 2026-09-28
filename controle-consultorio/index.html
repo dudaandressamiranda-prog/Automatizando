@@ -556,6 +556,8 @@ function vPainel(el) {
 
   el.innerHTML = `
   ${!S.itens.length && !S.setupMissing ? `<div class="alert info"><b>Primeiro passo:</b> cadastre os itens do consultório em <a href="#" data-go="itens">📦 Itens</a> (dá para puxar direto do cadastro do Consulveter) e informe o saldo inicial de cada um.</div>` : ''}
+  ${(() => { const n = ativos().filter(i => (saldoLote.get(i.id + '|') || 0) > 0.0001).length;
+    return n ? `<div class="alert warn">${n} item(ns) estão com saldo <b>sem lote/validade</b>. <a href="#" data-go="validades">Informar lotes em ⏳ Validades</a>.</div>` : ''; })()}
   ${!cfg.responsavel ? `<div class="alert warn">Informe <b>quem está usando este aparelho</b> em <a href="#" data-go="config">⚙️ Configurações</a> — o nome vai em cada lançamento.</div>` : ''}
   <div class="kpis">
     <div class="kpi ${feitas === tds.length ? 'ok' : tds.some(t => t.atrasado) ? 'warn' : ''}" data-go="contagem"><small>Contagens hoje</small><b>${feitas}/${tds.length}</b></div>
@@ -873,7 +875,7 @@ function bindMovTable(el) {
    VALIDADES
    ===================================================================== */
 function vValidades(el) {
-  const st = viewState; st.f = st.f || 'atencao';
+  const st = viewState;
   const rows = [];
   S.lotes.forEach(l => {
     const it = itemById(l.item_id); if (!it || it.ativo === false) return;
@@ -882,20 +884,26 @@ function vValidades(el) {
   });
   ativos().forEach(it => { const q = saldoLote.get(it.id + '|') || 0; if (q > 0.0001) rows.push({ it, l: null, q, s: statusValidade(null) }); });
   rows.sort((a, b) => (a.l?.validade || '9999').localeCompare(b.l?.validade || '9999'));
-  const filt = rows.filter(r => st.f === 'todos' || (st.f === 'vencidos' ? r.s.d !== null && r.s.d < 0 : st.f === 'atencao' ? r.s.d !== null && r.s.d <= cfg.diasAlerta : r.s.d !== null && r.s.d <= 90) && (!st.tipo || r.it.tipo === st.tipo));
-  el.innerHTML = `<div class="card">
+  const nSem = rows.filter(r => !r.l && (!st.tipo || r.it.tipo === st.tipo)).length;
+  st.f = st.f || (nSem ? 'semlote' : 'atencao');
+  const filt = rows.filter(r => st.f === 'todos' || (st.f === 'semlote' ? !r.l : st.f === 'vencidos' ? r.s.d !== null && r.s.d < 0 : st.f === 'atencao' ? r.s.d !== null && r.s.d <= cfg.diasAlerta : r.s.d !== null && r.s.d <= 90) && (!st.tipo || r.it.tipo === st.tipo));
+  if (st.f === 'semlote') filt.sort((a, b) => a.it.tipo.localeCompare(b.it.tipo) || a.it.nome.localeCompare(b.it.nome, 'pt-BR'));
+  el.innerHTML = `
+  ${nSem ? `<div class="alert warn"><b>${nSem} item(ns) com saldo sem lote/validade.</b> Quando tiver as caixas em mãos, toque em <b>Informar lote</b> em cada um — a quantidade passa para o lote certo sem mudar o saldo.</div>` : ''}
+  <div class="card">
     <div class="row" style="margin-bottom:12px">
-      <div class="seg">${[['atencao', `Vencidos + ${cfg.diasAlerta} dias`], ['vencidos', 'Só vencidos'], ['90', 'Até 90 dias'], ['todos', 'Todos']].map(([k, t]) => `<button data-f="${k}" class="${st.f === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+      <div class="seg">${[['atencao', `Vencidos + ${cfg.diasAlerta} dias`], ['vencidos', 'Só vencidos'], ['90', 'Até 90 dias'], ['semlote', `Sem lote${nSem ? ' (' + nSem + ')' : ''}`], ['todos', 'Todos']].map(([k, t]) => `<button data-f="${k}" class="${st.f === k ? 'on' : ''}">${t}</button>`).join('')}</div>
       <select id="vTipo" style="width:auto"><option value="">Contagem + insumos</option><option value="geladeira" ${st.tipo === 'geladeira' ? 'selected' : ''}>Só itens da contagem</option><option value="insumo" ${st.tipo === 'insumo' ? 'selected' : ''}>Só insumos</option></select>
     </div>
     ${filt.length ? `<div class="tbl-wrap"><table><tr><th>Item</th><th>Lote</th><th>Validade</th><th>Situação</th><th class="n">Saldo</th><th></th></tr>
-      ${filt.map(r => `<tr><td>${h(r.it.nome)} <span class="pill mut">${r.it.tipo}</span></td><td>${r.l ? h(r.l.lote) : '<span class="muted">sem lote</span>'}</td><td>${fmtD(r.l?.validade)}</td>
+      ${filt.map(r => `<tr><td>${h(r.it.nome)} <span class="pill mut">${r.it.tipo === 'geladeira' ? 'contagem' : 'insumo'}</span></td><td>${r.l ? h(r.l.lote) : '<span class="muted">sem lote</span>'}</td><td>${fmtD(r.l?.validade)}</td>
         <td><span class="pill ${r.s.cls}">${r.s.txt}</span></td><td class="n">${fmtN(r.q)}</td>
-        <td>${r.l && r.s.d !== null && r.s.d < 0 ? `<button class="btn sm bad" data-desc="${r.l.id}">Descartar</button>` : r.l ? `<button class="btn sm" data-edit="${r.l.id}">Editar</button>` : ''}</td></tr>`).join('')}
+        <td>${r.l && r.s.d !== null && r.s.d < 0 ? `<button class="btn sm bad" data-desc="${r.l.id}">Descartar</button>` : r.l ? `<button class="btn sm" data-edit="${r.l.id}">Editar</button>` : `<button class="btn sm pri" data-semlote="${r.it.id}">Informar lote</button>`}</td></tr>`).join('')}
     </table></div>` : '<div class="empty">Nada por aqui 👍</div>'}
   </div>`;
   $$('[data-f]', el).forEach(b => b.onclick = () => { st.f = b.dataset.f; render(); });
   $('#vTipo', el).onchange = (e) => { st.tipo = e.target.value; render(); };
+  $$('[data-semlote]', el).forEach(b => b.onclick = () => informarLoteModal(itemById(b.dataset.semlote)));
   $$('[data-desc]', el).forEach(b => b.onclick = () => { const l = loteById(b.dataset.desc);
     go('movimentar', { tipo: 'descarte', item: l.item_id, loteSel: l.id, qtd: String(saldoLote.get(l.item_id + '|' + l.id) || ''), motivo: 'Vencido' }); });
   $$('[data-edit]', el).forEach(b => b.onclick = () => { const l = loteById(b.dataset.edit);
@@ -908,6 +916,49 @@ function vValidades(el) {
         catch (e) { toast(errMsg(e), 'err'); }
       };
     }); });
+}
+
+/** Passa o saldo "sem lote" de um item para um ou mais lotes (o saldo total não muda). */
+function informarLoteModal(it) {
+  const total = Math.round((saldoLote.get(it.id + '|') || 0) * 1000) / 1000;
+  const lotes = S.lotes.filter(l => l.item_id === it.id);
+  const linha = (q) => `<div class="row" data-ln style="margin-bottom:8px">
+      <label class="f"><span>Lote</span><input data-k="lote" list="dlIL" autocomplete="off"></label>
+      <label class="f"><span>Validade</span><input data-k="val" type="date"></label>
+      <label class="f" style="max-width:110px"><span>Quantidade</span><input data-k="q" inputmode="decimal" value="${q}"></label></div>`;
+  modal(`<h3>Informar lote — ${h(it.nome)}</h3>
+    <p class="muted small" style="margin-top:0">Saldo sem lote: <b style="color:var(--text)">${fmtN(total)}</b>. Se as unidades forem de lotes diferentes, use “+ outro lote” e divida a quantidade.</p>
+    <datalist id="dlIL">${lotes.map(l => `<option value="${h(l.lote)}">val. ${fmtD(l.validade)}</option>`).join('')}</datalist>
+    <div id="ilLinhas">${linha(fmtN(total).replace(/\./g, ''))}</div>
+    <button class="btn sm" id="ilMais">+ outro lote</button> <span class="small" id="ilSoma"></span>
+    <div class="actions"><button class="btn" data-x>Cancelar</button><button class="btn pri" data-ok>Salvar</button></div>`, (m) => {
+    const soma = () => { const t = $$('[data-ln]', m).reduce((s, r) => s + (num($('[data-k=q]', r).value) || 0), 0);
+      $('#ilSoma', m).innerHTML = `Total informado: <b class="${t > total + 0.0001 ? 'neg' : ''}">${fmtN(t)}</b> de ${fmtN(total)}${t < total - 0.0001 ? ' — o restante continua sem lote' : ''}`; };
+    const bindLn = (r) => {
+      $('[data-k=q]', r).oninput = soma;
+      $('[data-k=lote]', r).onchange = () => { const l = lotes.find(x => norm(x.lote) === norm($('[data-k=lote]', r).value)); if (l && l.validade) $('[data-k=val]', r).value = l.validade; };
+    };
+    $$('[data-ln]', m).forEach(bindLn); soma();
+    $('#ilMais', m).onclick = () => { $('#ilLinhas', m).insertAdjacentHTML('beforeend', linha('')); bindLn($$('[data-ln]', m).pop()); soma(); };
+    $('[data-x]', m).onclick = closeModal;
+    $('[data-ok]', m).onclick = async () => {
+      const lns = $$('[data-ln]', m).map(r => ({ lote: $('[data-k=lote]', r).value.trim(), val: $('[data-k=val]', r).value, q: num($('[data-k=q]', r).value) }))
+        .filter(x => x.lote || x.val || x.q);
+      if (!lns.length) return toast('Preencha lote, validade e quantidade.', 'err');
+      if (lns.some(x => !x.lote || !x.val || isNaN(x.q) || x.q <= 0)) return toast('Cada linha precisa de lote, validade e quantidade.', 'err');
+      if (lns.reduce((s, x) => s + x.q, 0) > total + 0.0001) return toast(`A soma passa do saldo sem lote (${fmtN(total)}).`, 'err');
+      const btn = $('[data-ok]', m); btn.disabled = true;
+      try {
+        const rows = [];
+        for (const x of lns) {
+          const l = await acharOuCriarLote(it, x.lote, x.val);
+          rows.push({ item_id: it.id, lote_id: null, tipo: 'ajuste', delta: -x.q, motivo: 'Identificação de lote', obs: `Lote ${l.lote}` },
+                    { item_id: it.id, lote_id: l.id, tipo: 'ajuste', delta: x.q, motivo: 'Identificação de lote', obs: `Lote ${l.lote}` });
+        }
+        await registrar(rows); closeModal(); toast(`Lote informado: ${it.nome}`, 'ok'); render();
+      } catch (e) { toast(errMsg(e), 'err'); btn.disabled = false; }
+    };
+  });
 }
 
 /* =====================================================================
