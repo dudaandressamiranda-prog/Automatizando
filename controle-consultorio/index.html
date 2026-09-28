@@ -696,16 +696,24 @@ async function salvarContagem(itens) {
   if (divs.length && !String(st.obs || '').trim()) return toast('Há divergência: escreva uma observação explicando.', 'err');
   if (!cfg.responsavel) return toast('Informe o responsável em ⚙️ Configurações antes de salvar.', 'err');
 
-  let ajustar = true;
+  // motivo de cada divergência: 'saida' (venda/uso não lançado — sai por FEFO),
+  // 'ajuste' (corrige o estoque sem mexer em lote) ou 'nada' (não faz nada agora)
+  let motivos = null;
   if (divs.length) {
+    motivos = Object.fromEntries(divs.map(d => [d.item_id, d.contado < d.sistema ? 'saida' : 'ajuste']));
     const ok = await new Promise(res => modal(`<h3>${divs.length} divergência(s)</h3>
-      <div class="tbl-wrap"><table><tr><th>Item</th><th class="n">Sistema</th><th class="n">Contado</th><th class="n">Dif.</th></tr>
-      ${divs.map(d => `<tr class="diff"><td>${h(d.nome)}</td><td class="n">${fmtN(d.sistema)}</td><td class="n">${fmtN(d.contado)}</td><td class="n">${fmtN(d.contado - d.sistema)}</td></tr>`).join('')}</table></div>
-      <label style="display:flex;gap:8px;margin-top:12px;align-items:flex-start"><input type="checkbox" id="mAdj" checked>
-        <span>Corrigir o estoque do sistema para o valor contado (gera um <b>ajuste</b> no histórico).<br><span class="muted small">Desmarque se a diferença for um lançamento que você ainda vai registrar em Entrada/Saída.</span></span></label>
+      <p class="muted small" style="margin-top:0">Para cada item, diga por que o contado é diferente do sistema. <b>Saída não lançada</b> registra uma saída de verdade (some do lote certo). <b>Corrigir estoque</b> só ajusta o número, sem lote.</p>
+      <div class="tbl-wrap"><table><tr><th>Item</th><th class="n">Sistema</th><th class="n">Contado</th><th class="n">Dif.</th><th>Motivo</th></tr>
+      ${divs.map(d => `<tr class="diff"><td>${h(d.nome)}</td><td class="n">${fmtN(d.sistema)}</td><td class="n">${fmtN(d.contado)}</td><td class="n">${fmtN(d.contado - d.sistema)}</td>
+        <td><select data-mot="${d.item_id}" style="min-width:170px">
+          ${d.contado < d.sistema ? `<option value="saida" selected>Saída não lançada</option>` : ''}
+          <option value="ajuste" ${d.contado >= d.sistema ? 'selected' : ''}>Corrigir estoque (erro/perda)</option>
+          <option value="nada">Não fazer nada agora</option>
+        </select></td></tr>`).join('')}</table></div>
       <div class="actions"><button class="btn" data-x>Voltar</button><button class="btn ok" data-ok>Salvar contagem</button></div>`, (m) => {
+        $$('[data-mot]', m).forEach(s => s.onchange = () => motivos[s.dataset.mot] = s.value);
         $('[data-x]', m).onclick = () => { closeModal(); res(false); };
-        $('[data-ok]', m).onclick = () => { ajustar = $('#mAdj', m).checked; closeModal(); res(true); };
+        $('[data-ok]', m).onclick = () => { closeModal(); res(true); };
       }));
     if (!ok) return;
   }
@@ -715,7 +723,22 @@ async function salvarContagem(itens) {
       itens: linhas, divergencias: divs.length, obs: st.obs || null, responsavel: resp(),
     }]);
     S.contagens.push(c);
-    if (ajustar) for (const d of divs) await ajustarPara(itemById(d.item_id), d.contado, { motivo: 'Ajuste na contagem', obs: `${st.turno} ${fmtD(st.data)} — ${st.obs || ''}`, contagem_id: c.id });
+    for (const d of divs) {
+      const mot = motivos[d.item_id];
+      if (mot === 'nada') continue;
+      const item = itemById(d.item_id);
+      const obs = `${st.turno} ${fmtD(st.data)} — ${st.obs || ''}`;
+      if (mot === 'saida') {
+        const falta = Math.round((d.sistema - d.contado) * 1000) / 1000;
+        const { plano } = planoFEFO(item.id, falta);
+        const rows = plano.map(p => ({ item_id: item.id, lote_id: p.lote_id, tipo: 'saida', delta: -p.qtd, motivo: 'Venda/uso não lançado', obs, contagem_id: c.id }));
+        const coberto = plano.reduce((s, p) => s + p.qtd, 0);
+        if (coberto < falta - 0.0001) rows.push({ item_id: item.id, lote_id: null, tipo: 'ajuste', delta: -(falta - coberto), motivo: 'Ajuste na contagem', obs, contagem_id: c.id });
+        if (rows.length) await registrar(rows);
+      } else {
+        await ajustarPara(item, d.contado, { motivo: 'Ajuste na contagem', obs, contagem_id: c.id });
+      }
+    }
     toast(divs.length ? `Contagem salva com ${divs.length} divergência(s).` : 'Contagem salva — tudo confere ✓', 'ok');
     go('contagem', { data: st.data, tipo: st.tipo });
   } catch (e) { toast('Erro ao salvar: ' + errMsg(e), 'err'); }
