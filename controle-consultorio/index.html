@@ -1061,7 +1061,7 @@ async function addItensModal(tipoPadrao) {
   const sel = new Map();
   modal(`<h3>Adicionar itens ao consultório</h3>
     ${ps.length ? `<label class="f"><span>Buscar no cadastro ${DB.kind === 'remote' ? 'do Consulveter' : ''} (${ps.length} produtos)</span><input id="aQ" placeholder="ex.: vacina, v10, raiva, cytopoint…" autocomplete="off"></label>
-    <div class="small muted" style="margin:6px 0">Marque os produtos e escolha o tipo.</div>
+    <div class="small muted" style="margin:6px 0">Marque os produtos e escolha o tipo. <b id="aCount"></b></div>
     <div class="picker" id="aList"></div>` : `<p class="muted">${DB.kind === 'remote' ? 'Nenhum produto encontrado no Consulveter.' : 'No modo local não há cadastro do Consulveter — digite o nome abaixo (ou importe uma lista de nomes).'}</p>`}
     <div class="row" style="margin-top:12px"><label class="f" style="flex:2"><span>Ou digite um nome manualmente</span><input id="aNome" placeholder="Nome do item"></label>
       <button class="btn" id="aAddMan">Adicionar à seleção</button></div>
@@ -1075,7 +1075,8 @@ async function addItensModal(tipoPadrao) {
     const draw = () => {
       if (list) {
         const q = norm($('#aQ', m).value);
-        const f = ps.filter(p => !q || norm(p.name).includes(q) || (p.barcode || '').includes(q)).slice(0, 150);
+        const f = ps.filter(p => !q || norm(p.name).includes(q) || (p.barcode || '').includes(q));
+        $('#aCount', m).textContent = q ? `${f.length} de ${ps.length} produtos` : `${ps.length} produtos — role a lista ou busque pelo nome`;
         list.innerHTML = f.map(p => { const ja = have.has(p.id) || haveNames.has(norm(p.name));
           return `<label class="${ja ? 'have' : ''}"><input type="checkbox" data-p="${p.id}" ${ja ? 'disabled checked' : sel.has(p.id) ? 'checked' : ''}>
             <span>${h(p.name)}<br><span class="small muted">${h([p.barcode, p.category, p.unit].filter(Boolean).join(' · '))}${ja ? ' · já cadastrado' : ''}</span></span></label>`; }).join('') || '<div class="empty">Nada encontrado.</div>';
