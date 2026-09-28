@@ -2,7 +2,7 @@ name: Deploy GitHub Pages
 
 on:
   push:
-    branches: ["claude/smart-gate-mobile-control-axjq9x"]
+    branches: ["claude/smart-gate-mobile-control-axjq9x", "claude/sweet-darwin-d9yas8"]
   workflow_dispatch:
 
 permissions:
