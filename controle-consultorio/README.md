@@ -37,7 +37,7 @@ apenas naquele navegador.
 | Planilha | App |
 |---|---|
 | Linhas SAÍDA/ENTRADA preenchidas no fim de cada contagem | Cada saída/entrada é lançada na hora (com lote, motivo, paciente/tutor e responsável). A contagem mostra automaticamente o que foi lançado desde a anterior. |
-| Contar e escrever a quantidade de tudo, 3× por dia | O sistema já sabe quanto deveria ter. Na contagem você digita o que contou (ou toca ✓ quando bate) e **só as divergências ficam em vermelho**, exigindo justificativa. |
+| Contar e escrever a quantidade de tudo, várias vezes por dia | O sistema já sabe quanto deveria ter. Na contagem você digita o que contou (ou toca ✓ quando bate) e **só as divergências ficam em vermelho**, exigindo justificativa. |
 | DIFERENÇA calculada de cabeça | Diferença calculada sozinha; opção de corrigir o estoque com um ajuste registrado no histórico. |
 | Sem controle de validade | Lotes com validade, saída "vence primeiro, sai primeiro" automática, alertas de vencidos/vencendo e botão de descarte. |
 | Uma aba por mês | 📅 Diário monta a "planilha" de qualquer dia (início, entradas, saídas, cada contagem, fim) — imprimível e exportável em CSV. |
@@ -46,7 +46,7 @@ apenas naquele navegador.
 
 - **Painel** — contagens do dia (feitas/pendentes/atrasadas), vencidos, vencendo,
   abaixo do mínimo e o saldo atual da geladeira.
-- **Contagem** — 1ª/2ª/3ª contagem (nomes e horários configuráveis). Lista os
+- **Contagem** — 1ª contagem às 08:00 e 2ª às 19:00 (nomes e horários configuráveis). Lista os
   itens cadastrados em Itens; se não houver nenhum, mostra o botão para adicionar.
 - **Entrada / Saída** — entrada (lote + validade + NF), saída, descarte e ajuste;
   aceita leitor de código de barras no campo de busca.

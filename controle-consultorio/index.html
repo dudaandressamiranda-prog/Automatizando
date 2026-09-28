@@ -224,9 +224,8 @@ const DEFAULT_CFG = {
   chave: '',               // usada só se o arquivo vier sem chave embutida
   responsavel: '',
   turnos: [
-    { nome: '1ª contagem', hora: '09:30' },
-    { nome: '2ª contagem', hora: '16:00' },
-    { nome: '3ª contagem', hora: '22:00' },
+    { nome: '1ª contagem', hora: '08:00' },
+    { nome: '2ª contagem', hora: '19:00' },
   ],
   diasAlerta: 30,
   url: CONSULVETER.url, key: CONSULVETER.key,
@@ -236,6 +235,10 @@ function lsGet(k, fb) { try { const v = localStorage.getItem(k); return v ? JSON
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } }
 
 let cfg = Object.assign({}, DEFAULT_CFG, lsGet(CFG_KEY, {}));
+// Aparelhos que guardaram o padrão antigo (3 contagens) passam para o novo (08:00 e 19:00)
+if (JSON.stringify(cfg.turnos) === JSON.stringify([{ nome: '1ª contagem', hora: '09:30' }, { nome: '2ª contagem', hora: '16:00' }, { nome: '3ª contagem', hora: '22:00' }])) {
+  cfg.turnos = DEFAULT_CFG.turnos; lsSet(CFG_KEY, cfg);
+}
 function saveCfg() { lsSet(CFG_KEY, cfg); }
 
 /* =====================================================================
