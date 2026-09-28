@@ -102,6 +102,24 @@
   tr.diff td { background: var(--badbg); }
   tr.okrow td { background: var(--okbg); }
 
+  /* lista de contagem — cartão por item, legível no celular */
+  .count-list { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .count-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .count-list .count-row:last-child { border-bottom: 0; }
+  .count-row.diff { background: var(--badbg); }
+  .count-row.okrow { background: var(--okbg); }
+  .cr-name { flex: 1 1 180px; min-width: 140px; font-size: 13px; }
+  .cr-meta { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  .cr-sys { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .cr-sys b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .cr-diff { min-width: 46px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+  @media (max-width: 560px) {
+    .count-row { padding: 10px; }
+    .cr-name { flex-basis: 100%; }
+    .cr-meta { margin-left: 0; width: 100%; justify-content: space-between; }
+    .count-in { flex: 1; min-width: 0; }
+  }
+
   .pill { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; white-space: nowrap; }
   .pill.ok { background: var(--okbg); color: var(--ok); }
   .pill.warn { background: var(--warnbg); color: var(--warn); }
@@ -642,14 +660,17 @@ function vContagem(el) {
       ${itens.length ? `<button class="btn sm" id="ctFill">✓ Preencher tudo com o sistema</button>
       <button class="btn sm" id="ctClear">Limpar</button>` : ''}</h2>
     <p class="muted small" style="margin-top:-6px">Conte o que tem fisicamente e digite. Se bater com o sistema a linha fica verde; se não bater, fica vermelha.</p>
-    ${itens.length ? `<div class="tbl-wrap"><table>
-      <tr><th>Item</th><th class="n">Sistema</th><th class="n">Contado</th><th class="n">Diferença</th><th class="c"></th></tr>
-      ${itens.map(i => `<tr data-id="${i.id}"><td>${h(i.nome)}<div class="small muted">${lotesComSaldo(i.id).map(x => x.lote ? `${h(x.lote.lote)}: ${fmtN(x.qtd)}` : `s/ lote: ${fmtN(x.qtd)}`).join(' · ')}</div></td>
-        <td class="n">${fmtN(saldo(i.id))}</td>
-        <td class="n"><input class="count-in" inputmode="decimal" data-c="${i.id}" value="${h(st.vals[i.id] ?? '')}"></td>
-        <td class="n" data-d="${i.id}"></td>
-        <td class="c"><button class="btn sm" data-eq="${i.id}" title="Bate com o sistema">✓</button></td></tr>`).join('')}
-    </table></div>
+    ${itens.length ? `<div class="count-list">
+      ${itens.map(i => `<div class="count-row" data-id="${i.id}">
+        <div class="cr-name">${h(i.nome)}<div class="small muted">${lotesComSaldo(i.id).map(x => x.lote ? `${h(x.lote.lote)}: ${fmtN(x.qtd)}` : `s/ lote: ${fmtN(x.qtd)}`).join(' · ')}</div></div>
+        <div class="cr-meta">
+          <span class="cr-sys">sistema <b>${fmtN(saldo(i.id))}</b></span>
+          <input class="count-in" inputmode="decimal" data-c="${i.id}" value="${h(st.vals[i.id] ?? '')}" placeholder="contado">
+          <button class="btn sm" data-eq="${i.id}" title="Bate com o sistema">✓</button>
+          <span class="cr-diff" data-d="${i.id}"></span>
+        </div>
+      </div>`).join('')}
+    </div>
     <div class="row" style="margin-top:12px">
       <label class="f"><span>Observação (obrigatória se houver diferença)</span><input id="ctObs" value="${h(st.obs || '')}" placeholder="Ex.: saída do V10 às 15h não foi lançada"></label>
     </div>
@@ -665,10 +686,10 @@ function vContagem(el) {
   const upd = () => {
     let diffs = 0, falt = 0;
     itens.forEach(i => {
-      const v = st.vals[i.id]; const tr = $(`tr[data-id="${i.id}"]`, el); const td = $(`[data-d="${i.id}"]`, el);
-      if (v === undefined || v === '' || isNaN(num(v))) { tr.className = ''; td.innerHTML = ''; falt++; return; }
+      const v = st.vals[i.id]; const tr = $(`.count-row[data-id="${i.id}"]`, el); const td = $(`[data-d="${i.id}"]`, el);
+      if (v === undefined || v === '' || isNaN(num(v))) { tr.className = 'count-row'; td.innerHTML = ''; falt++; return; }
       const d = Math.round((num(v) - saldo(i.id)) * 1000) / 1000;
-      tr.className = d ? 'diff' : 'okrow';
+      tr.className = 'count-row ' + (d ? 'diff' : 'okrow');
       td.innerHTML = d ? `<span class="${d < 0 ? 'neg' : 'pos'}">${d > 0 ? '+' : ''}${fmtN(d)}</span>` : '<span class="pos">ok</span>';
       if (d) diffs++;
     });
