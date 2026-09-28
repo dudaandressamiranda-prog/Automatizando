@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0f1522" />
+<title>Consultório Centro — Vacinas e Insumos</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%233b82f6'/%3E%3Cpath d='M20 44l20-20m-6-6l12 12M16 48l6-6' stroke='white' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #0b111c; --panel: #121a28; --panel2: #182234; --line: #243149;
+    --text: #e8edf6; --muted: #8a97ad; --accent: #3b82f6; --accent2: #60a5fa;
+    --ok: #22c55e; --warn: #f59e0b; --bad: #ef4444; --info: #a78bfa;
+    --okbg: rgba(34,197,94,.12); --warnbg: rgba(245,158,11,.14); --badbg: rgba(239,68,68,.14);
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  a { color: var(--accent2); }
+  .hidden { display: none !important; }
+
+  /* ---------- layout ---------- */
+  .shell { display: flex; min-height: 100vh; }
+  .side { width: 220px; background: var(--panel); border-right: 1px solid var(--line);
+    padding: 16px 10px; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; }
+  .brand { display: flex; gap: 10px; align-items: center; padding: 4px 8px 16px; }
+  .brand .logo { width: 34px; height: 34px; border-radius: 9px; background: var(--accent);
+    display: grid; place-items: center; font-size: 18px; }
+  .brand b { display: block; font-size: 14px; } .brand small { color: var(--muted); font-size: 11px; }
+  .nav button { display: flex; width: 100%; gap: 10px; align-items: center; background: none; border: 0;
+    padding: 9px 10px; border-radius: 8px; cursor: pointer; color: var(--muted); text-align: left; }
+  .nav button:hover { background: var(--panel2); color: var(--text); }
+  .nav button.on { background: var(--panel2); color: var(--text); font-weight: 600; }
+  .nav .badge { margin-left: auto; background: var(--bad); color: #fff; border-radius: 99px;
+    font-size: 11px; padding: 0 7px; font-weight: 700; }
+  .side .foot { margin-top: auto; font-size: 12px; color: var(--muted); padding: 8px; border-top: 1px solid var(--line); }
+  .main { flex: 1; min-width: 0; padding: 20px 24px 90px; }
+  .top { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .top h1 { font-size: 20px; margin: 0; }
+  .top .sp { flex: 1; }
+  .mode { font-size: 11px; padding: 3px 8px; border-radius: 99px; background: var(--panel2); color: var(--muted); border: 1px solid var(--line); }
+
+  @media (max-width: 860px) {
+    .side { position: fixed; bottom: 0; top: auto; left: 0; right: 0; width: auto; height: auto;
+      flex-direction: row; padding: 4px; border-right: 0; border-top: 1px solid var(--line); z-index: 20; }
+    .brand, .side .foot { display: none; }
+    .nav { display: flex; overflow-x: auto; gap: 2px; width: 100%; }
+    .nav button { flex-direction: column; gap: 2px; font-size: 10.5px; padding: 6px 8px; min-width: 64px; align-items: center; text-align: center; }
+    .nav button .ic { font-size: 18px; }
+    .nav .badge { position: absolute; margin: -4px 0 0 22px; }
+    .main { padding: 14px 16px 90px; }
+  }
+
+  /* ---------- componentes ---------- */
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+  .card h2 { font-size: 15px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card h2 .sp { flex: 1; }
+  .grid { display: grid; gap: 12px; }
+  .g2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; cursor: pointer; }
+  .kpi small { color: var(--muted); display: block; font-size: 12px; }
+  .kpi b { font-size: 26px; display: block; margin-top: 2px; }
+  .kpi.bad b { color: var(--bad); } .kpi.warn b { color: var(--warn); } .kpi.ok b { color: var(--ok); }
+
+  .btn { background: var(--panel2); border: 1px solid var(--line); border-radius: 9px; padding: 8px 14px;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.pri { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .btn.ok { background: var(--ok); border-color: var(--ok); color: #05210f; font-weight: 700; }
+  .btn.bad { background: transparent; border-color: var(--bad); color: var(--bad); }
+  .btn.sm { padding: 4px 9px; font-size: 12px; border-radius: 7px; }
+  .btn.big { padding: 12px 20px; font-size: 15px; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+  .row > .f { flex: 1; min-width: 140px; }
+
+  label.f { display: block; }
+  label.f > span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  input, select, textarea { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  input[type=checkbox] { width: auto; }
+  textarea { min-height: 60px; resize: vertical; }
+
+  .seg { display: inline-flex; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+  .seg button { background: none; border: 0; padding: 7px 14px; border-radius: 8px; cursor: pointer; color: var(--muted); }
+  .seg button.on { background: var(--panel2); color: var(--text); font-weight: 600; }
+  .seg button.on.in { background: var(--okbg); color: var(--ok); }
+  .seg button.on.out { background: var(--badbg); color: #fca5a5; }
+  .seg button.on.disc { background: var(--warnbg); color: var(--warn); }
+
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); background: var(--panel2); position: sticky; top: 0; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  td.c, th.c { text-align: center; }
+  tr.diff td { background: var(--badbg); }
+  tr.okrow td { background: var(--okbg); }
+
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .pill.ok { background: var(--okbg); color: var(--ok); }
+  .pill.warn { background: var(--warnbg); color: var(--warn); }
+  .pill.bad { background: var(--badbg); color: #fca5a5; }
+  .pill.info { background: rgba(167,139,250,.14); color: var(--info); }
+  .pill.mut { background: var(--panel2); color: var(--muted); }
+  .muted { color: var(--muted); } .small { font-size: 12px; }
+  .pos { color: var(--ok); font-weight: 600; } .neg { color: #fca5a5; font-weight: 600; }
+  .empty { color: var(--muted); text-align: center; padding: 22px; }
+
+  .alert { border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; border: 1px solid; font-size: 13px; }
+  .alert.bad { background: var(--badbg); border-color: rgba(239,68,68,.4); }
+  .alert.warn { background: var(--warnbg); border-color: rgba(245,158,11,.4); }
+  .alert.info { background: rgba(59,130,246,.1); border-color: rgba(59,130,246,.4); }
+
+  .stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .stk { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+  .stk .nm { font-size: 12px; font-weight: 600; min-height: 32px; }
+  .stk .q { font-size: 22px; font-weight: 700; }
+  .stk.low { border-color: var(--warn); } .stk.zero { border-color: var(--bad); }
+
+  .turnos { display: flex; gap: 8px; flex-wrap: wrap; }
+  .turno { flex: 1; min-width: 150px; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .turno.done { border-color: rgba(34,197,94,.5); } .turno.late { border-color: rgba(245,158,11,.6); }
+  .turno b { display: block; font-size: 13px; }
+
+  .count-in { width: 90px; text-align: right; font-size: 16px; font-weight: 600; padding: 7px 9px; }
+  .since { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--panel2); border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; font-size: 12px; }
+
+  .picker { max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; }
+  .picker label { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .picker label:hover { background: var(--panel2); }
+  .picker label.have { opacity: .45; cursor: default; }
+
+  /* modal & toast */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: grid; place-items: center; z-index: 50; padding: 16px; }
+  .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; width: min(640px, 100%); max-height: 90vh; overflow: auto; padding: 18px; }
+  .modal h3 { margin: 0 0 12px; }
+  .modal .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+  #toast { position: fixed; bottom: 86px; left: 50%; transform: translateX(-50%); background: var(--panel2); border: 1px solid var(--line);
+    padding: 10px 16px; border-radius: 10px; z-index: 60; box-shadow: 0 8px 30px rgba(0,0,0,.4); max-width: 90vw; }
+  #toast.err { border-color: var(--bad); }
+  #toast.ok { border-color: var(--ok); }
+
+  /* login */
+  .login { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+  .login .box { width: min(400px, 100%); }
+  .login h1 { font-size: 20px; margin: 0 0 4px; }
+  .divider { text-align: center; color: var(--muted); font-size: 12px; margin: 14px 0; }
+
+  @media print {
+    :root { --bg: #fff; --panel: #fff; --panel2: #f1f5f9; --line: #cbd5e1; --text: #111; --muted: #555; }
+    .side, .top .btn, .noprint { display: none !important; }
+    .main { padding: 0; } .card { border: 0; padding: 0; }
+    tr.diff td { background: #fee2e2; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="login" class="login hidden">
+  <div class="box card">
+    <h1>💉 Consultório Centro</h1>
+    <p class="muted" style="margin-top:0">Controle de vacinas, injetáveis de geladeira e insumos.</p>
+    <form id="loginForm">
+      <label class="f"><span>E-mail (mesma conta do Consulveter Estoque)</span><input id="lgEmail" type="email" autocomplete="username" required /></label>
+      <div style="height:10px"></div>
+      <label class="f"><span>Senha</span><input id="lgPass" type="password" autocomplete="current-password" required /></label>
+      <div style="height:14px"></div>
+      <button class="btn pri big" style="width:100%;justify-content:center" type="submit">Entrar</button>
+      <p id="lgErr" class="neg small"></p>
+    </form>
+    <div class="divider">ou</div>
+    <button class="btn" style="width:100%;justify-content:center" id="btnLocal">Usar sem login (dados só neste aparelho)</button>
+    <p class="muted small" style="margin-bottom:0">Com login, a equipe toda vê os mesmos dados e os produtos vêm do cadastro do Consulveter.</p>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="app" class="shell hidden">
+  <aside class="side">
+    <div class="brand"><div class="logo">💉</div><div><b>Consultório Centro</b><small>Vacinas e insumos</small></div></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="foot" id="sideFoot"></div>
+  </aside>
+  <main class="main">
+    <div class="top">
+      <h1 id="title"></h1>
+      <span class="mode" id="modeTag"></span>
+      <div class="sp"></div>
+      <button class="btn sm" id="btnReload" title="Buscar dados atualizados">⟳ Atualizar</button>
+    </div>
+    <div id="setupWarn"></div>
+    <div id="view"></div>
+  </main>
+</div>
+
+<div id="modalRoot"></div>
+<div id="toast" class="hidden"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   Configuração
+   ===================================================================== */
+const CONSULVETER = {
+  url: 'https://owjdsqzbalorlrpovzmo.supabase.co',
+  key: 'sb_publishable_AnZCJF789lQEezlP0lcaNQ_JB4zFzoY',
+};
+const CFG_KEY = 'cc_cfg_v1';
+const LOCAL_DB_KEY = 'cc_localdb_v1';
+const LOCAL_PROD_KEY = 'cc_localprod_v1';
+const TABLES = ['cc_itens', 'cc_lotes', 'cc_movs', 'cc_contagens'];
+
+const DEFAULT_CFG = {
+  mode: null,              // 'remote' | 'local'
+  responsavel: '',
+  turnos: [
+    { nome: '1ª contagem', hora: '09:30' },
+    { nome: '2ª contagem', hora: '16:00' },
+    { nome: '3ª contagem', hora: '22:00' },
+  ],
+  tempMin: 2, tempMax: 8,
+  diasAlerta: 30,
+  url: CONSULVETER.url, key: CONSULVETER.key,
+};
+
+function lsGet(k, fb) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } }
+
+let cfg = Object.assign({}, DEFAULT_CFG, lsGet(CFG_KEY, {}));
+function saveCfg() { lsSet(CFG_KEY, cfg); }
+
+/* =====================================================================
+   Utilidades
+   ===================================================================== */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const h = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2));
+const num = (v) => { const n = parseFloat(String(v ?? '').replace(',', '.')); return isFinite(n) ? n : NaN; };
+const fmtN = (n) => (Math.round((+n || 0) * 1000) / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+const pad = (n) => String(n).padStart(2, '0');
+const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const today = () => ymd(new Date());
+const fmtD = (iso) => { if (!iso) return '—'; const [y, m, d] = String(iso).slice(0, 10).split('-'); return `${d}/${m}/${y}`; };
+const fmtDT = (ts) => { const d = new Date(ts); return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const fmtT = (ts) => { const d = new Date(ts); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const localDay = (ts) => ymd(new Date(ts));
+const addDays = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return ymd(d); };
+function daysUntil(iso) {
+  if (!iso) return null;
+  const a = new Date(today() + 'T00:00:00'), b = new Date(String(iso).slice(0, 10) + 'T00:00:00');
+  return Math.round((b - a) / 864e5);
+}
+const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+function toast(msg, kind = '') {
+  const t = $('#toast'); t.textContent = msg; t.className = kind; clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.className = 'hidden', 3500);
+}
+function errMsg(e) { return (e && (e.message || e.error_description || e.hint)) || String(e); }
+
+function modal(html, onMount) {
+  const root = $('#modalRoot');
+  root.innerHTML = `<div class="modal-bg"><div class="modal">${html}</div></div>`;
+  const bg = root.firstElementChild;
+  bg.addEventListener('mousedown', (e) => { if (e.target === bg) closeModal(); });
+  onMount && onMount(bg.firstElementChild);
+}
+function closeModal() { $('#modalRoot').innerHTML = ''; }
+function confirmBox(title, body, okLabel = 'Confirmar', danger = false) {
+  return new Promise((res) => {
+    modal(`<h3>${h(title)}</h3><div>${body}</div>
+      <div class="actions"><button class="btn" data-x>Cancelar</button><button class="btn ${danger ? 'bad' : 'pri'}" data-ok>${h(okLabel)}</button></div>`, (m) => {
+      $('[data-x]', m).onclick = () => { closeModal(); res(false); };
+      $('[data-ok]', m).onclick = () => { closeModal(); res(true); };
+    });
+  });
+}
+function downloadFile(name, content, type = 'text/csv;charset=utf-8') {
+  const blob = new Blob([content], { type });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function toCSV(rows) {
+  return '﻿' + rows.map(r => r.map(v => { const s = String(v ?? ''); return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(';')).join('\n');
+}
+
+/* =====================================================================
+   Camada de dados: Supabase (Consulveter) ou local (este aparelho)
+   ===================================================================== */
+const Local = {
+  kind: 'local',
+  _db() { const d = lsGet(LOCAL_DB_KEY, {}); TABLES.forEach(t => d[t] = d[t] || []); return d; },
+  _save(d) { if (!lsSet(LOCAL_DB_KEY, d)) throw new Error('Não foi possível salvar neste navegador (armazenamento cheio ou bloqueado).'); },
+  async list(t) { return this._db()[t]; },
+  async insert(t, rows) {
+    const d = this._db(); const now = new Date().toISOString();
+    const out = rows.map(r => ({ id: uid(), created_at: now, ...r }));
+    d[t].push(...out); this._save(d); return out;
+  },
+  async update(t, id, patch) {
+    const d = this._db(); const r = d[t].find(x => x.id === id); if (r) Object.assign(r, patch); this._save(d); return r;
+  },
+  async remove(t, id) {
+    const d = this._db(); d[t] = d[t].filter(x => x.id !== id);
+    if (t === 'cc_itens') { d.cc_lotes = d.cc_lotes.filter(x => x.item_id !== id); d.cc_movs = d.cc_movs.filter(x => x.item_id !== id); }
+    if (t === 'cc_lotes') d.cc_movs.forEach(m => { if (m.lote_id === id) m.lote_id = null; });
+    this._save(d);
+  },
+  async products() { return lsGet(LOCAL_PROD_KEY, []); },
+  async signOut() {},
+  label() { return 'Somente neste aparelho'; },
+};
+
+const Remote = {
+  kind: 'remote', client: null, user: null,
+  init() {
+    if (!window.supabase) throw new Error('Não foi possível carregar a biblioteca do Supabase (verifique a internet).');
+    this.client = this.client || window.supabase.createClient(cfg.url, cfg.key, { auth: { persistSession: true, storageKey: 'cc-consulveter-auth' } });
+  },
+  async session() { this.init(); const { data } = await this.client.auth.getSession(); this.user = data.session?.user || null; return data.session; },
+  async signIn(email, password) {
+    this.init();
+    const { data, error } = await this.client.auth.signInWithPassword({ email, password });
+    if (error) throw error; this.user = data.user; return data;
+  },
+  async signOut() { this.init(); await this.client.auth.signOut(); this.user = null; },
+  async _all(q) {
+    const out = []; const step = 1000;
+    for (let from = 0; ; from += step) {
+      const { data, error } = await q().range(from, from + step - 1);
+      if (error) throw error;
+      out.push(...data); if (data.length < step) break;
+    }
+    return out;
+  },
+  async list(t) { return this._all(() => this.client.from(t).select('*').order('created_at', { ascending: true })); },
+  async insert(t, rows) {
+    const { data, error } = await this.client.from(t).insert(rows).select(); if (error) throw error; return data;
+  },
+  async update(t, id, patch) {
+    const { data, error } = await this.client.from(t).update(patch).eq('id', id).select(); if (error) throw error; return data[0];
+  },
+  async remove(t, id) { const { error } = await this.client.from(t).delete().eq('id', id); if (error) throw error; },
+  async products() {
+    let rows;
+    try {
+      rows = await this._all(() => this.client.from('products').select('id,name,barcode,category,unit,active').order('name'));
+    } catch (e) {
+      rows = await this._all(() => this.client.from('products').select('id,name,barcode,category,unit').order('name'));
+    }
+    return rows.filter(p => p.active !== false);
+  },
+  label() { return this.user?.email || 'Consulveter'; },
+};
+
+let DB = Local;
+
+/* =====================================================================
+   Estado e cálculos (o saldo é sempre a soma das movimentações)
+   ===================================================================== */
+const S = { itens: [], lotes: [], movs: [], contagens: [], products: null, setupMissing: false };
+let saldoItem = new Map(), saldoLote = new Map(); // saldoLote key: `${item_id}|${lote_id||''}`
+
+function recalc() {
+  saldoItem = new Map(); saldoLote = new Map();
+  S.movs.forEach(m => {
+    const d = +m.delta || 0;
+    saldoItem.set(m.item_id, (saldoItem.get(m.item_id) || 0) + d);
+    const k = m.item_id + '|' + (m.lote_id || '');
+    saldoLote.set(k, (saldoLote.get(k) || 0) + d);
+  });
+  S.itens.sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+const itemById = (id) => S.itens.find(i => i.id === id);
+const loteById = (id) => S.lotes.find(l => l.id === id);
+const saldo = (itemId) => Math.round((saldoItem.get(itemId) || 0) * 1000) / 1000;
+const ativos = (tipo) => S.itens.filter(i => i.ativo !== false && (!tipo || i.tipo === tipo));
+
+/** Lotes de um item com saldo (inclui o "sem lote"), em ordem FEFO: vence primeiro sai primeiro. */
+function lotesComSaldo(itemId) {
+  const out = [];
+  S.lotes.filter(l => l.item_id === itemId).forEach(l => {
+    const q = saldoLote.get(itemId + '|' + l.id) || 0;
+    if (q > 0.0001) out.push({ lote: l, qtd: q });
+  });
+  const semLote = saldoLote.get(itemId + '|') || 0;
+  out.sort((a, b) => (a.lote.validade || '9999').localeCompare(b.lote.validade || '9999'));
+  if (semLote > 0.0001) out.push({ lote: null, qtd: semLote });
+  return out;
+}
+function proxValidade(itemId) { const l = lotesComSaldo(itemId).find(x => x.lote && x.lote.validade); return l ? l.lote.validade : null; }
+function saldoEm(itemId, ts) {
+  let s = 0; const t = new Date(ts).getTime();
+  S.movs.forEach(m => { if (m.item_id === itemId && new Date(m.created_at).getTime() < t) s += +m.delta || 0; });
+  return Math.round(s * 1000) / 1000;
+}
+function statusValidade(iso) {
+  const d = daysUntil(iso);
+  if (d === null) return { cls: 'mut', txt: 'sem validade', d };
+  if (d < 0) return { cls: 'bad', txt: `vencido há ${-d}d`, d };
+  if (d === 0) return { cls: 'bad', txt: 'vence hoje', d };
+  if (d <= cfg.diasAlerta) return { cls: 'warn', txt: `vence em ${d}d`, d };
+  if (d <= 90) return { cls: 'info', txt: `${d} dias`, d };
+  return { cls: 'ok', txt: `${d} dias`, d };
+}
+
+async function loadAll() {
+  S.setupMissing = false;
+  try {
+    const [itens, lotes, movs, contagens] = await Promise.all(TABLES.map(t => DB.list(t)));
+    Object.assign(S, { itens, lotes, movs, contagens });
+  } catch (e) {
+    const m = errMsg(e);
+    if (/cc_|schema cache|does not exist|relation/i.test(m)) S.setupMissing = true; else toast('Erro ao carregar: ' + m, 'err');
+  }
+  recalc();
+}
+
+/* ---------- gravação de movimentações ---------- */
+const resp = () => cfg.responsavel || (DB.kind === 'remote' ? DB.label() : '');
+
+async function registrar(movs) {
+  const rows = movs.map(m => ({ responsavel: resp(), ...m }));
+  const saved = await DB.insert('cc_movs', rows);
+  S.movs.push(...saved); recalc(); return saved;
+}
+
+async function acharOuCriarLote(item, codigo, validade) {
+  const cod = String(codigo || '').trim();
+  if (!cod) return null;
+  let l = S.lotes.find(x => x.item_id === item.id && norm(x.lote) === norm(cod));
+  if (!l) {
+    [l] = await DB.insert('cc_lotes', [{ item_id: item.id, lote: cod, validade: validade || null }]);
+    S.lotes.push(l);
+  } else if (validade && l.validade !== validade) {
+    const up = await DB.update('cc_lotes', l.id, { validade }); Object.assign(l, up || { validade });
+  }
+  return l;
+}
+
+/** Baixa `qtd` de um item distribuindo pelos lotes em ordem FEFO. */
+function planoFEFO(itemId, qtd) {
+  const plano = []; let rest = qtd;
+  for (const x of lotesComSaldo(itemId)) {
+    if (rest <= 0.0001) break;
+    const q = Math.min(rest, x.qtd); plano.push({ lote_id: x.lote ? x.lote.id : null, qtd: q }); rest -= q;
+  }
+  return { plano, falta: Math.max(0, Math.round(rest * 1000) / 1000) };
+}
+
+/** Ajusta o saldo do item para `novo`. Negativo sai por FEFO; positivo entra no lote de maior validade. */
+async function ajustarPara(item, novo, extra) {
+  const diff = Math.round((novo - saldo(item.id)) * 1000) / 1000;
+  if (Math.abs(diff) < 0.0001) return [];
+  const rows = [];
+  if (diff < 0) {
+    const { plano, falta } = planoFEFO(item.id, -diff);
+    plano.forEach(p => rows.push({ item_id: item.id, lote_id: p.lote_id, tipo: 'ajuste', delta: -p.qtd, ...extra }));
+    if (falta > 0) rows.push({ item_id: item.id, lote_id: null, tipo: 'ajuste', delta: -falta, ...extra });
+  } else {
+    const ls = S.lotes.filter(l => l.item_id === item.id).sort((a, b) => (b.validade || '').localeCompare(a.validade || ''));
+    rows.push({ item_id: item.id, lote_id: ls[0] ? ls[0].id : null, tipo: 'ajuste', delta: diff, ...extra });
+  }
+  return registrar(rows);
+}
+
+/* =====================================================================
+   Navegação
+   ===================================================================== */
+const VIEWS = {
+  painel:     { ic: '🏠', t: 'Painel' },
+  contagem:   { ic: '🧊', t: 'Contagem da geladeira', s: 'Contagem' },
+  movimentar: { ic: '🔄', t: 'Entrada / Saída' },
+  validades:  { ic: '⏳', t: 'Validades' },
+  diario:     { ic: '📅', t: 'Diário' },
+  historico:  { ic: '📜', t: 'Histórico' },
+  itens:      { ic: '📦', t: 'Itens do consultório', s: 'Itens' },
+  config:     { ic: '⚙️', t: 'Configurações', s: 'Config.' },
+};
+let current = 'painel';
+let viewState = {};
+
+function alertCount() {
+  let n = 0;
+  S.lotes.forEach(l => {
+    const q = saldoLote.get(l.item_id + '|' + l.id) || 0; const it = itemById(l.item_id);
+    if (q > 0 && it && it.ativo !== false) { const d = daysUntil(l.validade); if (d !== null && d <= cfg.diasAlerta) n++; }
+  });
+  ativos().forEach(i => { if ((+i.estoque_minimo || 0) > 0 && saldo(i.id) < +i.estoque_minimo) n++; });
+  return n;
+}
+
+function renderNav() {
+  const a = alertCount();
+  $('#nav').innerHTML = Object.entries(VIEWS).map(([k, v]) =>
+    `<button data-v="${k}" class="${k === current ? 'on' : ''}"><span class="ic">${v.ic}</span><span>${v.s || v.t}</span>${k === 'validades' && a ? `<span class="badge">${a}</span>` : ''}</button>`).join('');
+  $$('#nav button').forEach(b => b.onclick = () => go(b.dataset.v));
+  $('#sideFoot').innerHTML = `${h(DB.label())}<br>${cfg.responsavel ? 'Responsável: ' + h(cfg.responsavel) : '<span class="warn">Defina o responsável em ⚙️</span>'}`;
+  $('#modeTag').textContent = DB.kind === 'remote' ? '☁️ Consulveter' : '📱 Local';
+}
+
+function go(v, state) {
+  current = v; viewState = state || {};
+  render();
+  window.scrollTo(0, 0);
+}
+
+function render() {
+  renderNav();
+  $('#title').textContent = VIEWS[current].t;
+  $('#setupWarn').innerHTML = S.setupMissing
+    ? `<div class="alert bad"><b>Falta criar as tabelas do consultório no Supabase.</b><br>
+       Abra o painel do Supabase do Consulveter → <b>SQL Editor</b> → cole o conteúdo do arquivo <code>supabase.sql</code> (que veio junto com este app) → <b>Run</b>. Depois toque em ⟳ Atualizar.</div>` : '';
+  const fn = { painel: vPainel, contagem: vContagem, movimentar: vMovimentar, validades: vValidades, diario: vDiario, historico: vHistorico, itens: vItens, config: vConfig }[current];
+  fn($('#view'));
+}
+
+/* =====================================================================
+   PAINEL
+   ===================================================================== */
+function turnosDoDia(dia) {
+  const cs = S.contagens.filter(c => c.data === dia);
+  const now = new Date(); const hhmm = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  return cfg.turnos.map(t => {
+    const c = cs.filter(x => x.turno === t.nome).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+    return { ...t, contagem: c || null, atrasado: !c && dia === today() && hhmm > t.hora };
+  });
+}
+
+function vPainel(el) {
+  const gel = ativos('geladeira');
+  let vencidos = 0, vencendo = 0;
+  const alertasVal = [];
+  S.lotes.forEach(l => {
+    const it = itemById(l.item_id); if (!it || it.ativo === false) return;
+    const q = saldoLote.get(l.item_id + '|' + l.id) || 0; if (q <= 0) return;
+    const st = statusValidade(l.validade); if (st.d === null) return;
+    if (st.d < 0) vencidos++; else if (st.d <= cfg.diasAlerta) vencendo++;
+    if (st.d <= cfg.diasAlerta) alertasVal.push({ it, l, q, st });
+  });
+  alertasVal.sort((a, b) => a.st.d - b.st.d);
+  const baixos = ativos().filter(i => (+i.estoque_minimo || 0) > 0 && saldo(i.id) < +i.estoque_minimo);
+  const tds = turnosDoDia(today());
+  const feitas = tds.filter(t => t.contagem).length;
+  const ultTemp = [...S.contagens].filter(c => c.temperatura != null).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+  const tempFora = ultTemp && (ultTemp.temperatura < cfg.tempMin || ultTemp.temperatura > cfg.tempMax);
+  const hoje = today();
+  const movHoje = S.movs.filter(m => localDay(m.created_at) === hoje);
+  const saidasHoje = movHoje.filter(m => m.tipo === 'saida').reduce((s, m) => s - m.delta, 0);
+
+  el.innerHTML = `
+  ${!S.itens.length && !S.setupMissing ? `<div class="alert info"><b>Primeiro passo:</b> cadastre os itens do consultório em <a href="#" data-go="itens">📦 Itens</a> (dá para puxar direto do cadastro do Consulveter) e informe o saldo inicial de cada um.</div>` : ''}
+  ${!cfg.responsavel ? `<div class="alert warn">Informe <b>quem está usando este aparelho</b> em <a href="#" data-go="config">⚙️ Configurações</a> — o nome vai em cada lançamento.</div>` : ''}
+  <div class="kpis">
+    <div class="kpi ${feitas === tds.length ? 'ok' : tds.some(t => t.atrasado) ? 'warn' : ''}" data-go="contagem"><small>Contagens hoje</small><b>${feitas}/${tds.length}</b></div>
+    <div class="kpi ${vencidos ? 'bad' : 'ok'}" data-go="validades"><small>Lotes vencidos c/ saldo</small><b>${vencidos}</b></div>
+    <div class="kpi ${vencendo ? 'warn' : 'ok'}" data-go="validades"><small>Vencendo em ${cfg.diasAlerta} dias</small><b>${vencendo}</b></div>
+    <div class="kpi ${baixos.length ? 'warn' : 'ok'}" data-go="itens"><small>Abaixo do mínimo</small><b>${baixos.length}</b></div>
+    <div class="kpi ${tempFora ? 'bad' : ultTemp ? 'ok' : ''}" data-go="contagem"><small>Última temperatura</small><b>${ultTemp ? fmtN(ultTemp.temperatura) + '°C' : '—'}</b></div>
+    <div class="kpi" data-go="historico"><small>Saídas hoje</small><b>${fmtN(saidasHoje)}</b></div>
+  </div>
+
+  <div class="card"><h2>🧊 Contagens de hoje <span class="sp"></span><button class="btn pri sm" data-go="contagem">Fazer contagem</button></h2>
+    <div class="turnos">${tds.map(t => `<div class="turno ${t.contagem ? 'done' : t.atrasado ? 'late' : ''}">
+      <b>${h(t.nome)}</b><span class="muted small">previsto ${h(t.hora)}</span><br>
+      ${t.contagem ? `<span class="pill ${t.contagem.divergencias ? 'bad' : 'ok'}">${t.contagem.divergencias ? t.contagem.divergencias + ' divergência(s)' : '✓ tudo confere'}</span>
+        <span class="small muted">${fmtT(t.contagem.created_at)} · ${h(t.contagem.responsavel || '')}</span>`
+        : t.atrasado ? '<span class="pill warn">pendente</span>' : '<span class="pill mut">aguardando</span>'}
+    </div>`).join('')}</div>
+  </div>
+
+  ${tempFora ? `<div class="alert bad">🌡️ A última temperatura registrada (${fmtN(ultTemp.temperatura)}°C em ${fmtDT(ultTemp.created_at)}) está fora da faixa ${cfg.tempMin}–${cfg.tempMax}°C.</div>` : ''}
+
+  <div class="grid g2">
+    <div class="card"><h2>⏳ Validades que pedem atenção</h2>
+      ${alertasVal.length ? `<div class="tbl-wrap"><table><tr><th>Item</th><th>Lote</th><th class="n">Qtd</th><th>Validade</th></tr>
+        ${alertasVal.slice(0, 12).map(a => `<tr><td>${h(a.it.nome)}</td><td>${h(a.l.lote)}</td><td class="n">${fmtN(a.q)}</td><td><span class="pill ${a.st.cls}">${a.st.txt}</span></td></tr>`).join('')}
+      </table></div>` : '<div class="empty">Nenhum lote vencido ou perto de vencer 👍</div>'}
+    </div>
+    <div class="card"><h2>📉 Abaixo do mínimo</h2>
+      ${baixos.length ? `<div class="tbl-wrap"><table><tr><th>Item</th><th class="n">Saldo</th><th class="n">Mínimo</th></tr>
+        ${baixos.map(i => `<tr><td>${h(i.nome)}</td><td class="n neg">${fmtN(saldo(i.id))}</td><td class="n">${fmtN(i.estoque_minimo)}</td></tr>`).join('')}</table></div>`
+        : '<div class="empty">Tudo acima do mínimo 👍</div>'}
+    </div>
+  </div>
+
+  <div class="card"><h2>🧊 Geladeira agora <span class="sp"></span><span class="muted small">${gel.length} itens</span></h2>
+    ${gel.length ? `<div class="stock-grid">${gel.map(i => { const s = saldo(i.id), pv = proxValidade(i.id), st = pv ? statusValidade(pv) : null;
+      return `<div class="stk ${s <= 0 ? 'zero' : (+i.estoque_minimo && s < +i.estoque_minimo) ? 'low' : ''}"><div class="nm">${h(i.nome)}</div><div class="q">${fmtN(s)}</div>
+        ${st ? `<span class="pill ${st.cls}">${fmtD(pv)}</span>` : '<span class="small muted">—</span>'}</div>`; }).join('')}</div>`
+      : '<div class="empty">Nenhum item de geladeira cadastrado.</div>'}
+  </div>`;
+  $$('[data-go]', el).forEach(b => b.onclick = (e) => { e.preventDefault(); go(b.dataset.go); });
+}
+
+/* =====================================================================
+   CONTAGEM (substitui as 3 contagens da planilha)
+   ===================================================================== */
+function vContagem(el) {
+  const st = viewState;
+  st.data = st.data || today();
+  const tds = turnosDoDia(st.data);
+  if (!st.turno) { const p = tds.find(t => !t.contagem); st.turno = (p || tds[tds.length - 1] || { nome: 'Contagem' }).nome; }
+  st.tipo = st.tipo || 'geladeira';
+  st.vals = st.vals || {};
+  const itens = ativos(st.tipo === 'todos' ? null : st.tipo);
+
+  const ultima = [...S.contagens].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+  const desde = ultima ? S.movs.filter(m => m.created_at > ultima.created_at && !m.contagem_id) : [];
+  const agrup = {};
+  desde.forEach(m => { const it = itemById(m.item_id); if (!it) return; const k = m.tipo + '|' + it.nome; agrup[k] = (agrup[k] || 0) + (+m.delta); });
+  const jaFeita = tds.find(t => t.nome === st.turno && t.contagem);
+
+  el.innerHTML = `
+  <div class="card noprint">
+    <div class="row">
+      <label class="f"><span>Data</span><input type="date" id="ctData" value="${st.data}" max="${today()}"></label>
+      <label class="f"><span>Contagem</span><select id="ctTurno">${cfg.turnos.map(t => `<option ${t.nome === st.turno ? 'selected' : ''}>${h(t.nome)}</option>`).join('')}</select></label>
+      <label class="f"><span>O que contar</span><select id="ctTipo">
+        <option value="geladeira" ${st.tipo === 'geladeira' ? 'selected' : ''}>Geladeira (vacinas/injetáveis)</option>
+        <option value="insumo" ${st.tipo === 'insumo' ? 'selected' : ''}>Insumos</option>
+        <option value="todos" ${st.tipo === 'todos' ? 'selected' : ''}>Tudo</option></select></label>
+    </div>
+    ${jaFeita ? `<div class="alert warn" style="margin:12px 0 0">A ${h(st.turno)} de ${fmtD(st.data)} já foi feita às ${fmtT(jaFeita.contagem.created_at)} por ${h(jaFeita.contagem.responsavel || '—')}. Salvar de novo registra uma recontagem.</div>` : ''}
+  </div>
+
+  <div class="card">
+    <h2>🔄 Lançado desde a última contagem ${ultima ? `<span class="muted small">(${h(ultima.turno)} · ${fmtDT(ultima.created_at)})</span>` : ''}</h2>
+    ${Object.keys(agrup).length ? `<div class="since">${Object.entries(agrup).map(([k, q]) => { const [tp, nm] = k.split('|');
+      return `<span class="chip"><span class="${q < 0 ? 'neg' : 'pos'}">${q > 0 ? '+' : ''}${fmtN(q)}</span> ${h(nm)} <span class="muted">(${tp})</span></span>`; }).join('')}</div>`
+      : `<div class="muted small">${ultima ? 'Nenhuma entrada ou saída lançada desde a última contagem.' : 'Esta é a primeira contagem.'}</div>`}
+  </div>
+
+  <div class="card">
+    <h2>🌡️ Temperatura da geladeira <span class="muted small">faixa ${cfg.tempMin}–${cfg.tempMax}°C</span></h2>
+    <div class="row">
+      <label class="f"><span>Atual (°C)</span><input id="tAtual" inputmode="decimal" value="${h(st.tAtual ?? '')}"></label>
+      <label class="f"><span>Mínima (°C)</span><input id="tMin" inputmode="decimal" value="${h(st.tMin ?? '')}"></label>
+      <label class="f"><span>Máxima (°C)</span><input id="tMax" inputmode="decimal" value="${h(st.tMax ?? '')}"></label>
+    </div>
+    <div id="tWarn"></div>
+  </div>
+
+  <div class="card">
+    <h2>Contagem <span class="sp"></span>
+      <button class="btn sm" id="ctFill">✓ Preencher tudo com o sistema</button>
+      <button class="btn sm" id="ctClear">Limpar</button></h2>
+    <p class="muted small" style="margin-top:-6px">Conte o que tem fisicamente e digite. Se bater com o sistema a linha fica verde; se não bater, fica vermelha.</p>
+    ${itens.length ? `<div class="tbl-wrap"><table>
+      <tr><th>Item</th><th class="n">Sistema</th><th class="n">Contado</th><th class="n">Diferença</th><th class="c"></th></tr>
+      ${itens.map(i => `<tr data-id="${i.id}"><td>${h(i.nome)}<div class="small muted">${lotesComSaldo(i.id).map(x => x.lote ? `${h(x.lote.lote)}: ${fmtN(x.qtd)}` : `s/ lote: ${fmtN(x.qtd)}`).join(' · ')}</div></td>
+        <td class="n">${fmtN(saldo(i.id))}</td>
+        <td class="n"><input class="count-in" inputmode="decimal" data-c="${i.id}" value="${h(st.vals[i.id] ?? '')}"></td>
+        <td class="n" data-d="${i.id}"></td>
+        <td class="c"><button class="btn sm" data-eq="${i.id}" title="Bate com o sistema">✓</button></td></tr>`).join('')}
+    </table></div>
+    <div class="row" style="margin-top:12px">
+      <label class="f"><span>Observação (obrigatória se houver diferença)</span><input id="ctObs" value="${h(st.obs || '')}" placeholder="Ex.: saída do V10 às 15h não foi lançada"></label>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn ok big" id="ctSave">Salvar contagem</button><span id="ctSum" class="muted"></span>
+    </div>` : '<div class="empty">Nenhum item cadastrado para esse tipo. Cadastre em 📦 Itens.</div>'}
+  </div>`;
+
+  const upd = () => {
+    let diffs = 0, falt = 0;
+    itens.forEach(i => {
+      const v = st.vals[i.id]; const tr = $(`tr[data-id="${i.id}"]`, el); const td = $(`[data-d="${i.id}"]`, el);
+      if (v === undefined || v === '' || isNaN(num(v))) { tr.className = ''; td.innerHTML = ''; falt++; return; }
+      const d = Math.round((num(v) - saldo(i.id)) * 1000) / 1000;
+      tr.className = d ? 'diff' : 'okrow';
+      td.innerHTML = d ? `<span class="${d < 0 ? 'neg' : 'pos'}">${d > 0 ? '+' : ''}${fmtN(d)}</span>` : '<span class="pos">ok</span>';
+      if (d) diffs++;
+    });
+    const s = $('#ctSum', el); if (s) s.textContent = `${itens.length - falt}/${itens.length} contados` + (diffs ? ` · ${diffs} divergência(s)` : '');
+    const ta = num($('#tAtual', el).value), tn = num($('#tMin', el).value), tx = num($('#tMax', el).value);
+    const fora = [ta, tn, tx].some(t => !isNaN(t) && (t < cfg.tempMin || t > cfg.tempMax));
+    $('#tWarn', el).innerHTML = fora ? `<div class="alert bad" style="margin:10px 0 0">Temperatura fora da faixa ${cfg.tempMin}–${cfg.tempMax}°C! Verifique a geladeira e registre na observação.</div>` : '';
+  };
+  $('#ctData', el).onchange = (e) => { st.data = e.target.value || today(); st.turno = null; render(); };
+  $('#ctTurno', el).onchange = (e) => { st.turno = e.target.value; render(); };
+  $('#ctTipo', el).onchange = (e) => { st.tipo = e.target.value; render(); };
+  ['tAtual', 'tMin', 'tMax'].forEach(k => $('#' + k, el).oninput = (e) => { st[k] = e.target.value; upd(); });
+  $$('[data-c]', el).forEach(inp => inp.oninput = () => { st.vals[inp.dataset.c] = inp.value; upd(); });
+  $$('[data-eq]', el).forEach(b => b.onclick = () => { const id = b.dataset.eq; st.vals[id] = String(saldo(id)); $(`[data-c="${id}"]`, el).value = st.vals[id]; upd(); });
+  const fill = $('#ctFill', el); if (fill) fill.onclick = () => { itens.forEach(i => { st.vals[i.id] = String(saldo(i.id)); $(`[data-c="${i.id}"]`, el).value = st.vals[i.id]; }); upd(); };
+  const clr = $('#ctClear', el); if (clr) clr.onclick = () => { st.vals = {}; $$('[data-c]', el).forEach(i => i.value = ''); upd(); };
+  const obs = $('#ctObs', el); if (obs) obs.oninput = () => st.obs = obs.value;
+  const save = $('#ctSave', el); if (save) save.onclick = () => salvarContagem(itens);
+  upd();
+}
+
+async function salvarContagem(itens) {
+  const st = viewState;
+  const faltando = itens.filter(i => st.vals[i.id] === undefined || st.vals[i.id] === '' || isNaN(num(st.vals[i.id])));
+  if (faltando.length) return toast(`Falta contar: ${faltando.slice(0, 3).map(i => i.nome).join(', ')}${faltando.length > 3 ? '…' : ''}`, 'err');
+  const linhas = itens.map(i => ({ item_id: i.id, nome: i.nome, sistema: saldo(i.id), contado: num(st.vals[i.id]) }));
+  const divs = linhas.filter(l => Math.abs(l.contado - l.sistema) > 0.0001);
+  if (divs.length && !String(st.obs || '').trim()) return toast('Há divergência: escreva uma observação explicando.', 'err');
+  if (!cfg.responsavel) return toast('Informe o responsável em ⚙️ Configurações antes de salvar.', 'err');
+
+  let ajustar = true;
+  if (divs.length) {
+    const ok = await new Promise(res => modal(`<h3>${divs.length} divergência(s)</h3>
+      <div class="tbl-wrap"><table><tr><th>Item</th><th class="n">Sistema</th><th class="n">Contado</th><th class="n">Dif.</th></tr>
+      ${divs.map(d => `<tr class="diff"><td>${h(d.nome)}</td><td class="n">${fmtN(d.sistema)}</td><td class="n">${fmtN(d.contado)}</td><td class="n">${fmtN(d.contado - d.sistema)}</td></tr>`).join('')}</table></div>
+      <label style="display:flex;gap:8px;margin-top:12px;align-items:flex-start"><input type="checkbox" id="mAdj" checked>
+        <span>Corrigir o estoque do sistema para o valor contado (gera um <b>ajuste</b> no histórico).<br><span class="muted small">Desmarque se a diferença for um lançamento que você ainda vai registrar em Entrada/Saída.</span></span></label>
+      <div class="actions"><button class="btn" data-x>Voltar</button><button class="btn ok" data-ok>Salvar contagem</button></div>`, (m) => {
+        $('[data-x]', m).onclick = () => { closeModal(); res(false); };
+        $('[data-ok]', m).onclick = () => { ajustar = $('#mAdj', m).checked; closeModal(); res(true); };
+      }));
+    if (!ok) return;
+  }
+  const tv = (k) => { const v = num(st[k]); return isNaN(v) ? null : v; };
+  try {
+    const [c] = await DB.insert('cc_contagens', [{
+      data: st.data, turno: st.turno, temperatura: tv('tAtual'), temp_min: tv('tMin'), temp_max: tv('tMax'),
+      itens: linhas, divergencias: divs.length, obs: st.obs || null, responsavel: resp(),
+    }]);
+    S.contagens.push(c);
+    if (ajustar) for (const d of divs) await ajustarPara(itemById(d.item_id), d.contado, { motivo: 'Ajuste na contagem', obs: `${st.turno} ${fmtD(st.data)} — ${st.obs || ''}`, contagem_id: c.id });
+    toast(divs.length ? `Contagem salva com ${divs.length} divergência(s).` : 'Contagem salva — tudo confere ✓', 'ok');
+    go('contagem', { data: st.data, tipo: st.tipo });
+  } catch (e) { toast('Erro ao salvar: ' + errMsg(e), 'err'); }
+}
+
+/* =====================================================================
+   ENTRADA / SAÍDA
+   ===================================================================== */
+const MOTIVOS = {
+  entrada: ['Compra / NF', 'Transferência recebida', 'Devolução', 'Saldo inicial', 'Outro'],
+  saida: ['Aplicação em paciente', 'Venda', 'Uso interno', 'Transferência para outra loja', 'Outro'],
+  descarte: ['Vencido', 'Quebra / perda', 'Falha de refrigeração', 'Contaminação', 'Outro'],
+  ajuste: ['Correção de estoque'],
+};
+const TIPO_LBL = { entrada: 'Entrada', saida: 'Saída', descarte: 'Descarte', ajuste: 'Ajuste' };
+
+function itemSelectHTML(sel) {
+  const grp = (tipo, lbl) => { const its = ativos(tipo); return its.length ? `<optgroup label="${lbl}">${its.map(i => `<option value="${i.id}" ${i.id === sel ? 'selected' : ''}>${h(i.nome)} — saldo ${fmtN(saldo(i.id))}</option>`).join('')}</optgroup>` : ''; };
+  return `<option value="">Selecione…</option>${grp('geladeira', '🧊 Geladeira')}${grp('insumo', '📦 Insumos')}`;
+}
+
+function vMovimentar(el) {
+  const st = viewState;
+  st.tipo = st.tipo || 'saida';
+  const it = st.item ? itemById(st.item) : null;
+  const lots = it ? lotesComSaldo(it.id) : [];
+  const allLots = it ? S.lotes.filter(l => l.item_id === it.id) : [];
+  const out = st.tipo === 'saida' || st.tipo === 'descarte';
+  const recentes = [...S.movs].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 8);
+
+  el.innerHTML = `
+  <div class="card">
+    <div class="seg" style="margin-bottom:14px">
+      <button data-t="entrada" class="${st.tipo === 'entrada' ? 'on in' : ''}">⬇️ Entrada</button>
+      <button data-t="saida" class="${st.tipo === 'saida' ? 'on out' : ''}">⬆️ Saída</button>
+      <button data-t="descarte" class="${st.tipo === 'descarte' ? 'on disc' : ''}">🗑️ Descarte</button>
+      <button data-t="ajuste" class="${st.tipo === 'ajuste' ? 'on' : ''}">✏️ Ajuste</button>
+    </div>
+    <div class="row">
+      <label class="f" style="flex:2;min-width:220px"><span>Buscar (nome ou código de barras)</span><input id="mvBusca" placeholder="Digite ou bipe o código…" autocomplete="off"></label>
+      <label class="f" style="flex:3;min-width:240px"><span>Item</span><select id="mvItem">${itemSelectHTML(st.item)}</select></label>
+    </div>
+    ${it ? `<div class="small muted" style="margin:8px 0 0">Saldo atual: <b style="color:var(--text)">${fmtN(saldo(it.id))} ${h(it.unidade || '')}</b>
+      ${lots.length ? ' · ' + lots.map(x => x.lote ? `${h(x.lote.lote)} (val. ${fmtD(x.lote.validade)}): ${fmtN(x.qtd)}` : `sem lote: ${fmtN(x.qtd)}`).join(' · ') : ''}</div>` : ''}
+    <div style="height:12px"></div>
+    ${st.tipo === 'ajuste' ? `
+      <div class="row">
+        <label class="f"><span>Saldo correto (o que existe de fato)</span><input id="mvQtd" inputmode="decimal" value="${h(st.qtd ?? '')}"></label>
+        <label class="f" style="flex:2"><span>Motivo</span><input id="mvObs" value="${h(st.obs || '')}" placeholder="Por que o saldo está diferente?"></label>
+      </div>` : `
+      <div class="row">
+        <label class="f"><span>Quantidade</span><input id="mvQtd" inputmode="decimal" value="${h(st.qtd ?? '')}" placeholder="0"></label>
+        ${st.tipo === 'entrada' ? `
+          <label class="f"><span>Lote ${it && it.tipo === 'geladeira' ? '*' : '(opcional)'}</span><input id="mvLote" list="dlLotes" value="${h(st.lote || '')}" autocomplete="off">
+            <datalist id="dlLotes">${allLots.map(l => `<option value="${h(l.lote)}">val. ${fmtD(l.validade)}</option>`).join('')}</datalist></label>
+          <label class="f"><span>Validade ${it && it.tipo === 'geladeira' ? '*' : ''}</span><input id="mvVal" type="date" value="${h(st.validade || '')}"></label>`
+        : `<label class="f" style="flex:2"><span>Lote</span><select id="mvLoteSel">
+            <option value="auto">Automático — vence primeiro sai primeiro</option>
+            ${lots.map(x => `<option value="${x.lote ? x.lote.id : 'none'}" ${st.loteSel === (x.lote ? x.lote.id : 'none') ? 'selected' : ''}>${x.lote ? `${h(x.lote.lote)} — val. ${fmtD(x.lote.validade)}` : 'Sem lote'} — saldo ${fmtN(x.qtd)}</option>`).join('')}
+          </select></label>`}
+      </div>
+      <div class="row" style="margin-top:10px">
+        <label class="f"><span>Motivo</span><select id="mvMotivo">${MOTIVOS[st.tipo].map(m => `<option ${m === st.motivo ? 'selected' : ''}>${m}</option>`).join('')}</select></label>
+        ${st.tipo === 'entrada' ? `<label class="f"><span>Nº da NF / documento</span><input id="mvDoc" value="${h(st.doc || '')}"></label>` : ''}
+        <label class="f" style="flex:2"><span>${out ? 'Paciente / tutor / observação' : 'Observação'}</span><input id="mvObs" value="${h(st.obs || '')}"></label>
+      </div>`}
+    <div style="margin-top:14px"><button class="btn big ${st.tipo === 'entrada' ? 'ok' : 'pri'}" id="mvSave">Registrar ${TIPO_LBL[st.tipo].toLowerCase()}</button></div>
+  </div>
+
+  <div class="card"><h2>Últimos lançamentos <span class="sp"></span><button class="btn sm" data-go="historico">Ver histórico</button></h2>
+    ${movTable(recentes, true)}
+  </div>`;
+
+  $$('.seg button', el).forEach(b => b.onclick = () => { st.tipo = b.dataset.t; st.motivo = null; render(); });
+  const busca = $('#mvBusca', el);
+  busca.onkeydown = (e) => {
+    if (e.key !== 'Enter') return; e.preventDefault();
+    const q = norm(busca.value); if (!q) return;
+    const hit = ativos().find(i => i.barcode && norm(i.barcode) === q) || ativos().find(i => norm(i.nome).includes(q));
+    if (hit) { st.item = hit.id; render(); setTimeout(() => $('#mvQtd')?.focus(), 0); } else toast('Nenhum item encontrado.', 'err');
+  };
+  busca.oninput = () => {
+    const q = norm(busca.value); const sel = $('#mvItem', el);
+    $$('option', sel).forEach(o => { if (o.value) o.hidden = q && !norm(o.textContent).includes(q) && !(itemById(o.value)?.barcode || '').includes(busca.value.trim()); });
+  };
+  $('#mvItem', el).onchange = (e) => { st.item = e.target.value; st.loteSel = null; render(); };
+  const bind = (id, k) => { const i = $('#' + id, el); if (i) i.oninput = i.onchange = () => st[k] = i.value; };
+  bind('mvQtd', 'qtd'); bind('mvLote', 'lote'); bind('mvVal', 'validade'); bind('mvMotivo', 'motivo'); bind('mvDoc', 'doc'); bind('mvObs', 'obs'); bind('mvLoteSel', 'loteSel');
+  const lInp = $('#mvLote', el);
+  if (lInp) lInp.addEventListener('change', () => { const l = allLots.find(x => norm(x.lote) === norm(lInp.value)); if (l && l.validade) { st.validade = l.validade; $('#mvVal', el).value = l.validade; } });
+  $('#mvSave', el).onclick = () => salvarMov(el);
+  bindMovTable(el);
+  $$('[data-go]', el).forEach(b => b.onclick = () => go(b.dataset.go));
+}
+
+async function salvarMov(el) {
+  const st = viewState; const it = itemById(st.item);
+  if (!it) return toast('Selecione o item.', 'err');
+  const q = num(st.qtd);
+  if (isNaN(q) || q < 0 || (st.tipo !== 'ajuste' && q === 0)) return toast('Informe uma quantidade válida.', 'err');
+  const btn = $('#mvSave', el); btn.disabled = true;
+  try {
+    const motivo = st.motivo || MOTIVOS[st.tipo][0];
+    if (st.tipo === 'entrada') {
+      if (it.tipo === 'geladeira' && (!String(st.lote || '').trim() || !st.validade)) throw new Error('Para itens de geladeira informe lote e validade.');
+      if (st.validade && daysUntil(st.validade) < 0 && !(await confirmBox('Lote vencido', `A validade ${fmtD(st.validade)} já passou. Registrar mesmo assim?`))) { btn.disabled = false; return; }
+      const lote = await acharOuCriarLote(it, st.lote, st.validade);
+      await registrar([{ item_id: it.id, lote_id: lote ? lote.id : null, tipo: 'entrada', delta: q, motivo, documento: st.doc || null, obs: st.obs || null }]);
+    } else if (st.tipo === 'ajuste') {
+      if (!String(st.obs || '').trim()) throw new Error('Explique o motivo do ajuste.');
+      const r = await ajustarPara(it, q, { motivo: 'Correção de estoque', obs: st.obs });
+      if (!r.length) { toast('O saldo já é esse — nada a ajustar.'); btn.disabled = false; return; }
+    } else {
+      const sel = st.loteSel || 'auto';
+      let rows;
+      if (sel === 'auto') {
+        const { plano, falta } = planoFEFO(it.id, q);
+        if (falta > 0) throw new Error(`Saldo insuficiente: há ${fmtN(saldo(it.id))} em estoque.`);
+        rows = plano.map(p => ({ lote_id: p.lote_id, delta: -p.qtd }));
+        const venc = plano.map(p => p.lote_id && loteById(p.lote_id)).filter(l => l && daysUntil(l.validade) < 0);
+        if (st.tipo === 'saida' && venc.length && !(await confirmBox('Atenção: lote vencido', `O lote <b>${h(venc[0].lote)}</b> está vencido (${fmtD(venc[0].validade)}). Para jogar fora use <b>Descarte</b>. Registrar a saída mesmo assim?`, 'Registrar', true))) { btn.disabled = false; return; }
+      } else {
+        const lid = sel === 'none' ? null : sel;
+        const disp = saldoLote.get(it.id + '|' + (lid || '')) || 0;
+        if (q > disp + 0.0001) throw new Error(`Esse lote só tem ${fmtN(disp)}.`);
+        rows = [{ lote_id: lid, delta: -q }];
+      }
+      await registrar(rows.map(r => ({ item_id: it.id, tipo: st.tipo, motivo, obs: st.obs || null, ...r })));
+    }
+    toast(`${TIPO_LBL[st.tipo]} registrada: ${it.nome} — saldo ${fmtN(saldo(it.id))}`, 'ok');
+    go('movimentar', { tipo: st.tipo, motivo: st.motivo });
+    setTimeout(() => $('#mvBusca')?.focus(), 0);
+  } catch (e) { toast(errMsg(e), 'err'); btn.disabled = false; }
+}
+
+function movTable(movs, canDelete) {
+  if (!movs.length) return '<div class="empty">Nenhum lançamento.</div>';
+  return `<div class="tbl-wrap"><table><tr><th>Quando</th><th>Item</th><th>Tipo</th><th class="n">Qtd</th><th>Lote</th><th>Motivo / obs.</th><th>Responsável</th>${canDelete ? '<th></th>' : ''}</tr>
+    ${movs.map(m => { const it = itemById(m.item_id); const l = m.lote_id && loteById(m.lote_id);
+      const cls = { entrada: 'ok', saida: 'bad', descarte: 'warn', ajuste: 'info' }[m.tipo];
+      return `<tr><td class="small">${fmtDT(m.created_at)}</td><td>${h(it ? it.nome : '(item removido)')}</td><td><span class="pill ${cls}">${TIPO_LBL[m.tipo]}</span></td>
+        <td class="n ${m.delta < 0 ? 'neg' : 'pos'}">${m.delta > 0 ? '+' : ''}${fmtN(m.delta)}</td><td class="small">${l ? h(l.lote) : '—'}</td>
+        <td class="small">${h([m.motivo, m.documento && 'NF ' + m.documento, m.obs].filter(Boolean).join(' · '))}</td><td class="small">${h(m.responsavel || '')}</td>
+        ${canDelete ? `<td><button class="btn sm bad" data-del="${m.id}" title="Excluir lançamento">✕</button></td>` : ''}</tr>`; }).join('')}
+  </table></div>`;
+}
+function bindMovTable(el) {
+  $$('[data-del]', el).forEach(b => b.onclick = async () => {
+    const m = S.movs.find(x => x.id === b.dataset.del); const it = m && itemById(m.item_id);
+    if (!m || !(await confirmBox('Excluir lançamento?', `${TIPO_LBL[m.tipo]} de ${fmtN(Math.abs(m.delta))} — ${h(it?.nome || '')} (${fmtDT(m.created_at)}). O saldo será recalculado.`, 'Excluir', true))) return;
+    try { await DB.remove('cc_movs', m.id); S.movs = S.movs.filter(x => x.id !== m.id); recalc(); toast('Lançamento excluído.'); render(); }
+    catch (e) { toast(errMsg(e), 'err'); }
+  });
+}
+
+/* =====================================================================
+   VALIDADES
+   ===================================================================== */
+function vValidades(el) {
+  const st = viewState; st.f = st.f || 'atencao';
+  const rows = [];
+  S.lotes.forEach(l => {
+    const it = itemById(l.item_id); if (!it || it.ativo === false) return;
+    const q = saldoLote.get(l.item_id + '|' + l.id) || 0; if (q <= 0.0001) return;
+    rows.push({ it, l, q, s: statusValidade(l.validade) });
+  });
+  ativos().forEach(it => { const q = saldoLote.get(it.id + '|') || 0; if (q > 0.0001) rows.push({ it, l: null, q, s: statusValidade(null) }); });
+  rows.sort((a, b) => (a.l?.validade || '9999').localeCompare(b.l?.validade || '9999'));
+  const filt = rows.filter(r => st.f === 'todos' || (st.f === 'vencidos' ? r.s.d !== null && r.s.d < 0 : st.f === 'atencao' ? r.s.d !== null && r.s.d <= cfg.diasAlerta : r.s.d !== null && r.s.d <= 90) && (!st.tipo || r.it.tipo === st.tipo));
+  el.innerHTML = `<div class="card">
+    <div class="row" style="margin-bottom:12px">
+      <div class="seg">${[['atencao', `Vencidos + ${cfg.diasAlerta} dias`], ['vencidos', 'Só vencidos'], ['90', 'Até 90 dias'], ['todos', 'Todos']].map(([k, t]) => `<button data-f="${k}" class="${st.f === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+      <select id="vTipo" style="width:auto"><option value="">Geladeira + insumos</option><option value="geladeira" ${st.tipo === 'geladeira' ? 'selected' : ''}>Só geladeira</option><option value="insumo" ${st.tipo === 'insumo' ? 'selected' : ''}>Só insumos</option></select>
+    </div>
+    ${filt.length ? `<div class="tbl-wrap"><table><tr><th>Item</th><th>Lote</th><th>Validade</th><th>Situação</th><th class="n">Saldo</th><th></th></tr>
+      ${filt.map(r => `<tr><td>${h(r.it.nome)} <span class="pill mut">${r.it.tipo}</span></td><td>${r.l ? h(r.l.lote) : '<span class="muted">sem lote</span>'}</td><td>${fmtD(r.l?.validade)}</td>
+        <td><span class="pill ${r.s.cls}">${r.s.txt}</span></td><td class="n">${fmtN(r.q)}</td>
+        <td>${r.l && r.s.d !== null && r.s.d < 0 ? `<button class="btn sm bad" data-desc="${r.l.id}">Descartar</button>` : r.l ? `<button class="btn sm" data-edit="${r.l.id}">Editar</button>` : ''}</td></tr>`).join('')}
+    </table></div>` : '<div class="empty">Nada por aqui 👍</div>'}
+  </div>`;
+  $$('[data-f]', el).forEach(b => b.onclick = () => { st.f = b.dataset.f; render(); });
+  $('#vTipo', el).onchange = (e) => { st.tipo = e.target.value; render(); };
+  $$('[data-desc]', el).forEach(b => b.onclick = () => { const l = loteById(b.dataset.desc);
+    go('movimentar', { tipo: 'descarte', item: l.item_id, loteSel: l.id, qtd: String(saldoLote.get(l.item_id + '|' + l.id) || ''), motivo: 'Vencido' }); });
+  $$('[data-edit]', el).forEach(b => b.onclick = () => { const l = loteById(b.dataset.edit);
+    modal(`<h3>Lote ${h(l.lote)}</h3><div class="row"><label class="f"><span>Código do lote</span><input id="eL" value="${h(l.lote)}"></label>
+      <label class="f"><span>Validade</span><input id="eV" type="date" value="${h(l.validade || '')}"></label></div>
+      <div class="actions"><button class="btn" data-x>Cancelar</button><button class="btn pri" data-ok>Salvar</button></div>`, (m) => {
+      $('[data-x]', m).onclick = closeModal;
+      $('[data-ok]', m).onclick = async () => {
+        try { const up = await DB.update('cc_lotes', l.id, { lote: $('#eL', m).value.trim() || l.lote, validade: $('#eV', m).value || null }); Object.assign(l, up); closeModal(); render(); toast('Lote atualizado.', 'ok'); }
+        catch (e) { toast(errMsg(e), 'err'); }
+      };
+    }); });
+}
+
+/* =====================================================================
+   DIÁRIO (a "planilha" do dia, montada automaticamente)
+   ===================================================================== */
+function vDiario(el) {
+  const st = viewState; st.data = st.data || today(); st.tipo = st.tipo || 'geladeira';
+  const dia = st.data;
+  const ini = new Date(dia + 'T00:00:00'), fim = new Date(addDays(dia, 1) + 'T00:00:00');
+  const itens = ativos(st.tipo === 'todos' ? null : st.tipo);
+  const cs = S.contagens.filter(c => c.data === dia).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const movsDia = S.movs.filter(m => { const t = new Date(m.created_at); return t >= ini && t < fim; });
+  const sum = (itemId, f) => movsDia.filter(m => m.item_id === itemId && f(m)).reduce((s, m) => s + (+m.delta), 0);
+
+  el.innerHTML = `<div class="card noprint"><div class="row">
+      <button class="btn" id="dPrev">◀</button>
+      <label class="f" style="max-width:180px"><span>Dia</span><input type="date" id="dData" value="${dia}"></label>
+      <button class="btn" id="dNext">▶</button>
+      <label class="f" style="max-width:220px"><span>Itens</span><select id="dTipo">
+        <option value="geladeira" ${st.tipo === 'geladeira' ? 'selected' : ''}>Geladeira</option><option value="insumo" ${st.tipo === 'insumo' ? 'selected' : ''}>Insumos</option><option value="todos" ${st.tipo === 'todos' ? 'selected' : ''}>Tudo</option></select></label>
+      <div style="flex:1"></div>
+      <button class="btn" id="dPrint">🖨️ Imprimir</button><button class="btn" id="dCsv">⬇️ CSV</button>
+  </div></div>
+  <div class="card">
+    <h2>${fmtD(dia)} <span class="muted small">— ${cs.length} contagem(ns)</span></h2>
+    ${cs.some(c => c.temperatura != null) ? `<div class="since" style="margin-bottom:10px">${cs.map(c => `<span class="chip">🌡️ ${h(c.turno)}: ${c.temperatura != null ? fmtN(c.temperatura) + '°C' : '—'}${c.temp_min != null ? ` (mín ${fmtN(c.temp_min)} / máx ${fmtN(c.temp_max)})` : ''}</span>`).join('')}</div>` : ''}
+    ${itens.length ? `<div class="tbl-wrap"><table>
+      <tr><th>Item</th><th class="n">Início do dia</th><th class="n">Entradas</th><th class="n">Saídas</th><th class="n">Ajustes</th>
+        ${cs.map(c => `<th class="n">${h(c.turno)}<br><span style="text-transform:none">${fmtT(c.created_at)}</span></th>`).join('')}<th class="n">Fim do dia</th></tr>
+      ${itens.map(i => { const e = sum(i.id, m => m.tipo === 'entrada'), s = sum(i.id, m => m.tipo === 'saida' || m.tipo === 'descarte'), a = sum(i.id, m => m.tipo === 'ajuste');
+        return `<tr><td>${h(i.nome)}</td><td class="n">${fmtN(saldoEm(i.id, ini))}</td>
+        <td class="n ${e ? 'pos' : 'muted'}">${e ? '+' + fmtN(e) : '—'}</td><td class="n ${s ? 'neg' : 'muted'}">${s ? fmtN(s) : '—'}</td><td class="n ${a ? '' : 'muted'}">${a ? (a > 0 ? '+' : '') + fmtN(a) : '—'}</td>
+        ${cs.map(c => { const l = (c.itens || []).find(x => x.item_id === i.id); if (!l) return '<td class="n muted">—</td>';
+          const d = Math.round((l.contado - l.sistema) * 1000) / 1000;
+          return `<td class="n" ${d ? 'style="background:var(--badbg)"' : ''}>${fmtN(l.contado)} ${d ? `<span class="small neg">(${d > 0 ? '+' : ''}${fmtN(d)})</span>` : '<span class="small pos">ok</span>'}</td>`; }).join('')}
+        <td class="n"><b>${fmtN(saldoEm(i.id, fim))}</b></td></tr>`; }).join('')}
+    </table></div>` : '<div class="empty">Nenhum item.</div>'}
+    ${cs.filter(c => c.obs).map(c => `<p class="small"><b>${h(c.turno)}</b> (${h(c.responsavel || '')}): ${h(c.obs)}</p>`).join('')}
+  </div>
+  <div class="card"><h2>Lançamentos do dia</h2>${movTable([...movsDia].filter(m => itens.some(i => i.id === m.item_id)).sort((a, b) => a.created_at.localeCompare(b.created_at)), false)}</div>`;
+
+  $('#dData', el).onchange = (e) => { st.data = e.target.value || today(); render(); };
+  $('#dPrev', el).onclick = () => { st.data = addDays(dia, -1); render(); };
+  $('#dNext', el).onclick = () => { st.data = addDays(dia, 1); render(); };
+  $('#dTipo', el).onchange = (e) => { st.tipo = e.target.value; render(); };
+  $('#dPrint', el).onclick = () => window.print();
+  $('#dCsv', el).onclick = () => {
+    const head = ['Item', 'Início do dia', 'Entradas', 'Saídas', 'Ajustes', ...cs.map(c => `${c.turno} ${fmtT(c.created_at)}`), 'Fim do dia'];
+    const rows = itens.map(i => [i.nome, fmtN(saldoEm(i.id, ini)), fmtN(sum(i.id, m => m.tipo === 'entrada')), fmtN(sum(i.id, m => m.tipo === 'saida' || m.tipo === 'descarte')), fmtN(sum(i.id, m => m.tipo === 'ajuste')),
+      ...cs.map(c => { const l = (c.itens || []).find(x => x.item_id === i.id); return l ? fmtN(l.contado) : ''; }), fmtN(saldoEm(i.id, fim))]);
+    downloadFile(`diario-consultorio-${dia}.csv`, toCSV([head, ...rows]));
+  };
+}
+
+/* =====================================================================
+   HISTÓRICO
+   ===================================================================== */
+function vHistorico(el) {
+  const st = viewState; st.per = st.per || '30'; st.aba = st.aba || 'movs';
+  const desde = st.per === 'all' ? '' : addDays(today(), -(+st.per));
+  const movs = S.movs.filter(m => (!desde || localDay(m.created_at) >= desde) && (!st.item || m.item_id === st.item) && (!st.tipo || m.tipo === st.tipo))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const cs = S.contagens.filter(c => !desde || c.data >= desde).sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const tot = (t) => movs.filter(m => m.tipo === t).reduce((s, m) => s + (+m.delta), 0);
+
+  el.innerHTML = `<div class="card noprint">
+    <div class="seg" style="margin-bottom:12px"><button data-a="movs" class="${st.aba === 'movs' ? 'on' : ''}">Lançamentos</button><button data-a="cont" class="${st.aba === 'cont' ? 'on' : ''}">Contagens</button></div>
+    <div class="row">
+      <label class="f"><span>Período</span><select id="hPer">${[['7', '7 dias'], ['30', '30 dias'], ['90', '90 dias'], ['365', '1 ano'], ['all', 'Tudo']].map(([k, t]) => `<option value="${k}" ${st.per === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+      ${st.aba === 'movs' ? `<label class="f" style="flex:2"><span>Item</span><select id="hItem"><option value="">Todos</option>${S.itens.map(i => `<option value="${i.id}" ${st.item === i.id ? 'selected' : ''}>${h(i.nome)}</option>`).join('')}</select></label>
+      <label class="f"><span>Tipo</span><select id="hTipo"><option value="">Todos</option>${Object.entries(TIPO_LBL).map(([k, t]) => `<option value="${k}" ${st.tipo === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+      <button class="btn" id="hCsv">⬇️ CSV</button>` : ''}
+    </div>
+  </div>
+  ${st.aba === 'movs' ? `
+  <div class="kpis">
+    <div class="kpi ok"><small>Entradas</small><b>+${fmtN(tot('entrada'))}</b></div>
+    <div class="kpi bad"><small>Saídas</small><b>${fmtN(tot('saida'))}</b></div>
+    <div class="kpi warn"><small>Descartes</small><b>${fmtN(tot('descarte'))}</b></div>
+    <div class="kpi"><small>Ajustes</small><b>${fmtN(tot('ajuste'))}</b></div>
+  </div>
+  <div class="card">${movTable(movs.slice(0, 500), true)}${movs.length > 500 ? `<p class="muted small">Mostrando 500 de ${movs.length}. Use o CSV para ver tudo.</p>` : ''}</div>`
+  : `<div class="card">${cs.length ? `<div class="tbl-wrap"><table><tr><th>Data</th><th>Contagem</th><th>Hora</th><th>Temp.</th><th>Resultado</th><th>Responsável</th><th>Obs.</th><th></th></tr>
+      ${cs.map(c => `<tr><td>${fmtD(c.data)}</td><td>${h(c.turno)}</td><td>${fmtT(c.created_at)}</td>
+        <td>${c.temperatura != null ? `<span class="pill ${c.temperatura < cfg.tempMin || c.temperatura > cfg.tempMax ? 'bad' : 'ok'}">${fmtN(c.temperatura)}°C</span>` : '—'}</td>
+        <td><span class="pill ${c.divergencias ? 'bad' : 'ok'}">${c.divergencias ? c.divergencias + ' diverg.' : 'ok'}</span></td>
+        <td class="small">${h(c.responsavel || '')}</td><td class="small">${h(c.obs || '')}</td><td><button class="btn sm" data-dia="${c.data}">Ver dia</button></td></tr>`).join('')}
+    </table></div>` : '<div class="empty">Nenhuma contagem no período.</div>'}</div>`}`;
+
+  $$('[data-a]', el).forEach(b => b.onclick = () => { st.aba = b.dataset.a; render(); });
+  $('#hPer', el).onchange = (e) => { st.per = e.target.value; render(); };
+  const hi = $('#hItem', el); if (hi) hi.onchange = (e) => { st.item = e.target.value; render(); };
+  const ht = $('#hTipo', el); if (ht) ht.onchange = (e) => { st.tipo = e.target.value; render(); };
+  const hc = $('#hCsv', el); if (hc) hc.onclick = () => downloadFile(`historico-consultorio-${today()}.csv`, toCSV([
+    ['Data', 'Hora', 'Item', 'Tipo', 'Quantidade', 'Lote', 'Validade', 'Motivo', 'Documento', 'Observação', 'Responsável'],
+    ...movs.map(m => { const l = m.lote_id && loteById(m.lote_id); const d = new Date(m.created_at);
+      return [fmtD(ymd(d)), fmtT(m.created_at), itemById(m.item_id)?.nome || '', TIPO_LBL[m.tipo], fmtN(m.delta), l ? l.lote : '', l ? fmtD(l.validade) : '', m.motivo || '', m.documento || '', m.obs || '', m.responsavel || '']; })]));
+  $$('[data-dia]', el).forEach(b => b.onclick = () => go('diario', { data: b.dataset.dia, tipo: 'todos' }));
+  bindMovTable(el);
+}
+
+/* =====================================================================
+   ITENS
+   ===================================================================== */
+function vItens(el) {
+  const st = viewState; st.tipo = st.tipo ?? '';
+  const list = S.itens.filter(i => (st.inativos || i.ativo !== false) && (!st.tipo || i.tipo === st.tipo) && (!st.q || norm(i.nome).includes(norm(st.q))));
+  el.innerHTML = `<div class="card">
+    <div class="row" style="margin-bottom:12px">
+      <label class="f" style="flex:2"><span>Buscar</span><input id="iQ" value="${h(st.q || '')}"></label>
+      <label class="f"><span>Tipo</span><select id="iTipo"><option value="">Todos</option><option value="geladeira" ${st.tipo === 'geladeira' ? 'selected' : ''}>Geladeira</option><option value="insumo" ${st.tipo === 'insumo' ? 'selected' : ''}>Insumos</option></select></label>
+      <label style="display:flex;gap:6px;align-items:center;padding-bottom:10px"><input type="checkbox" id="iIn" ${st.inativos ? 'checked' : ''}> inativos</label>
+      <button class="btn pri" id="iAdd">+ Adicionar itens</button>
+    </div>
+    ${list.length ? `<div class="tbl-wrap"><table><tr><th>Item</th><th>Tipo</th><th class="n">Saldo</th><th class="n">Mínimo</th><th>Próx. validade</th><th></th></tr>
+      ${list.map(i => { const pv = proxValidade(i.id); const s = saldo(i.id);
+        return `<tr style="${i.ativo === false ? 'opacity:.5' : ''}"><td>${h(i.nome)}${i.barcode ? `<div class="small muted">${h(i.barcode)}</div>` : ''}</td>
+        <td><span class="pill ${i.tipo === 'geladeira' ? 'info' : 'mut'}">${i.tipo === 'geladeira' ? '🧊 geladeira' : '📦 insumo'}</span></td>
+        <td class="n ${+i.estoque_minimo && s < +i.estoque_minimo ? 'neg' : ''}">${fmtN(s)} <span class="small muted">${h(i.unidade || '')}</span></td><td class="n">${fmtN(i.estoque_minimo)}</td>
+        <td>${pv ? `<span class="pill ${statusValidade(pv).cls}">${fmtD(pv)}</span>` : '—'}</td>
+        <td style="white-space:nowrap"><button class="btn sm" data-ed="${i.id}">Editar</button></td></tr>`; }).join('')}
+    </table></div>` : `<div class="empty">Nenhum item. Toque em <b>+ Adicionar itens</b>.</div>`}
+  </div>
+  <div class="card"><h2>Lista de produtos do ${DB.kind === 'remote' ? 'Consulveter' : 'catálogo local'}</h2>
+    <p class="muted small" style="margin-top:0">Baixe só os nomes (e código de barras/categoria) de todos os produtos cadastrados.</p>
+    <button class="btn" id="iExp">⬇️ Baixar lista de produtos (CSV)</button>
+    ${DB.kind === 'local' ? `<button class="btn" id="iImp">⬆️ Importar lista de nomes (CSV/TXT)</button><input type="file" id="iFile" accept=".csv,.txt" class="hidden">` : ''}
+  </div>`;
+  $('#iQ', el).oninput = (e) => { st.q = e.target.value; clearTimeout(vItens._t); vItens._t = setTimeout(() => { render(); const q = $('#iQ'); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }, 250); };
+  $('#iTipo', el).onchange = (e) => { st.tipo = e.target.value; render(); };
+  $('#iIn', el).onchange = (e) => { st.inativos = e.target.checked; render(); };
+  $('#iAdd', el).onclick = () => addItensModal();
+  $$('[data-ed]', el).forEach(b => b.onclick = () => editItemModal(itemById(b.dataset.ed)));
+  $('#iExp', el).onclick = async () => {
+    try { const ps = await getProducts(); if (!ps.length) return toast('Nenhum produto encontrado.', 'err');
+      downloadFile(`produtos-consulveter-${today()}.csv`, toCSV([['Produto', 'Código de barras', 'Categoria', 'Unidade'], ...ps.map(p => [p.name, p.barcode || '', p.category || '', p.unit || ''])]));
+      toast(`${ps.length} produtos exportados.`, 'ok'); } catch (e) { toast(errMsg(e), 'err'); }
+  };
+  const imp = $('#iImp', el); if (imp) { imp.onclick = () => $('#iFile', el).click();
+    $('#iFile', el).onchange = async (e) => { const f = e.target.files[0]; if (!f) return; const txt = await f.text();
+      const nomes = [...new Set(txt.split(/\r?\n/).map(l => l.split(/[;,\t]/)[0].replace(/^"|"$/g, '').trim()).filter(n => n && !/^produto$/i.test(n)))];
+      const ps = nomes.map(n => ({ id: uid(), name: n })); lsSet(LOCAL_PROD_KEY, ps); S.products = ps; toast(`${ps.length} nomes importados. Agora use “+ Adicionar itens”.`, 'ok'); }; }
+}
+
+async function getProducts() { if (!S.products) S.products = await DB.products(); return S.products; }
+
+async function addItensModal() {
+  let ps = [];
+  try { ps = await getProducts(); } catch (e) { toast('Não consegui ler os produtos: ' + errMsg(e), 'err'); }
+  const have = new Set(S.itens.map(i => i.product_id).filter(Boolean));
+  const haveNames = new Set(S.itens.map(i => norm(i.nome)));
+  const sel = new Map();
+  modal(`<h3>Adicionar itens ao consultório</h3>
+    ${ps.length ? `<label class="f"><span>Buscar no cadastro ${DB.kind === 'remote' ? 'do Consulveter' : ''} (${ps.length} produtos)</span><input id="aQ" placeholder="ex.: vacina, v10, raiva, cytopoint…" autocomplete="off"></label>
+    <div class="small muted" style="margin:6px 0">Marque os produtos e escolha o tipo.</div>
+    <div class="picker" id="aList"></div>` : `<p class="muted">${DB.kind === 'remote' ? 'Nenhum produto encontrado no Consulveter.' : 'No modo local não há cadastro do Consulveter — digite o nome abaixo (ou importe uma lista de nomes).'}</p>`}
+    <div class="row" style="margin-top:12px"><label class="f" style="flex:2"><span>Ou digite um nome manualmente</span><input id="aNome" placeholder="Nome do item"></label>
+      <button class="btn" id="aAddMan">Adicionar à seleção</button></div>
+    <div class="row" style="margin-top:12px">
+      <label class="f"><span>Tipo dos itens marcados</span><select id="aTipo"><option value="geladeira">🧊 Geladeira (vacina/injetável)</option><option value="insumo">📦 Insumo</option></select></label>
+      <label class="f"><span>Estoque mínimo</span><input id="aMin" inputmode="decimal" value="0"></label>
+    </div>
+    <p class="small" id="aSel"></p>
+    <div class="actions"><button class="btn" data-x>Cancelar</button><button class="btn pri" data-ok>Adicionar</button></div>`, (m) => {
+    const list = $('#aList', m);
+    const draw = () => {
+      if (list) {
+        const q = norm($('#aQ', m).value);
+        const f = ps.filter(p => !q || norm(p.name).includes(q) || (p.barcode || '').includes(q)).slice(0, 150);
+        list.innerHTML = f.map(p => { const ja = have.has(p.id) || haveNames.has(norm(p.name));
+          return `<label class="${ja ? 'have' : ''}"><input type="checkbox" data-p="${p.id}" ${ja ? 'disabled checked' : sel.has(p.id) ? 'checked' : ''}>
+            <span>${h(p.name)}<br><span class="small muted">${h([p.barcode, p.category, p.unit].filter(Boolean).join(' · '))}${ja ? ' · já cadastrado' : ''}</span></span></label>`; }).join('') || '<div class="empty">Nada encontrado.</div>';
+        $$('[data-p]', list).forEach(c => c.onchange = () => { const p = ps.find(x => x.id === c.dataset.p); c.checked ? sel.set(p.id, p) : sel.delete(p.id); upd(); });
+      }
+    };
+    const upd = () => $('#aSel', m).innerHTML = sel.size ? `<b>${sel.size} selecionado(s):</b> ${[...sel.values()].map(p => h(p.name)).join(', ')}` : '';
+    if (list) { $('#aQ', m).oninput = draw; draw(); setTimeout(() => $('#aQ', m).focus(), 0); }
+    $('#aAddMan', m).onclick = () => { const n = $('#aNome', m).value.trim(); if (!n) return; const id = 'man-' + uid(); sel.set(id, { id, name: n, manual: true }); $('#aNome', m).value = ''; upd(); };
+    $('[data-x]', m).onclick = closeModal;
+    $('[data-ok]', m).onclick = async () => {
+      if (!sel.size) return toast('Marque pelo menos um item.', 'err');
+      const tipo = $('#aTipo', m).value, min = num($('#aMin', m).value) || 0;
+      const rows = [...sel.values()].map(p => ({ product_id: p.manual || DB.kind === 'local' ? null : p.id, nome: p.name, barcode: p.barcode || null, tipo, unidade: p.unit || 'UN', estoque_minimo: min, ativo: true }));
+      try { const saved = await DB.insert('cc_itens', rows); S.itens.push(...saved); recalc(); closeModal();
+        toast(`${saved.length} item(ns) adicionado(s). Agora lance o saldo inicial em Entrada.`, 'ok'); render(); }
+      catch (e) { toast(errMsg(e), 'err'); }
+    };
+  });
+}
+
+function editItemModal(it) {
+  modal(`<h3>Editar item</h3>
+    <label class="f"><span>Nome</span><input id="eN" value="${h(it.nome)}"></label>
+    <div class="row" style="margin-top:10px">
+      <label class="f"><span>Tipo</span><select id="eT"><option value="geladeira" ${it.tipo === 'geladeira' ? 'selected' : ''}>🧊 Geladeira</option><option value="insumo" ${it.tipo === 'insumo' ? 'selected' : ''}>📦 Insumo</option></select></label>
+      <label class="f"><span>Unidade</span><input id="eU" value="${h(it.unidade || '')}"></label>
+      <label class="f"><span>Estoque mínimo</span><input id="eM" inputmode="decimal" value="${h(it.estoque_minimo ?? 0)}"></label>
+      <label class="f"><span>Ordem na contagem</span><input id="eO" inputmode="numeric" value="${h(it.ordem ?? 0)}"></label>
+    </div>
+    <div class="row" style="margin-top:10px"><label class="f"><span>Código de barras</span><input id="eB" value="${h(it.barcode || '')}"></label></div>
+    <label style="display:flex;gap:8px;margin-top:12px"><input type="checkbox" id="eA" ${it.ativo !== false ? 'checked' : ''}> Ativo (aparece nas contagens e lançamentos)</label>
+    <div class="actions"><button class="btn bad" data-del>Excluir</button><div style="flex:1"></div><button class="btn" data-x>Cancelar</button><button class="btn pri" data-ok>Salvar</button></div>`, (m) => {
+    $('[data-x]', m).onclick = closeModal;
+    $('[data-ok]', m).onclick = async () => {
+      const patch = { nome: $('#eN', m).value.trim() || it.nome, tipo: $('#eT', m).value, unidade: $('#eU', m).value.trim(), estoque_minimo: num($('#eM', m).value) || 0,
+        ordem: parseInt($('#eO', m).value) || 0, barcode: $('#eB', m).value.trim() || null, ativo: $('#eA', m).checked };
+      try { const up = await DB.update('cc_itens', it.id, patch); Object.assign(it, up || patch); recalc(); closeModal(); render(); toast('Item salvo.', 'ok'); }
+      catch (e) { toast(errMsg(e), 'err'); }
+    };
+    $('[data-del]', m).onclick = async () => {
+      const n = S.movs.filter(x => x.item_id === it.id).length;
+      closeModal();
+      if (!(await confirmBox('Excluir item?', n ? `<b>${h(it.nome)}</b> tem ${n} lançamento(s), que também serão apagados. Se só não usa mais, prefira desmarcar “Ativo”.` : `Excluir <b>${h(it.nome)}</b>?`, 'Excluir', true))) return;
+      try { await DB.remove('cc_itens', it.id); S.itens = S.itens.filter(x => x.id !== it.id); S.lotes = S.lotes.filter(x => x.item_id !== it.id); S.movs = S.movs.filter(x => x.item_id !== it.id); recalc(); render(); toast('Item excluído.'); }
+      catch (e) { toast(errMsg(e), 'err'); }
+    };
+  });
+}
+
+/* =====================================================================
+   CONFIGURAÇÕES
+   ===================================================================== */
+function vConfig(el) {
+  el.innerHTML = `
+  <div class="card"><h2>👤 Quem está usando este aparelho</h2>
+    <div class="row"><label class="f"><span>Nome do responsável (vai em cada lançamento e contagem)</span><input id="cResp" value="${h(cfg.responsavel)}" placeholder="Ex.: Ana"></label>
+    <button class="btn pri" id="cRespSave">Salvar</button></div>
+  </div>
+  <div class="card"><h2>🧊 Contagens do dia e geladeira</h2>
+    <label class="f"><span>Contagens (uma por linha: nome | horário previsto)</span>
+      <textarea id="cTurnos" rows="4">${h(cfg.turnos.map(t => `${t.nome} | ${t.hora}`).join('\n'))}</textarea></label>
+    <div class="row" style="margin-top:10px">
+      <label class="f"><span>Temperatura mínima (°C)</span><input id="cTmin" inputmode="decimal" value="${cfg.tempMin}"></label>
+      <label class="f"><span>Temperatura máxima (°C)</span><input id="cTmax" inputmode="decimal" value="${cfg.tempMax}"></label>
+      <label class="f"><span>Alertar validade com quantos dias</span><input id="cDias" inputmode="numeric" value="${cfg.diasAlerta}"></label>
+    </div>
+    <div style="margin-top:12px"><button class="btn pri" id="cSave">Salvar</button></div>
+    <p class="muted small">Essas preferências ficam salvas neste aparelho.</p>
+  </div>
+  <div class="card"><h2>💾 Dados</h2>
+    <p class="muted small" style="margin-top:0">Modo atual: <b>${DB.kind === 'remote' ? 'Consulveter (nuvem — equipe compartilha)' : 'Local (só neste navegador)'}</b> · ${h(DB.label())}</p>
+    <div class="row">
+      <button class="btn" id="cBackup">⬇️ Baixar backup (JSON)</button>
+      ${DB.kind === 'local' ? `<button class="btn" id="cRestore">⬆️ Restaurar backup</button><input type="file" id="cFile" accept=".json" class="hidden">` : ''}
+      <button class="btn bad" id="cOut">${DB.kind === 'remote' ? 'Sair da conta' : 'Trocar modo / entrar com conta'}</button>
+    </div>
+    ${DB.kind === 'local' ? '<p class="small muted">No modo local, se limpar os dados do navegador tudo é perdido. Faça backup com frequência ou use o login do Consulveter.</p>' : ''}
+  </div>
+  <div class="card"><h2>🔌 Conexão (avançado)</h2>
+    <div class="row"><label class="f" style="flex:2"><span>URL do Supabase</span><input id="cUrl" value="${h(cfg.url)}"></label>
+    <label class="f" style="flex:2"><span>Chave pública (anon/publishable)</span><input id="cKey" value="${h(cfg.key)}"></label>
+    <button class="btn" id="cConn">Salvar</button></div>
+  </div>`;
+  $('#cRespSave', el).onclick = () => { cfg.responsavel = $('#cResp', el).value.trim(); saveCfg(); toast('Responsável salvo.', 'ok'); render(); };
+  $('#cSave', el).onclick = () => {
+    const turnos = $('#cTurnos', el).value.split('\n').map(l => l.split('|')).filter(p => p[0].trim()).map(p => ({ nome: p[0].trim(), hora: (p[1] || '').trim() || '00:00' }));
+    if (!turnos.length) return toast('Informe pelo menos uma contagem.', 'err');
+    const tmin = num($('#cTmin', el).value), tmax = num($('#cTmax', el).value), dias = parseInt($('#cDias', el).value);
+    Object.assign(cfg, { turnos, tempMin: isNaN(tmin) ? 2 : tmin, tempMax: isNaN(tmax) ? 8 : tmax, diasAlerta: isNaN(dias) ? 30 : dias }); saveCfg(); toast('Configurações salvas.', 'ok'); render();
+  };
+  $('#cBackup', el).onclick = () => downloadFile(`backup-consultorio-${today()}.json`, JSON.stringify({ versao: 1, exportado: new Date().toISOString(), itens: S.itens, lotes: S.lotes, movs: S.movs, contagens: S.contagens }, null, 1), 'application/json');
+  const rs = $('#cRestore', el); if (rs) { rs.onclick = () => $('#cFile', el).click();
+    $('#cFile', el).onchange = async (e) => { const f = e.target.files[0]; if (!f) return;
+      try { const d = JSON.parse(await f.text()); if (!(await confirmBox('Restaurar backup?', 'Isso substitui todos os dados locais atuais.', 'Restaurar', true))) return;
+        Local._save({ cc_itens: d.itens || [], cc_lotes: d.lotes || [], cc_movs: d.movs || [], cc_contagens: d.contagens || [] }); await loadAll(); render(); toast('Backup restaurado.', 'ok'); }
+      catch (err) { toast('Arquivo inválido: ' + errMsg(err), 'err'); } }; }
+  $('#cOut', el).onclick = async () => { await DB.signOut(); cfg.mode = null; saveCfg(); location.reload(); };
+  $('#cConn', el).onclick = () => { cfg.url = $('#cUrl', el).value.trim() || CONSULVETER.url; cfg.key = $('#cKey', el).value.trim() || CONSULVETER.key; saveCfg(); toast('Conexão salva. Recarregando…'); setTimeout(() => location.reload(), 800); };
+}
+
+/* =====================================================================
+   Inicialização
+   ===================================================================== */
+async function startApp() {
+  $('#login').classList.add('hidden'); $('#app').classList.remove('hidden');
+  $('#view').innerHTML = '<div class="empty">Carregando…</div>';
+  await loadAll();
+  if (!cfg.responsavel) current = 'config';
+  render();
+}
+function showLogin() { $('#app').classList.add('hidden'); $('#login').classList.remove('hidden'); }
+
+$('#loginForm').onsubmit = async (e) => {
+  e.preventDefault(); $('#lgErr').textContent = '';
+  const b = $('#loginForm button'); b.disabled = true; b.textContent = 'Entrando…';
+  try { await Remote.signIn($('#lgEmail').value.trim(), $('#lgPass').value); DB = Remote; cfg.mode = 'remote'; saveCfg(); await startApp(); }
+  catch (err) { $('#lgErr').textContent = /invalid/i.test(errMsg(err)) ? 'E-mail ou senha incorretos.' : errMsg(err); }
+  finally { b.disabled = false; b.textContent = 'Entrar'; }
+};
+$('#btnLocal').onclick = () => { DB = Local; cfg.mode = 'local'; saveCfg(); startApp(); };
+$('#btnReload').onclick = async () => { S.products = null; await loadAll(); render(); toast('Dados atualizados.'); };
+
+// Atualiza sozinho quando o app volta a ficar visível (outra pessoa pode ter lançado algo)
+let lastSync = Date.now();
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && DB.kind === 'remote' && Date.now() - lastSync > 30000 && !$('#modalRoot').innerHTML) {
+    lastSync = Date.now(); await loadAll(); render();
+  }
+});
+
+(async function boot() {
+  if (cfg.mode === 'local') { DB = Local; return startApp(); }
+  if (cfg.mode === 'remote') {
+    try { if (await Remote.session()) { DB = Remote; return startApp(); } } catch (e) { console.warn(e); }
+  }
+  showLogin();
+})();
+</script>
+</body>
+</html>
