@@ -2,7 +2,7 @@
 
 App (um único arquivo `index.html`) para controlar **vacinas, injetáveis de
 geladeira e insumos** do consultório: entrada, saída, descarte, lotes/validade
-e as contagens diárias da geladeira com temperatura.
+e as contagens diárias da geladeira.
 
 ## Como usar (sem login)
 
@@ -40,14 +40,14 @@ apenas naquele navegador.
 | Contar e escrever a quantidade de tudo, 3× por dia | O sistema já sabe quanto deveria ter. Na contagem você digita o que contou (ou toca ✓ quando bate) e **só as divergências ficam em vermelho**, exigindo justificativa. |
 | DIFERENÇA calculada de cabeça | Diferença calculada sozinha; opção de corrigir o estoque com um ajuste registrado no histórico. |
 | Sem controle de validade | Lotes com validade, saída "vence primeiro, sai primeiro" automática, alertas de vencidos/vencendo e botão de descarte. |
-| — | Registro de temperatura da geladeira (atual/mín/máx) com alerta fora de 2–8 °C. |
 | Uma aba por mês | 📅 Diário monta a "planilha" de qualquer dia (início, entradas, saídas, cada contagem, fim) — imprimível e exportável em CSV. |
 
 ## Telas
 
 - **Painel** — contagens do dia (feitas/pendentes/atrasadas), vencidos, vencendo,
-  abaixo do mínimo, última temperatura e o saldo atual da geladeira.
-- **Contagem** — 1ª/2ª/3ª contagem (nomes e horários configuráveis).
+  abaixo do mínimo e o saldo atual da geladeira.
+- **Contagem** — 1ª/2ª/3ª contagem (nomes e horários configuráveis). Lista os
+  itens cadastrados em Itens; se não houver nenhum, mostra o botão para adicionar.
 - **Entrada / Saída** — entrada (lote + validade + NF), saída, descarte e ajuste;
   aceita leitor de código de barras no campo de busca.
 - **Validades** — lotes com saldo, ordenados pelo vencimento.

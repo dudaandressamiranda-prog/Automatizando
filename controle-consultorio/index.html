@@ -228,7 +228,6 @@ const DEFAULT_CFG = {
     { nome: '2ª contagem', hora: '16:00' },
     { nome: '3ª contagem', hora: '22:00' },
   ],
-  tempMin: 2, tempMax: 8,
   diasAlerta: 30,
   url: CONSULVETER.url, key: CONSULVETER.key,
 };
@@ -548,8 +547,6 @@ function vPainel(el) {
   const baixos = ativos().filter(i => (+i.estoque_minimo || 0) > 0 && saldo(i.id) < +i.estoque_minimo);
   const tds = turnosDoDia(today());
   const feitas = tds.filter(t => t.contagem).length;
-  const ultTemp = [...S.contagens].filter(c => c.temperatura != null).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
-  const tempFora = ultTemp && (ultTemp.temperatura < cfg.tempMin || ultTemp.temperatura > cfg.tempMax);
   const hoje = today();
   const movHoje = S.movs.filter(m => localDay(m.created_at) === hoje);
   const saidasHoje = movHoje.filter(m => m.tipo === 'saida').reduce((s, m) => s - m.delta, 0);
@@ -562,7 +559,6 @@ function vPainel(el) {
     <div class="kpi ${vencidos ? 'bad' : 'ok'}" data-go="validades"><small>Lotes vencidos c/ saldo</small><b>${vencidos}</b></div>
     <div class="kpi ${vencendo ? 'warn' : 'ok'}" data-go="validades"><small>Vencendo em ${cfg.diasAlerta} dias</small><b>${vencendo}</b></div>
     <div class="kpi ${baixos.length ? 'warn' : 'ok'}" data-go="itens"><small>Abaixo do mínimo</small><b>${baixos.length}</b></div>
-    <div class="kpi ${tempFora ? 'bad' : ultTemp ? 'ok' : ''}" data-go="contagem"><small>Última temperatura</small><b>${ultTemp ? fmtN(ultTemp.temperatura) + '°C' : '—'}</b></div>
     <div class="kpi" data-go="historico"><small>Saídas hoje</small><b>${fmtN(saidasHoje)}</b></div>
   </div>
 
@@ -575,7 +571,6 @@ function vPainel(el) {
     </div>`).join('')}</div>
   </div>
 
-  ${tempFora ? `<div class="alert bad">🌡️ A última temperatura registrada (${fmtN(ultTemp.temperatura)}°C em ${fmtDT(ultTemp.created_at)}) está fora da faixa ${cfg.tempMin}–${cfg.tempMax}°C.</div>` : ''}
 
   <div class="grid g2">
     <div class="card"><h2>⏳ Validades que pedem atenção</h2>
@@ -638,19 +633,9 @@ function vContagem(el) {
   </div>
 
   <div class="card">
-    <h2>🌡️ Temperatura da geladeira <span class="muted small">faixa ${cfg.tempMin}–${cfg.tempMax}°C</span></h2>
-    <div class="row">
-      <label class="f"><span>Atual (°C)</span><input id="tAtual" inputmode="decimal" value="${h(st.tAtual ?? '')}"></label>
-      <label class="f"><span>Mínima (°C)</span><input id="tMin" inputmode="decimal" value="${h(st.tMin ?? '')}"></label>
-      <label class="f"><span>Máxima (°C)</span><input id="tMax" inputmode="decimal" value="${h(st.tMax ?? '')}"></label>
-    </div>
-    <div id="tWarn"></div>
-  </div>
-
-  <div class="card">
     <h2>Contagem <span class="sp"></span>
-      <button class="btn sm" id="ctFill">✓ Preencher tudo com o sistema</button>
-      <button class="btn sm" id="ctClear">Limpar</button></h2>
+      ${itens.length ? `<button class="btn sm" id="ctFill">✓ Preencher tudo com o sistema</button>
+      <button class="btn sm" id="ctClear">Limpar</button>` : ''}</h2>
     <p class="muted small" style="margin-top:-6px">Conte o que tem fisicamente e digite. Se bater com o sistema a linha fica verde; se não bater, fica vermelha.</p>
     ${itens.length ? `<div class="tbl-wrap"><table>
       <tr><th>Item</th><th class="n">Sistema</th><th class="n">Contado</th><th class="n">Diferença</th><th class="c"></th></tr>
@@ -665,7 +650,11 @@ function vContagem(el) {
     </div>
     <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <button class="btn ok big" id="ctSave">Salvar contagem</button><span id="ctSum" class="muted"></span>
-    </div>` : '<div class="empty">Nenhum item cadastrado para esse tipo. Cadastre em 📦 Itens.</div>'}
+    </div>` : `<div class="empty">
+      <p style="margin-top:0"><b>Ainda não há itens ${st.tipo === 'insumo' ? 'de insumo' : st.tipo === 'geladeira' ? 'de geladeira' : ''} para contar.</b></p>
+      <p class="small">A contagem lista os itens cadastrados no consultório. Para começar:<br>
+        1) adicione os itens (vêm do cadastro do Consulveter) &nbsp;·&nbsp; 2) lance o saldo atual de cada um em Entrada &nbsp;·&nbsp; 3) volte aqui para contar.</p>
+      <button class="btn pri" id="ctAddItens">+ Adicionar itens ${st.tipo === 'insumo' ? 'de insumo' : 'da geladeira'}</button></div>`}
   </div>`;
 
   const upd = () => {
@@ -679,20 +668,17 @@ function vContagem(el) {
       if (d) diffs++;
     });
     const s = $('#ctSum', el); if (s) s.textContent = `${itens.length - falt}/${itens.length} contados` + (diffs ? ` · ${diffs} divergência(s)` : '');
-    const ta = num($('#tAtual', el).value), tn = num($('#tMin', el).value), tx = num($('#tMax', el).value);
-    const fora = [ta, tn, tx].some(t => !isNaN(t) && (t < cfg.tempMin || t > cfg.tempMax));
-    $('#tWarn', el).innerHTML = fora ? `<div class="alert bad" style="margin:10px 0 0">Temperatura fora da faixa ${cfg.tempMin}–${cfg.tempMax}°C! Verifique a geladeira e registre na observação.</div>` : '';
   };
   $('#ctData', el).onchange = (e) => { st.data = e.target.value || today(); st.turno = null; render(); };
   $('#ctTurno', el).onchange = (e) => { st.turno = e.target.value; render(); };
   $('#ctTipo', el).onchange = (e) => { st.tipo = e.target.value; render(); };
-  ['tAtual', 'tMin', 'tMax'].forEach(k => $('#' + k, el).oninput = (e) => { st[k] = e.target.value; upd(); });
   $$('[data-c]', el).forEach(inp => inp.oninput = () => { st.vals[inp.dataset.c] = inp.value; upd(); });
   $$('[data-eq]', el).forEach(b => b.onclick = () => { const id = b.dataset.eq; st.vals[id] = String(saldo(id)); $(`[data-c="${id}"]`, el).value = st.vals[id]; upd(); });
   const fill = $('#ctFill', el); if (fill) fill.onclick = () => { itens.forEach(i => { st.vals[i.id] = String(saldo(i.id)); $(`[data-c="${i.id}"]`, el).value = st.vals[i.id]; }); upd(); };
   const clr = $('#ctClear', el); if (clr) clr.onclick = () => { st.vals = {}; $$('[data-c]', el).forEach(i => i.value = ''); upd(); };
   const obs = $('#ctObs', el); if (obs) obs.oninput = () => st.obs = obs.value;
   const save = $('#ctSave', el); if (save) save.onclick = () => salvarContagem(itens);
+  const add = $('#ctAddItens', el); if (add) add.onclick = () => addItensModal(st.tipo === 'insumo' ? 'insumo' : 'geladeira');
   upd();
 }
 
@@ -718,10 +704,9 @@ async function salvarContagem(itens) {
       }));
     if (!ok) return;
   }
-  const tv = (k) => { const v = num(st[k]); return isNaN(v) ? null : v; };
   try {
     const [c] = await DB.insert('cc_contagens', [{
-      data: st.data, turno: st.turno, temperatura: tv('tAtual'), temp_min: tv('tMin'), temp_max: tv('tMax'),
+      data: st.data, turno: st.turno,
       itens: linhas, divergencias: divs.length, obs: st.obs || null, responsavel: resp(),
     }]);
     S.contagens.push(c);
@@ -945,7 +930,6 @@ function vDiario(el) {
   </div></div>
   <div class="card">
     <h2>${fmtD(dia)} <span class="muted small">— ${cs.length} contagem(ns)</span></h2>
-    ${cs.some(c => c.temperatura != null) ? `<div class="since" style="margin-bottom:10px">${cs.map(c => `<span class="chip">🌡️ ${h(c.turno)}: ${c.temperatura != null ? fmtN(c.temperatura) + '°C' : '—'}${c.temp_min != null ? ` (mín ${fmtN(c.temp_min)} / máx ${fmtN(c.temp_max)})` : ''}</span>`).join('')}</div>` : ''}
     ${itens.length ? `<div class="tbl-wrap"><table>
       <tr><th>Item</th><th class="n">Início do dia</th><th class="n">Entradas</th><th class="n">Saídas</th><th class="n">Ajustes</th>
         ${cs.map(c => `<th class="n">${h(c.turno)}<br><span style="text-transform:none">${fmtT(c.created_at)}</span></th>`).join('')}<th class="n">Fim do dia</th></tr>
@@ -1002,9 +986,9 @@ function vHistorico(el) {
     <div class="kpi"><small>Ajustes</small><b>${fmtN(tot('ajuste'))}</b></div>
   </div>
   <div class="card">${movTable(movs.slice(0, 500), true)}${movs.length > 500 ? `<p class="muted small">Mostrando 500 de ${movs.length}. Use o CSV para ver tudo.</p>` : ''}</div>`
-  : `<div class="card">${cs.length ? `<div class="tbl-wrap"><table><tr><th>Data</th><th>Contagem</th><th>Hora</th><th>Temp.</th><th>Resultado</th><th>Responsável</th><th>Obs.</th><th></th></tr>
+  : `<div class="card">${cs.length ? `<div class="tbl-wrap"><table><tr><th>Data</th><th>Contagem</th><th>Hora</th><th>Resultado</th><th>Responsável</th><th>Obs.</th><th></th></tr>
       ${cs.map(c => `<tr><td>${fmtD(c.data)}</td><td>${h(c.turno)}</td><td>${fmtT(c.created_at)}</td>
-        <td>${c.temperatura != null ? `<span class="pill ${c.temperatura < cfg.tempMin || c.temperatura > cfg.tempMax ? 'bad' : 'ok'}">${fmtN(c.temperatura)}°C</span>` : '—'}</td>
+        
         <td><span class="pill ${c.divergencias ? 'bad' : 'ok'}">${c.divergencias ? c.divergencias + ' diverg.' : 'ok'}</span></td>
         <td class="small">${h(c.responsavel || '')}</td><td class="small">${h(c.obs || '')}</td><td><button class="btn sm" data-dia="${c.data}">Ver dia</button></td></tr>`).join('')}
     </table></div>` : '<div class="empty">Nenhuma contagem no período.</div>'}</div>`}`;
@@ -1051,7 +1035,7 @@ function vItens(el) {
   $('#iQ', el).oninput = (e) => { st.q = e.target.value; clearTimeout(vItens._t); vItens._t = setTimeout(() => { render(); const q = $('#iQ'); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }, 250); };
   $('#iTipo', el).onchange = (e) => { st.tipo = e.target.value; render(); };
   $('#iIn', el).onchange = (e) => { st.inativos = e.target.checked; render(); };
-  $('#iAdd', el).onclick = () => addItensModal();
+  $('#iAdd', el).onclick = () => addItensModal(st.tipo);
   $$('[data-ed]', el).forEach(b => b.onclick = () => editItemModal(itemById(b.dataset.ed)));
   $('#iExp', el).onclick = async () => {
     try { const ps = await getProducts(); if (!ps.length) return toast('Nenhum produto encontrado.', 'err');
@@ -1066,7 +1050,7 @@ function vItens(el) {
 
 async function getProducts() { if (!S.products) S.products = await DB.products(); return S.products; }
 
-async function addItensModal() {
+async function addItensModal(tipoPadrao) {
   let ps = [];
   try { ps = await getProducts(); } catch (e) { toast('Não consegui ler os produtos: ' + errMsg(e), 'err'); }
   const have = new Set(S.itens.map(i => i.product_id).filter(Boolean));
@@ -1079,7 +1063,7 @@ async function addItensModal() {
     <div class="row" style="margin-top:12px"><label class="f" style="flex:2"><span>Ou digite um nome manualmente</span><input id="aNome" placeholder="Nome do item"></label>
       <button class="btn" id="aAddMan">Adicionar à seleção</button></div>
     <div class="row" style="margin-top:12px">
-      <label class="f"><span>Tipo dos itens marcados</span><select id="aTipo"><option value="geladeira">🧊 Geladeira (vacina/injetável)</option><option value="insumo">📦 Insumo</option></select></label>
+      <label class="f"><span>Tipo dos itens marcados</span><select id="aTipo"><option value="geladeira">🧊 Geladeira (vacina/injetável)</option><option value="insumo" ${tipoPadrao === 'insumo' ? 'selected' : ''}>📦 Insumo</option></select></label>
       <label class="f"><span>Estoque mínimo</span><input id="aMin" inputmode="decimal" value="0"></label>
     </div>
     <p class="small" id="aSel"></p>
@@ -1148,12 +1132,10 @@ function vConfig(el) {
     <div class="row"><label class="f"><span>Nome do responsável (vai em cada lançamento e contagem)</span><input id="cResp" value="${h(cfg.responsavel)}" placeholder="Ex.: Ana"></label>
     <button class="btn pri" id="cRespSave">Salvar</button></div>
   </div>
-  <div class="card"><h2>🧊 Contagens do dia e geladeira</h2>
+  <div class="card"><h2>🧊 Contagens do dia e alertas</h2>
     <label class="f"><span>Contagens (uma por linha: nome | horário previsto)</span>
       <textarea id="cTurnos" rows="4">${h(cfg.turnos.map(t => `${t.nome} | ${t.hora}`).join('\n'))}</textarea></label>
     <div class="row" style="margin-top:10px">
-      <label class="f"><span>Temperatura mínima (°C)</span><input id="cTmin" inputmode="decimal" value="${cfg.tempMin}"></label>
-      <label class="f"><span>Temperatura máxima (°C)</span><input id="cTmax" inputmode="decimal" value="${cfg.tempMax}"></label>
       <label class="f"><span>Alertar validade com quantos dias</span><input id="cDias" inputmode="numeric" value="${cfg.diasAlerta}"></label>
     </div>
     <div style="margin-top:12px"><button class="btn pri" id="cSave">Salvar</button></div>
@@ -1177,8 +1159,8 @@ function vConfig(el) {
   $('#cSave', el).onclick = () => {
     const turnos = $('#cTurnos', el).value.split('\n').map(l => l.split('|')).filter(p => p[0].trim()).map(p => ({ nome: p[0].trim(), hora: (p[1] || '').trim() || '00:00' }));
     if (!turnos.length) return toast('Informe pelo menos uma contagem.', 'err');
-    const tmin = num($('#cTmin', el).value), tmax = num($('#cTmax', el).value), dias = parseInt($('#cDias', el).value);
-    Object.assign(cfg, { turnos, tempMin: isNaN(tmin) ? 2 : tmin, tempMax: isNaN(tmax) ? 8 : tmax, diasAlerta: isNaN(dias) ? 30 : dias }); saveCfg(); toast('Configurações salvas.', 'ok'); render();
+    const dias = parseInt($('#cDias', el).value);
+    Object.assign(cfg, { turnos, diasAlerta: isNaN(dias) ? 30 : dias }); saveCfg(); toast('Configurações salvas.', 'ok'); render();
   };
   $('#cBackup', el).onclick = () => downloadFile(`backup-consultorio-${today()}.json`, JSON.stringify({ versao: 1, exportado: new Date().toISOString(), itens: S.itens, lotes: S.lotes, movs: S.movs, contagens: S.contagens }, null, 1), 'application/json');
   const rs = $('#cRestore', el); if (rs) { rs.onclick = () => $('#cFile', el).click();
