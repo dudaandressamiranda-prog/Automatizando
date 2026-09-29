@@ -27,6 +27,7 @@ create table if not exists public.cc_itens (
   estoque_minimo numeric(10,3) default 0,
   ativo          boolean default true,
   ordem          integer default 0,
+  controla_validade boolean not null default true,
   created_at     timestamptz default now()
 );
 create index if not exists cc_itens_user_idx on public.cc_itens(user_id);

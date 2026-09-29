@@ -395,6 +395,7 @@ function recalc() {
   S.itens.sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 const itemById = (id) => S.itens.find(i => i.id === id);
+const ctrlaVal = (it) => it.controla_validade !== false;
 const loteById = (id) => S.lotes.find(l => l.id === id);
 const saldo = (itemId) => Math.round((saldoItem.get(itemId) || 0) * 1000) / 1000;
 const ativos = (tipo) => S.itens.filter(i => i.ativo !== false && (!tipo || i.tipo === tipo));
@@ -508,7 +509,7 @@ function alertCount() {
   let val = 0;
   S.lotes.forEach(l => {
     const q = saldoLote.get(l.item_id + '|' + l.id) || 0; const it = itemById(l.item_id);
-    if (q > 0 && it && it.ativo !== false) { const d = daysUntil(l.validade); if (d !== null && d <= cfg.diasAlerta) val++; }
+if (q > 0 && it && it.ativo !== false && ctrlaVal(it)) { const d = daysUntil(l.validade); if (d !== null && d <= cfg.diasAlerta) val++; }
   });
   const min = ativos().filter(i => (+i.estoque_minimo || 0) > 0 && saldo(i.id) < +i.estoque_minimo).length;
   return { validades: val, itens: min };
@@ -574,7 +575,7 @@ function vPainel(el) {
 
   el.innerHTML = `
   ${!S.itens.length && !S.setupMissing ? `<div class="alert info"><b>Primeiro passo:</b> cadastre os itens do consultório em <a href="#" data-go="itens">📦 Itens</a> (dá para puxar direto do cadastro do Consulveter) e informe o saldo inicial de cada um.</div>` : ''}
-  ${(() => { const n = ativos().filter(i => (saldoLote.get(i.id + '|') || 0) > 0.0001).length;
+  ${(() => { const n = ativos().filter(ctrlaVal).filter(i => (saldoLote.get(i.id + '|') || 0) > 0.0001).length;
     return n ? `<div class="alert warn">${n} item(ns) estão com saldo <b>sem lote/validade</b>. <a href="#" data-go="validades">Informar lotes em ⏳ Validades</a>.</div>` : ''; })()}
   ${!cfg.responsavel ? `<div class="alert warn">Informe <b>quem está usando este aparelho</b> em <a href="#" data-go="config">⚙️ Configurações</a> — o nome vai em cada lançamento.</div>` : ''}
   <div class="kpis">
@@ -785,6 +786,7 @@ function vMovimentar(el) {
   const st = viewState;
   st.tipo = st.tipo || 'saida';
   const it = st.item ? itemById(st.item) : null;
+  const ctrl = it ? ctrlaVal(it) : true;
   const lots = it ? lotesComSaldo(it.id) : [];
   const allLots = it ? S.lotes.filter(l => l.item_id === it.id) : [];
   const out = st.tipo === 'saida' || st.tipo === 'descarte';
@@ -812,14 +814,14 @@ function vMovimentar(el) {
       </div>` : `
       <div class="row">
         <label class="f"><span>Quantidade</span><input id="mvQtd" inputmode="decimal" value="${h(st.qtd ?? '')}" placeholder="0"></label>
-        ${st.tipo === 'entrada' ? `
+        ${st.tipo === 'entrada' ? (ctrl ? `
           <label class="f"><span>Lote ${it && it.tipo === 'geladeira' ? '*' : '(opcional)'}</span><input id="mvLote" list="dlLotes" value="${h(st.lote || '')}" autocomplete="off">
             <datalist id="dlLotes">${allLots.map(l => `<option value="${h(l.lote)}">val. ${fmtD(l.validade)}</option>`).join('')}</datalist></label>
-          <label class="f"><span>Validade ${it && it.tipo === 'geladeira' ? '*' : ''}</span><input id="mvVal" type="date" value="${h(st.validade || '')}"></label>`
-        : `<label class="f" style="flex:2"><span>Lote</span><select id="mvLoteSel">
+          <label class="f"><span>Validade ${it && it.tipo === 'geladeira' ? '*' : ''}</span><input id="mvVal" type="date" value="${h(st.validade || '')}"></label>` : '')
+        : (ctrl && lots.length > 1 || (ctrl && lots.length === 1 && lots[0].lote) ? `<label class="f" style="flex:2"><span>Lote</span><select id="mvLoteSel">
             <option value="auto">Automático — vence primeiro sai primeiro</option>
             ${lots.map(x => `<option value="${x.lote ? x.lote.id : 'none'}" ${st.loteSel === (x.lote ? x.lote.id : 'none') ? 'selected' : ''}>${x.lote ? `${h(x.lote.lote)} — val. ${fmtD(x.lote.validade)}` : 'Sem lote'} — saldo ${fmtN(x.qtd)}</option>`).join('')}
-          </select></label>`}
+          </select></label>` : '')}
       </div>
       <div class="row" style="margin-top:10px">
         <label class="f"><span>Motivo</span><select id="mvMotivo">${MOTIVOS[st.tipo].map(m => `<option ${m === st.motivo ? 'selected' : ''}>${m}</option>`).join('')}</select></label>
@@ -864,9 +866,10 @@ async function salvarMov(el) {
   try {
     const motivo = st.motivo || MOTIVOS[st.tipo][0];
     if (st.tipo === 'entrada') {
-      if (it.tipo === 'geladeira' && (!String(st.lote || '').trim() || !st.validade)) throw new Error('Para itens da contagem informe lote e validade.');
-      if (st.validade && daysUntil(st.validade) < 0 && !(await confirmBox('Lote vencido', `A validade ${fmtD(st.validade)} já passou. Registrar mesmo assim?`))) { btn.disabled = false; return; }
-      const lote = await acharOuCriarLote(it, st.lote, st.validade);
+      const ctrl = ctrlaVal(it);
+      if (ctrl && it.tipo === 'geladeira' && (!String(st.lote || '').trim() || !st.validade)) throw new Error('Para itens da contagem informe lote e validade.');
+      if (ctrl && st.validade && daysUntil(st.validade) < 0 && !(await confirmBox('Lote vencido', `A validade ${fmtD(st.validade)} já passou. Registrar mesmo assim?`))) { btn.disabled = false; return; }
+      const lote = ctrl ? await acharOuCriarLote(it, st.lote, st.validade) : null;
       await registrar([{ item_id: it.id, lote_id: lote ? lote.id : null, tipo: 'entrada', delta: q, motivo, documento: st.doc || null, obs: st.obs || null }]);
     } else if (st.tipo === 'ajuste') {
       if (!String(st.obs || '').trim()) throw new Error('Explique o motivo do ajuste.');
@@ -922,11 +925,11 @@ function vValidades(el) {
   const st = viewState;
   const rows = [];
   S.lotes.forEach(l => {
-    const it = itemById(l.item_id); if (!it || it.ativo === false) return;
+    const it = itemById(l.item_id); if (!it || it.ativo === false || !ctrlaVal(it)) return;
     const q = saldoLote.get(l.item_id + '|' + l.id) || 0; if (q <= 0.0001) return;
     rows.push({ it, l, q, s: statusValidade(l.validade) });
   });
-  ativos().forEach(it => { const q = saldoLote.get(it.id + '|') || 0; if (q > 0.0001) rows.push({ it, l: null, q, s: statusValidade(null) }); });
+  ativos().filter(ctrlaVal).forEach(it => { const q = saldoLote.get(it.id + '|') || 0; if (q > 0.0001) rows.push({ it, l: null, q, s: statusValidade(null) }); });
   rows.sort((a, b) => (a.l?.validade || '9999').localeCompare(b.l?.validade || '9999'));
   const nSem = rows.filter(r => !r.l && (!st.tipo || r.it.tipo === st.tipo)).length;
   st.f = st.f || (nSem ? 'semlote' : 'atencao');
@@ -1116,12 +1119,13 @@ function vItens(el) {
       <label style="display:flex;gap:6px;align-items:center;padding-bottom:10px"><input type="checkbox" id="iIn" ${st.inativos ? 'checked' : ''}> inativos</label>
       <button class="btn pri" id="iAdd">+ Adicionar itens</button>
     </div>
-    ${list.length ? `<div class="tbl-wrap"><table><tr><th>Item</th><th>Tipo</th><th class="n">Saldo</th><th class="n">Mínimo</th><th>Próx. validade</th><th></th></tr>
-      ${list.map(i => { const pv = proxValidade(i.id); const s = saldo(i.id);
+    ${list.length ? `<div class="tbl-wrap"><table><tr><th>Item</th><th>Tipo</th><th class="n">Saldo</th><th class="n">Mínimo</th><th>Validade</th><th></th></tr>
+      ${list.map(i => { const pv = proxValidade(i.id); const s = saldo(i.id); const ctrl = ctrlaVal(i);
         return `<tr style="${i.ativo === false ? 'opacity:.5' : ''}"><td>${h(i.nome)}${i.barcode ? `<div class="small muted">${h(i.barcode)}</div>` : ''}</td>
         <td><span class="pill ${i.tipo === 'geladeira' ? 'info' : 'mut'}">${i.tipo === 'geladeira' ? '📋 contagem' : '📦 insumo'}</span></td>
         <td class="n ${+i.estoque_minimo && s < +i.estoque_minimo ? 'neg' : ''}">${fmtN(s)} <span class="small muted">${h(i.unidade || '')}</span></td><td class="n">${fmtN(i.estoque_minimo)}</td>
-        <td>${pv ? `<span class="pill ${statusValidade(pv).cls}">${fmtD(pv)}</span>` : '—'}</td>
+        <td>${ctrl ? (pv ? `<span class="pill ${statusValidade(pv).cls}">${fmtD(pv)}</span>` : '<button class="pill mut" style="cursor:pointer;border:0" data-tv="' + i.id + '" title="Tocar para não controlar validade deste item">controlada</button>')
+          : `<button class="pill mut" style="cursor:pointer;border:0" data-tv="${i.id}" title="Tocar para voltar a controlar validade">não controla</button>`}</td>
         <td style="white-space:nowrap"><button class="btn sm" data-ed="${i.id}">Editar</button></td></tr>`; }).join('')}
     </table></div>` : `<div class="empty">Nenhum item. Toque em <b>+ Adicionar itens</b>.</div>`}
   </div>
@@ -1135,6 +1139,9 @@ function vItens(el) {
   $('#iIn', el).onchange = (e) => { st.inativos = e.target.checked; render(); };
   $('#iAdd', el).onclick = () => addItensModal(st.tipo);
   $$('[data-ed]', el).forEach(b => b.onclick = () => editItemModal(itemById(b.dataset.ed)));
+  $$('[data-tv]', el).forEach(b => b.onclick = async () => { const it = itemById(b.dataset.tv);
+    try { const up = await DB.update('cc_itens', it.id, { controla_validade: !ctrlaVal(it) }); Object.assign(it, up || { controla_validade: !ctrlaVal(it) }); render(); }
+    catch (e) { toast(errMsg(e), 'err'); } });
   $('#iExp', el).onclick = async () => {
     try { const ps = await getProducts(); if (!ps.length) return toast('Nenhum produto encontrado.', 'err');
       downloadFile(`produtos-consulveter-${today()}.csv`, toCSV([['Produto', 'Código de barras', 'Categoria', 'Unidade'], ...ps.map(p => [p.name, p.barcode || '', p.category || '', p.unit || ''])]));
@@ -1164,6 +1171,8 @@ async function addItensModal(tipoPadrao) {
       <label class="f"><span>Tipo dos itens marcados</span><select id="aTipo"><option value="geladeira">📋 Contagem do consultório (vacinas, injetáveis, testes…)</option><option value="insumo" ${tipoPadrao === 'insumo' ? 'selected' : ''}>📦 Insumo</option></select></label>
       <label class="f"><span>Estoque mínimo</span><input id="aMin" inputmode="decimal" value="0"></label>
     </div>
+    <label style="display:flex;gap:8px;margin-top:10px;align-items:flex-start"><input type="checkbox" id="aCtrl" checked>
+      <span>Controlar validade (lote e vencimento) destes itens.<br><span class="muted small">Desmarque para itens sem validade a controlar (ex.: gaze, esparadrapo) — eles não aparecem em ⏳ Validades nem pedem lote.</span></span></label>
     <p class="small" id="aSel"></p>
     <div class="actions"><button class="btn" data-x>Cancelar</button><button class="btn pri" data-ok>Adicionar</button></div>`, (m) => {
     const list = $('#aList', m);
@@ -1185,7 +1194,8 @@ async function addItensModal(tipoPadrao) {
     $('[data-ok]', m).onclick = async () => {
       if (!sel.size) return toast('Marque pelo menos um item.', 'err');
       const tipo = $('#aTipo', m).value, min = num($('#aMin', m).value) || 0;
-      const rows = [...sel.values()].map(p => ({ product_id: p.manual || DB.kind === 'local' ? null : p.id, nome: p.name, barcode: p.barcode || null, tipo, unidade: p.unit || 'UN', estoque_minimo: min, ativo: true }));
+      const controla_validade = $('#aCtrl', m).checked;
+      const rows = [...sel.values()].map(p => ({ product_id: p.manual || DB.kind === 'local' ? null : p.id, nome: p.name, barcode: p.barcode || null, tipo, unidade: p.unit || 'UN', estoque_minimo: min, controla_validade, ativo: true }));
       try { const saved = await DB.insert('cc_itens', rows); S.itens.push(...saved); recalc(); closeModal();
         toast(`${saved.length} item(ns) adicionado(s). Agora lance o saldo inicial em Entrada.`, 'ok'); render(); }
       catch (e) { toast(errMsg(e), 'err'); }
@@ -1203,12 +1213,13 @@ function editItemModal(it) {
       <label class="f"><span>Ordem na contagem</span><input id="eO" inputmode="numeric" value="${h(it.ordem ?? 0)}"></label>
     </div>
     <div class="row" style="margin-top:10px"><label class="f"><span>Código de barras</span><input id="eB" value="${h(it.barcode || '')}"></label></div>
-    <label style="display:flex;gap:8px;margin-top:12px"><input type="checkbox" id="eA" ${it.ativo !== false ? 'checked' : ''}> Ativo (aparece nas contagens e lançamentos)</label>
+    <label style="display:flex;gap:8px;margin-top:12px"><input type="checkbox" id="eC" ${ctrlaVal(it) ? 'checked' : ''}> Controlar validade (lote e vencimento) deste item</label>
+    <label style="display:flex;gap:8px;margin-top:8px"><input type="checkbox" id="eA" ${it.ativo !== false ? 'checked' : ''}> Ativo (aparece nas contagens e lançamentos)</label>
     <div class="actions"><button class="btn bad" data-del>Excluir</button><div style="flex:1"></div><button class="btn" data-x>Cancelar</button><button class="btn pri" data-ok>Salvar</button></div>`, (m) => {
     $('[data-x]', m).onclick = closeModal;
     $('[data-ok]', m).onclick = async () => {
       const patch = { nome: $('#eN', m).value.trim() || it.nome, tipo: $('#eT', m).value, unidade: $('#eU', m).value.trim(), estoque_minimo: num($('#eM', m).value) || 0,
-        ordem: parseInt($('#eO', m).value) || 0, barcode: $('#eB', m).value.trim() || null, ativo: $('#eA', m).checked };
+        ordem: parseInt($('#eO', m).value) || 0, barcode: $('#eB', m).value.trim() || null, controla_validade: $('#eC', m).checked, ativo: $('#eA', m).checked };
       try { const up = await DB.update('cc_itens', it.id, patch); Object.assign(it, up || patch); recalc(); closeModal(); render(); toast('Item salvo.', 'ok'); }
       catch (e) { toast(errMsg(e), 'err'); }
     };

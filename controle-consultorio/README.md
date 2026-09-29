@@ -5,6 +5,18 @@ geladeira e insumos** do consultório: entrada, saída, descarte, lotes/validade
 e as contagens diárias do consultório (vacinas, injetáveis de geladeira,
 testes e o que mais precisar ser contado).
 
+## Novo: escolher quais itens têm validade controlada
+
+Nem tudo precisa de lote e vencimento (gaze, esparadrapo, luva...). Ao
+adicionar itens ou editar um já cadastrado, dá para desmarcar **"Controlar
+validade"**. Esses itens não aparecem mais em ⏳ Validades, não entram no
+aviso de "sem lote" e a Entrada não pede lote nem validade deles. Dá para
+ligar/desligar a qualquer momento clicando no rótulo na coluna Validade,
+em 📦 Itens.
+
+**Uma vez só:** rode `supabase-controla-validade.sql` no SQL Editor do
+Supabase (depois do `supabase.sql`), senão essa marcação não salva.
+
 ## Como usar (sem login)
 
 O app não pede login nem senha. Ele usa uma **chave da loja** embutida no
