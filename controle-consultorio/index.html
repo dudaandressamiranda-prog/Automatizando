@@ -331,6 +331,11 @@ const Local = {
   async update(t, id, patch) {
     const d = this._db(); const r = d[t].find(x => x.id === id); if (r) Object.assign(r, patch); this._save(d); return r;
   },
+  async updateMany(t, ids, patch) {
+    const d = this._db(); const set = new Set(ids); const out = [];
+    d[t].forEach(r => { if (set.has(r.id)) { Object.assign(r, patch); out.push(r); } });
+    this._save(d); return out;
+  },
   async remove(t, id) {
     const d = this._db(); d[t] = d[t].filter(x => x.id !== id);
     if (t === 'cc_itens') { d.cc_lotes = d.cc_lotes.filter(x => x.item_id !== id); d.cc_movs = d.cc_movs.filter(x => x.item_id !== id); }
@@ -370,6 +375,9 @@ const Remote = {
   },
   async update(t, id, patch) {
     const { data, error } = await this.client.from(t).update(patch).eq('id', id).select(); if (error) throw error; return data[0];
+  },
+  async updateMany(t, ids, patch) {
+    const { data, error } = await this.client.from(t).update(patch).in('id', ids).select(); if (error) throw error; return data;
   },
   async remove(t, id) { const { error } = await this.client.from(t).delete().eq('id', id); if (error) throw error; },
   async products() { return this._all(() => this.client.rpc('cc_produtos').order('name')); },
@@ -1157,11 +1165,14 @@ function vItens(el) {
   const bulkClear = $('#iBulkClear', el); if (bulkClear) bulkClear.onclick = () => { st.sel = new Set(); render(); };
   const bulkSet = async (valor) => {
     const ids = [...st.sel]; if (!ids.length) return;
+    const btns = $$('#iBulkOn, #iBulkOff', el); btns.forEach(b => b.disabled = true);
+    toast(`Aplicando a ${ids.length} item(ns)…`);
     try {
-      for (const id of ids) { const it = itemById(id); if (!it) continue;
-        const up = await DB.update('cc_itens', id, { controla_validade: valor }); Object.assign(it, up || { controla_validade: valor }); }
+      const updated = await DB.updateMany('cc_itens', ids, { controla_validade: valor });
+      ids.forEach(id => { const it = itemById(id); if (it) it.controla_validade = valor; });
+      (updated || []).forEach(up => { const it = itemById(up.id); if (it) Object.assign(it, up); });
       toast(`Validade ${valor ? 'ligada' : 'desligada'} em ${ids.length} item(ns).`, 'ok'); st.sel = new Set(); render();
-    } catch (e) { toast(errMsg(e), 'err'); }
+    } catch (e) { toast(errMsg(e), 'err'); btns.forEach(b => b.disabled = false); }
   };
   const bOn = $('#iBulkOn', el); if (bOn) bOn.onclick = () => bulkSet(true);
   const bOff = $('#iBulkOff', el); if (bOff) bOff.onclick = () => bulkSet(false);
