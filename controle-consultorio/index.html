@@ -1110,8 +1110,11 @@ function vHistorico(el) {
    ITENS
    ===================================================================== */
 function vItens(el) {
-  const st = viewState; st.tipo = st.tipo ?? '';
+  const st = viewState; st.tipo = st.tipo ?? ''; st.sel = st.sel || new Set();
   const list = S.itens.filter(i => (st.inativos || i.ativo !== false) && (!st.tipo || i.tipo === st.tipo) && (!st.q || norm(i.nome).includes(norm(st.q))));
+  const idsVisiveis = list.map(i => i.id);
+  const nSel = [...st.sel].filter(id => idsVisiveis.includes(id)).length;
+  const todosMarcados = list.length > 0 && nSel === list.length;
   el.innerHTML = `<div class="card">
     <div class="row" style="margin-bottom:12px">
       <label class="f" style="flex:2"><span>Buscar</span><input id="iQ" value="${h(st.q || '')}"></label>
@@ -1119,9 +1122,16 @@ function vItens(el) {
       <label style="display:flex;gap:6px;align-items:center;padding-bottom:10px"><input type="checkbox" id="iIn" ${st.inativos ? 'checked' : ''}> inativos</label>
       <button class="btn pri" id="iAdd">+ Adicionar itens</button>
     </div>
-    ${list.length ? `<div class="tbl-wrap"><table><tr><th>Item</th><th>Tipo</th><th class="n">Saldo</th><th class="n">Mínimo</th><th>Validade</th><th></th></tr>
+    ${nSel ? `<div class="alert info" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <b>${nSel} selecionado(s)</b><span class="sp" style="flex:1"></span>
+      <button class="btn sm ok" id="iBulkOn">✓ Controlar validade</button>
+      <button class="btn sm" id="iBulkOff">Não controlar validade</button>
+      <button class="btn sm" id="iBulkClear">Limpar seleção</button>
+    </div>` : ''}
+    ${list.length ? `<div class="tbl-wrap"><table><tr><th class="c"><input type="checkbox" id="iSelAll" ${todosMarcados ? 'checked' : ''}></th><th>Item</th><th>Tipo</th><th class="n">Saldo</th><th class="n">Mínimo</th><th>Validade</th><th></th></tr>
       ${list.map(i => { const pv = proxValidade(i.id); const s = saldo(i.id); const ctrl = ctrlaVal(i);
-        return `<tr style="${i.ativo === false ? 'opacity:.5' : ''}"><td>${h(i.nome)}${i.barcode ? `<div class="small muted">${h(i.barcode)}</div>` : ''}</td>
+        return `<tr style="${i.ativo === false ? 'opacity:.5' : ''}"><td class="c"><input type="checkbox" data-sel="${i.id}" ${st.sel.has(i.id) ? 'checked' : ''}></td>
+        <td>${h(i.nome)}${i.barcode ? `<div class="small muted">${h(i.barcode)}</div>` : ''}</td>
         <td><span class="pill ${i.tipo === 'geladeira' ? 'info' : 'mut'}">${i.tipo === 'geladeira' ? '📋 contagem' : '📦 insumo'}</span></td>
         <td class="n ${+i.estoque_minimo && s < +i.estoque_minimo ? 'neg' : ''}">${fmtN(s)} <span class="small muted">${h(i.unidade || '')}</span></td><td class="n">${fmtN(i.estoque_minimo)}</td>
         <td>${ctrl ? (pv ? `<span class="pill ${statusValidade(pv).cls}">${fmtD(pv)}</span>` : '<button class="pill mut" style="cursor:pointer;border:0" data-tv="' + i.id + '" title="Tocar para não controlar validade deste item">controlada</button>')
@@ -1142,6 +1152,19 @@ function vItens(el) {
   $$('[data-tv]', el).forEach(b => b.onclick = async () => { const it = itemById(b.dataset.tv);
     try { const up = await DB.update('cc_itens', it.id, { controla_validade: !ctrlaVal(it) }); Object.assign(it, up || { controla_validade: !ctrlaVal(it) }); render(); }
     catch (e) { toast(errMsg(e), 'err'); } });
+  $$('[data-sel]', el).forEach(c => c.onchange = () => { c.checked ? st.sel.add(c.dataset.sel) : st.sel.delete(c.dataset.sel); render(); });
+  const selAll = $('#iSelAll', el); if (selAll) selAll.onchange = () => { idsVisiveis.forEach(id => selAll.checked ? st.sel.add(id) : st.sel.delete(id)); render(); };
+  const bulkClear = $('#iBulkClear', el); if (bulkClear) bulkClear.onclick = () => { st.sel = new Set(); render(); };
+  const bulkSet = async (valor) => {
+    const ids = [...st.sel]; if (!ids.length) return;
+    try {
+      for (const id of ids) { const it = itemById(id); if (!it) continue;
+        const up = await DB.update('cc_itens', id, { controla_validade: valor }); Object.assign(it, up || { controla_validade: valor }); }
+      toast(`Validade ${valor ? 'ligada' : 'desligada'} em ${ids.length} item(ns).`, 'ok'); st.sel = new Set(); render();
+    } catch (e) { toast(errMsg(e), 'err'); }
+  };
+  const bOn = $('#iBulkOn', el); if (bOn) bOn.onclick = () => bulkSet(true);
+  const bOff = $('#iBulkOff', el); if (bOff) bOff.onclick = () => bulkSet(false);
   $('#iExp', el).onclick = async () => {
     try { const ps = await getProducts(); if (!ps.length) return toast('Nenhum produto encontrado.', 'err');
       downloadFile(`produtos-consulveter-${today()}.csv`, toCSV([['Produto', 'Código de barras', 'Categoria', 'Unidade'], ...ps.map(p => [p.name, p.barcode || '', p.category || '', p.unit || ''])]));
