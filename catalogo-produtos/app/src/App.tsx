@@ -5,6 +5,7 @@ import { SaveGuard } from './components/SaveGuard';
 import { useHashRoute } from './hooks/useHashRoute';
 import { isAdmin } from './lib/admin';
 import { APP_NAME } from './lib/config';
+import { nomeConvidado } from './lib/guest';
 import { useActiveStore } from './lib/store';
 import { supabase } from './lib/supabase';
 import { Cart } from './pages/Cart';
@@ -30,7 +31,8 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { route, navigate, voltar } = useHashRoute();
   const admin = isAdmin(session?.user.email);
-  const { active, loading: storeLoading, choose, canSwitch } = useActiveStore(session, admin);
+  const isGuest = Boolean(session?.user.is_anonymous);
+  const { active, loading: storeLoading, choose, canSwitch } = useActiveStore(session, admin, isGuest);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -46,7 +48,9 @@ export function App() {
   if (!ready) return <div className="center-msg">Carregando…</div>;
   if (!session) return <Login />;
 
-  const email = session.user.email ?? null;
+  // quem entra sem cadastro se identifica pelo nome digitado (não tem
+  // e-mail); fica gravado em cart_items.added_by etc. no lugar do e-mail
+  const identidade = session.user.email || nomeConvidado(session) || null;
 
   // descobrindo a loja do funcionário na tabela de permissões
   if (storeLoading) return <div className="center-msg">Carregando…</div>;
@@ -63,7 +67,7 @@ export function App() {
             para liberar em <strong>Funcionários e lojas</strong>.
           </p>
           <button className="link-muted" onClick={() => supabase.auth.signOut()}>
-            Sair {email ? `(${email})` : ''}
+            Sair {identidade ? `(${identidade})` : ''}
           </button>
         </div>
       </div>
@@ -88,7 +92,7 @@ export function App() {
           route={route}
           onNavigate={() => setMenuOpen(false)}
           onSignOut={() => supabase.auth.signOut()}
-          email={session.user.email ?? undefined}
+          email={identidade ?? undefined}
           admin={admin}
           store={active}
           onChooseStore={canSwitch ? choose : undefined}
@@ -100,13 +104,13 @@ export function App() {
           <Home navigate={navigate} buscaInicial={route.page === 'list' ? route.q : undefined} />
         )}
         {!blocked && route.page === 'category' && (
-          <CategoryPage group={route.group} initialSub={route.sub ?? null} store={active} email={email} admin={admin} />
+          <CategoryPage group={route.group} initialSub={route.sub ?? null} store={active} email={identidade} admin={admin} />
         )}
-        {!blocked && route.page === 'cart' && <Cart store={active} email={email} />}
-        {route.page === 'retiradas' && <Retiradas store={active} email={email} />}
-        {route.page === 'validades' && <Validades store={active} email={email} />}
+        {!blocked && route.page === 'cart' && <Cart store={active} email={identidade} />}
+        {route.page === 'retiradas' && <Retiradas store={active} email={identidade} />}
+        {route.page === 'validades' && <Validades store={active} email={identidade} />}
         {!blocked && route.page === 'cartsAdmin' && (
-          <CartsAdmin email={email} loja={route.loja} carrinho={route.carrinho} />
+          <CartsAdmin email={identidade} loja={route.loja} carrinho={route.carrinho} />
         )}
         {!blocked && route.page === 'permissions' && <Permissions />}
         {!blocked && route.page === 'categories' && <Categories />}
@@ -129,7 +133,7 @@ export function App() {
         )}
       </div>
 
-      <SaveGuard store={active} email={email} />
+      <SaveGuard store={active} email={identidade} />
     </div>
   );
 }

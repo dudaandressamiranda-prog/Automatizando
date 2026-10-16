@@ -1,4 +1,6 @@
 import { type FormEvent, useState } from 'react';
+import { entrarSemCadastro } from '../lib/guest';
+import { salvarLojaEscolhida, STORES, type StoreId } from '../lib/store';
 import { supabase } from '../lib/supabase';
 
 export function Login() {
@@ -6,6 +8,12 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // "Entrar sem cadastro": sem senha, só nome e loja — pensado pra quem
+  // está ajudando na loja sem ter conta criada (ex.: cobrindo um turno).
+  const [convidado, setConvidado] = useState(false);
+  const [nome, setNome] = useState('');
+  const [loja, setLoja] = useState<StoreId | null>(null);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -33,6 +41,80 @@ export function Login() {
         setError(`Não foi possível entrar: ${err.message}`);
       }
     }
+  }
+
+  async function onSubmitConvidado(e: FormEvent) {
+    e.preventDefault();
+    const nomeLimpo = nome.trim();
+    if (!nomeLimpo || !loja) {
+      setError('Digite o nome e escolha a loja para entrar.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    // grava a loja antes do login — assim que a sessão chegar, o app já
+    // abre nela, sem passar pela tela de "loja não vinculada"
+    salvarLojaEscolhida(loja);
+    const { error: err } = await entrarSemCadastro(nomeLimpo);
+    setBusy(false);
+    if (err) {
+      const m = err.message.toLowerCase();
+      if (m.includes('anonymous sign-ins are disabled')) {
+        setError('Entrada sem cadastro ainda não foi ligada no Supabase — avise o responsável.');
+      } else {
+        setError(`Não foi possível entrar: ${err.message}`);
+      }
+    }
+  }
+
+  if (convidado) {
+    return (
+      <div className="login">
+        <form onSubmit={onSubmitConvidado} className="card login-card">
+          <h1>Entrar sem cadastro</h1>
+          <p className="muted">
+            Para montar uma lista no carrinho, escreva seu nome — é só pra
+            identificar quem pediu cada item.
+          </p>
+          <label>
+            Seu nome
+            <input
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              autoFocus
+              required
+            />
+          </label>
+          <label>
+            Loja
+            <div className="login-stores">
+              {STORES.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`nav-store-btn ${loja === s.id ? 'on' : ''}`}
+                  onClick={() => setLoja(s.id)}
+                  aria-pressed={loja === s.id}
+                >
+                  <span aria-hidden>{s.emoji}</span> {s.label.replace('Loja ', '')}
+                </button>
+              ))}
+            </div>
+          </label>
+          {error && <p className="error">{error}</p>}
+          <button type="submit" className="primary" disabled={busy}>
+            {busy ? 'Entrando…' : 'Entrar'}
+          </button>
+          <button
+            type="button"
+            className="link-muted"
+            onClick={() => { setConvidado(false); setError(null); }}
+          >
+            ‹ Já tenho cadastro
+          </button>
+        </form>
+      </div>
+    );
   }
 
   return (
@@ -67,6 +149,13 @@ export function Login() {
         {error && <p className="error">{error}</p>}
         <button type="submit" className="primary" disabled={busy}>
           {busy ? 'Entrando…' : 'Entrar'}
+        </button>
+        <button
+          type="button"
+          className="link-muted"
+          onClick={() => { setConvidado(true); setError(null); }}
+        >
+          Entrar sem cadastro
         </button>
       </form>
     </div>

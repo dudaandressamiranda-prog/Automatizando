@@ -754,6 +754,8 @@ html, body { overflow-x: hidden; max-width: 100%; }
 .login-card { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 0.9rem; }
 .login-card h1 { margin: 0; font-size: 1.3rem; color: var(--green); }
 .login-card p { margin: 0; }
+.login-stores { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.3rem; }
+.login-stores .nav-store-btn { padding: 0.7rem 0.5rem; font-size: 0.9rem; }
 
 .form { display: flex; flex-direction: column; gap: 0.9rem; margin-top: 0.75rem; }
 .form h2 { margin: 0; font-size: 1.15rem; color: var(--green); }
