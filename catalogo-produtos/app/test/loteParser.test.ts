@@ -29,6 +29,19 @@ test("fabricação sozinha não vira validade", () => {
   caso("FAB 01/2026 LOTE 123", "123", null);
 });
 
+test("nunca pega a fabricação no lugar da validade", () => {
+  // etiqueta real: fabricação sem palavra-chave na 1ª linha, VAL na 2ª
+  caso("22/09/2026 14 24\nVAL 24/03/2028 LOT 626558334", "626558334", "24/03/2028");
+  // risco/seta antes da fabricação lido como "V"
+  caso("V 22/09/2026 14 24\nVAL 24/03/2028 LOT 626558334", "626558334", "24/03/2028");
+  // OCR devolveu as palavras antes das duas datas
+  caso("VAL\nLOT\n22/09/2026\n24/03/2028\n14 24\n626558334", null, "24/03/2028");
+  // imagem pegou só a linha da fabricação: melhor não preencher nada
+  caso("22/09/2026 14 24", null, null);
+  // "LOT" e o número em linhas separadas
+  caso("22/09/2026\n14 24\nVAL\n24/03/2028\nLOT\n626558334", "626558334", "24/03/2028");
+});
+
 test("meses por extenso", () => {
   caso("LOTE A1B2 VAL MAR/2027", "A1B2", "03/2027");
   caso("EXP 12 DEZ 2026 LOT Q55", "Q55", "12/12/2026");

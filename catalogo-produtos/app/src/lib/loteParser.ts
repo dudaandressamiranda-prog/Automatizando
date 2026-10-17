@@ -1,8 +1,7 @@
 /**
  * Lote e validade a partir do texto que a câmera leu (OCR).
  *
- * Mesmas regras do app avulso `lotes-validades/parser.js` — se mudar uma
- * regra aqui, mude lá também. Os testes ficam em `app/test/loteParser.test.ts`.
+ * Os testes ficam em `app/test/loteParser.test.ts`.
  */
 
 export interface DataLida {
@@ -22,10 +21,12 @@ const MESES: Record<string, number> = {
 const MES_NOMES = Object.keys(MESES).join('|');
 
 // Palavras que indicam que a data a seguir é a validade / a fabricação.
+// "V" e "F" sozinhos só valem com ":" ou "." ("V: 05/2028") — sem isso,
+// qualquer risco ou seta que o OCR leia como "V" marcava a fabricação.
 const KW_VALIDADE =
-  /(?:^|[^A-Z])(VALIDADE|VALID|VAL|VENCIMENTO|VENC|VCTO|VTO|EXPIRY|EXPIRA|EXP|USE ATE|CONSUMIR ATE|BEST BEFORE|BB|V)\s*[:.-]?\s*$/;
+  /(?:^|[^A-Z])(?:(?:VALIDADE|VALID|VAL|VENCIMENTO|VENC|VCTO|VTO|EXPIRY|EXPIRA|EXP|USE ATE|CONSUMIR ATE|BEST BEFORE|BB)\s*[:.-]?|V\s*[:.])\s*$/;
 const KW_FABRICACAO =
-  /(?:^|[^A-Z])(FABRICACAO|FABRICADO|FABR|FAB|MFG|MFD|PRODUCAO|PROD|DATA FAB|F)\s*[:.-]?\s*$/;
+  /(?:^|[^A-Z])(?:(?:FABRICACAO|FABRICADO|FABR|FAB|MFG|MFD|PRODUCAO|PROD|DATA FAB)\s*[:.-]?|F\s*[:.])\s*$/;
 // Palavras que encerram o código do lote quando o OCR "cola" tudo.
 const CORTE_LOTE = /(VALIDADE|VAL|VENC|VCTO|EXP|FAB|MFG|MFD|PROD|DATA)/;
 
@@ -133,24 +134,37 @@ function classificar(texto: string, data: DataNoTexto, anterior?: DataNoTexto): 
 
 const semPosicao = (d: DataNoTexto): DataLida => ({ texto: d.texto, iso: d.iso, soMes: d.soMes });
 
-/** Extrai a validade do texto do OCR. */
+/**
+ * Extrai a validade do texto do OCR.
+ *
+ * Pegar a fabricação no lugar da validade é o pior erro possível aqui, então
+ * a regra é desconfiada:
+ * - a validade nunca é anterior a outra data da mesma etiqueta: havendo mais
+ *   de uma, vale a mais distante — mesmo que a palavra "VAL" pareça grudada
+ *   na outra (o OCR às vezes devolve "VAL" antes das duas datas);
+ * - uma data sozinha, sem "VAL"/"VENC"/"EXP" antes, não é aceita: pode ser a
+ *   fabricação de uma imagem que pegou só a primeira linha da etiqueta.
+ */
 export function extrairValidade(textoOcr: string): DataLida | null {
   const texto = corrigirDigitosEmDatas(normalizarOcr(textoOcr));
   const datas = encontrarDatas(texto);
   if (!datas.length) return null;
   datas.forEach((d, i) => (d.tipo = classificar(texto, d, datas[i - 1])));
 
-  const marcada = datas.find((d) => d.tipo === 'validade');
-  // Sem palavra-chave: a validade é a data mais distante (fabricação vem antes).
-  const escolhida =
-    marcada ??
-    datas.filter((d) => d.tipo !== 'fabricacao').sort((a, b) => b.iso.localeCompare(a.iso))[0];
-  return escolhida ? semPosicao(escolhida) : null;
+  const candidatas = datas.filter((d) => d.tipo !== 'fabricacao');
+  if (!candidatas.length) return null;
+  const temPalavraValidade = datas.some((d) => d.tipo === 'validade');
+  if (datas.length === 1 && !temPalavraValidade) return null;
+  const maisDistante = candidatas.sort((a, b) => b.iso.localeCompare(a.iso))[0]!;
+  return semPosicao(maisDistante);
 }
 
 /** Extrai o código do lote do texto do OCR. */
 export function extrairLote(textoOcr: string): string | null {
-  const linhas = normalizarOcr(textoOcr).split('\n');
+  const separadas = normalizarOcr(textoOcr).split('\n');
+  // por último, tudo numa linha só: o OCR às vezes põe "LOT" numa linha e o
+  // número na seguinte
+  const linhas = [...separadas, separadas.join(' ')];
   const padroes = [
     // LOTE: AB1234 · LOT AB1234 · LT.AB1234 · LOTE Nº 123
     /(?:^|[^A-Z])(?:LOTE|LOT|LT)\s*(?:N\s?[O°º.]?\s*)?[:.\-#]?\s*([A-Z0-9][A-Z0-9\-/]{1,24})/,
