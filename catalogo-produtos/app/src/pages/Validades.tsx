@@ -131,8 +131,8 @@ export function Validades({ store, email }: Props) {
         <h1>📅 Lotes e validades — {storeLabel(store)}</h1>
       </div>
       <p className="muted small">
-        Bipe o produto e mire a câmera no lote e na validade da embalagem: o app
-        transcreve os dados. Nenhuma foto é guardada.
+        Primeiro bipe o código de barras; depois, em outra tela, mire a câmera no
+        lote e na validade — ou digite, se a leitura não ajudar. Nenhuma foto é guardada.
       </p>
 
       {erro && <p className="error">{erro}</p>}

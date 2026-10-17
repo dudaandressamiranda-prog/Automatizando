@@ -1423,8 +1423,8 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
 .val-alerta .val-data .tiny { color: #b45309; font-weight: 600; }
 .val-ok .val-data .tiny, .val-sem .val-data .tiny { color: var(--muted); }
 
-/* câmera em tela cheia: primeiro o código de barras, depois a mesma imagem
-   encolhe para a metade de cima e o formulário do lote aparece embaixo */
+/* duas telas separadas: código de barras com câmera em tela cheia; depois,
+   com câmera nova, metade de cima para o lote e formulário embaixo */
 .lv-overlay {
   position: fixed; inset: 0; z-index: 60; background: #000;
   display: flex; flex-direction: column; overflow-y: auto;
