@@ -11,6 +11,9 @@
  * entra numa posição horizontal. Mandar uma etiqueta por vez desperdiçaria
  * as outras duas colunas da fileira.
  */
+// extensão .ts explícita: os testes rodam direto no Node, que não a adivinha
+import { code128Modulos, code128Zpl } from './code128.ts';
+import { simbologia, type Simbologia } from './codigoBarras.ts';
 
 /**
  * Modelos de etiqueta em uso na loja, em milímetros.
@@ -140,10 +143,26 @@ function limpaTexto(txt: string): string {
  * 3 pontos passariam de 42 mm e o código sairia cortado, que é o erro
  * clássico de etiqueta pequena.
  */
-export function moduloParaLargura(larguraMm: number, dpi = DPI_PADRAO): number {
+export function moduloParaLargura(larguraMm: number, dpi = DPI_PADRAO, modulos = 113): number {
   const disponivel = mmParaPontos(larguraMm - 1, dpi); // 0,5 mm de folga de cada lado
-  const modulo = Math.floor(disponivel / 113);
+  const modulo = Math.floor(disponivel / modulos);
   return Math.max(1, Math.min(4, modulo));
+}
+
+/**
+ * Módulos que o código ocupa e quantos usar para escolher a espessura.
+ *
+ * No Code 128 a zona de silêncio do padrão (10 módulos de cada lado) não
+ * cabe numa etiqueta de 33 mm sem afinar a barra para 1 ponto — fina
+ * demais para leitor comum. Reservamos só 2 módulos de cada lado: o resto
+ * da margem vem da borda branca da etiqueta.
+ */
+export function medidaCodigo(barcode: string): { simb: Simbologia; modulosCodigo: number; modulosComMargem: number } {
+  if (simbologia(barcode) === 'code128') {
+    const modulosCodigo = code128Modulos(barcode).length;
+    return { simb: 'code128', modulosCodigo, modulosComMargem: modulosCodigo + 4 };
+  }
+  return { simb: 'ean13', modulosCodigo: 95, modulosComMargem: 113 };
 }
 
 /** Uma etiqueta desenhada numa posição horizontal da fileira. */
@@ -152,7 +171,8 @@ function blocoEtiqueta(item: ItemEtiqueta, o: OpcoesZpl, dpi: number, xPt: numbe
   const alturaPt = mmParaPontos(o.formato.alturaMm, dpi);
   const margem = Math.max(2, Math.round(dpi / 25.4)); // ~1 mm
 
-  const modulo = moduloParaLargura(o.formato.larguraMm, dpi);
+  const { simb, modulosCodigo, modulosComMargem } = medidaCodigo(item.barcode);
+  const modulo = moduloParaLargura(o.formato.larguraMm, dpi, modulosComMargem);
   const mostrarNome = o.mostrarNome ?? false;
   const alturaNome = mostrarNome ? Math.round(alturaPt * 0.16) : 0;
 
@@ -181,21 +201,23 @@ function blocoEtiqueta(item: ItemEtiqueta, o: OpcoesZpl, dpi: number, xPt: numbe
   // Centralização na mão, e não com ^FB: aquele comando é de bloco de
   // TEXTO. Aplicado a código de barras ele não centraliza — desloca o
   // campo, e o código sai numa etiqueta ao lado, por cima do nome.
-  const larguraCodigo = 95 * modulo;
+  const larguraCodigo = modulosCodigo * modulo;
   const xCodigo = xPt + Math.max(0, Math.round((larguraPt - larguraCodigo) / 2));
   linhas.push(
     `^FO${xCodigo},${margem + alturaNome}^BY${modulo}`,
-    `^BEN,${alturaBarras},Y,N`,
-    `^FD${item.barcode.slice(0, 12)}^FS`,
+    // EAN-13 recebe 12 dígitos e a impressora calcula o 13º
+    ...(simb === 'code128'
+      ? [`^BCN,${alturaBarras},Y,N,N`, `^FD${code128Zpl(item.barcode)}^FS`]
+      : [`^BEN,${alturaBarras},Y,N`, `^FD${item.barcode.slice(0, 12)}^FS`]),
   );
   return linhas;
 }
 
 /** Expande as cópias numa lista simples: cada etiqueta vira um elemento. */
-function expandir(itens: ItemEtiqueta[]): ItemEtiqueta[] {
+export function expandir(itens: ItemEtiqueta[]): ItemEtiqueta[] {
   const todas: ItemEtiqueta[] = [];
   for (const i of itens) {
-    if (!/^\d{13}$/.test(i.barcode)) continue;
+    if (!simbologia(i.barcode)) continue;
     for (let n = 0; n < Math.max(1, i.copias); n++) todas.push({ ...i, copias: 1 });
   }
   return todas;

@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { Photo } from '../components/Photo';
-import { eanSvg, isInternalEan, isValidEan13, nextInternalEan } from '../lib/ean';
+import { codigoSvg, simbologia } from '../lib/codigoBarras';
+import { isInternalEan, isValidEan13, nextInternalEan } from '../lib/ean';
 import { buscarFotoPorEan } from '../lib/fotoweb';
 import { cleanBarcode, norm } from '../lib/normalize';
 import { PRODUTO_RECENTE } from '../lib/recentes';
@@ -382,11 +383,18 @@ export function ProductForm({ voltar, productId, initialBarcode }: Props) {
             uso interno — não colide com código de fabricante.
           </span>
         </div>
-        {isValidEan13(barcode.trim()) && (
+        {simbologia(barcode) && (
           <div
             className="ean-preview"
-            dangerouslySetInnerHTML={{ __html: eanSvg(barcode.trim(), { modulo: 2, altura: 48 }) }}
+            dangerouslySetInnerHTML={{ __html: codigoSvg(barcode, { modulo: 2, altura: 48 }) }}
           />
+        )}
+        {simbologia(barcode) === 'code128' && (
+          <p className="muted tiny">
+            Este código não é um EAN-13 válido (o dígito verificador não confere). A
+            etiqueta sai em <strong>Code 128</strong>, que o leitor lê exatamente como
+            está aqui — sem precisar mudar o código dos anúncios.
+          </p>
         )}
 
         <label>

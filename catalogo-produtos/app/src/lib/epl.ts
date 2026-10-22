@@ -10,8 +10,8 @@
  * Como no ZPL, o código de barras é desenhado pela impressora (comando B),
  * não mandado como imagem: sai nítido e o leitor pega de primeira.
  */
-import type { FormatoEtiqueta, ItemEtiqueta } from './zpl';
-import { larguraFitaMm, mmParaPontos, moduloParaLargura } from './zpl';
+import type { FormatoEtiqueta, ItemEtiqueta } from './zpl.ts';
+import { expandir, larguraFitaMm, medidaCodigo, mmParaPontos, moduloParaLargura } from './zpl.ts';
 
 export interface OpcoesEpl {
   formato: FormatoEtiqueta;
@@ -40,6 +40,7 @@ function limpaTexto(txt: string): string {
  *
  * B x,y,rot,tipo,estreita,larga,altura,legivel,"dados"
  *   E30 = EAN-13. Mandamos 12 dígitos e a impressora calcula o 13º.
+ *   1   = Code 128 com troca automática de subconjunto (pares no C).
  * A x,y,rot,fonte,mult-h,mult-v,reverso,"texto"
  */
 function blocoEtiqueta(item: ItemEtiqueta, o: OpcoesEpl, dpi: number, xPt: number): string[] {
@@ -47,7 +48,8 @@ function blocoEtiqueta(item: ItemEtiqueta, o: OpcoesEpl, dpi: number, xPt: numbe
   const alturaPt = mmParaPontos(o.formato.alturaMm, dpi);
   const margem = Math.max(2, Math.round(dpi / 25.4));
 
-  const estreita = moduloParaLargura(o.formato.larguraMm, dpi);
+  const { simb, modulosCodigo, modulosComMargem } = medidaCodigo(item.barcode);
+  const estreita = moduloParaLargura(o.formato.larguraMm, dpi, modulosComMargem);
   const larga = estreita * 2;
   const mostrarNome = o.mostrarNome ?? false;
   const alturaNome = mostrarNome ? 20 : 0;
@@ -67,8 +69,8 @@ function blocoEtiqueta(item: ItemEtiqueta, o: OpcoesEpl, dpi: number, xPt: numbe
     ? mmParaPontos(o.formato.alturaCodigoMm, dpi)
     : Math.max(20, Math.round(util * 0.7));
 
-  // o EAN-13 gasta 95 módulos; centraliza o que sobra na etiqueta
-  const larguraCodigo = 95 * estreita;
+  // centraliza na etiqueta o que o código ocupa
+  const larguraCodigo = modulosCodigo * estreita;
   const xCodigo = xPt + Math.max(0, Math.round((larguraPt - larguraCodigo) / 2));
 
   const linhas: string[] = [];
@@ -76,20 +78,11 @@ function blocoEtiqueta(item: ItemEtiqueta, o: OpcoesEpl, dpi: number, xPt: numbe
     const nome = limpaTexto(item.nome).slice(0, 24);
     linhas.push(`A${xPt + margem},${margem},0,2,1,1,N,"${nome}"`);
   }
+  const [tipo, dados] = simb === 'code128' ? ['1', item.barcode] : ['E30', item.barcode.slice(0, 12)];
   linhas.push(
-    `B${xCodigo},${margem + alturaNome},0,E30,${estreita},${larga},${alturaBarras},B,"${item.barcode.slice(0, 12)}"`,
+    `B${xCodigo},${margem + alturaNome},0,${tipo},${estreita},${larga},${alturaBarras},B,"${dados}"`,
   );
   return linhas;
-}
-
-/** Expande as cópias: cada etiqueta vira um elemento da lista. */
-function expandir(itens: ItemEtiqueta[]): ItemEtiqueta[] {
-  const todas: ItemEtiqueta[] = [];
-  for (const i of itens) {
-    if (!/^\d{13}$/.test(i.barcode)) continue;
-    for (let n = 0; n < Math.max(1, i.copias); n++) todas.push({ ...i, copias: 1 });
-  }
-  return todas;
 }
 
 /** Cabeçalho comum: limpa o buffer e declara o tamanho da mídia. */

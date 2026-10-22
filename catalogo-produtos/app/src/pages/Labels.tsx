@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { diagnosticar, enviarParaImpressora, nomeImpressora, type Diagnostico, type Impressora } from '../lib/browserprint';
-import { eanSvg, isValidEan13 } from '../lib/ean';
+import { codigoSvg, simbologia } from '../lib/codigoBarras';
 import { eplCalibrar, gerarEpl, gerarEplFileiras, gerarEplTeste } from '../lib/epl';
 import { useCatalog } from '../lib/catalog';
 import { criarBusca } from '../lib/busca';
@@ -120,9 +120,9 @@ export function Labels() {
     if (f) setMedida({ larguraMm: f.larguraMm, alturaMm: f.alturaMm, colunas: f.colunas, gapMm: f.gapMm });
   }
 
-  // só produto com EAN-13 válido pode virar etiqueta
+  // EAN-13 válido sai como EAN-13; outro código numérico sai em Code 128
   const buscaveis = useMemo(
-    () => products.filter((p) => p.barcode && isValidEan13(p.barcode)),
+    () => products.filter((p) => p.barcode && simbologia(p.barcode)),
     [products],
   );
 
@@ -135,6 +135,7 @@ export function Labels() {
   }, [q, buscaveis]);
 
   const itens = useMemo(() => Object.values(fila), [fila]);
+  const emCode128 = itens.filter((i) => simbologia(i.barcode) === 'code128');
 
   const totalEtiquetas = itens.reduce((s, i) => s + i.copias, 0);
 
@@ -426,6 +427,14 @@ export function Labels() {
               de perto, mas teste antes de imprimir o rolo todo.</>
             )}
           </p>
+          {emCode128.length > 0 && (
+            <p className="tiny etq-medidas">
+              ⚠️ <strong>{emCode128.length} código{emCode128.length === 1 ? '' : 's'} fora do padrão EAN-13</strong>{' '}
+              (dígito verificador não confere) — sai{emCode128.length === 1 ? '' : 'em'} em{' '}
+              <strong>Code 128</strong>, que o leitor lê exatamente como está cadastrado. É mais
+              largo que o EAN-13: imprima um teste e confira a leitura antes do rolo todo.
+            </p>
+          )}
 
           <ul className="etq-fila">
             {itens.map((i) => (
@@ -433,11 +442,14 @@ export function Labels() {
                 <div
                   className="etq-preview"
                   // svg gerado aqui mesmo, sem entrada externa
-                  dangerouslySetInnerHTML={{ __html: eanSvg(i.barcode, { modulo: 2, altura: 44 }) }}
+                  dangerouslySetInnerHTML={{ __html: codigoSvg(i.barcode, { modulo: 2, altura: 44 }) }}
                 />
                 <div className="etq-item-info">
                   <span className="etq-item-nome">{i.nome}</span>
-                  <span className="mono tiny muted">{i.barcode}</span>
+                  <span className="mono tiny muted">
+                    {i.barcode}
+                    {simbologia(i.barcode) === 'code128' && ' · Code 128'}
+                  </span>
                 </div>
                 <div className="etq-copias">
                   <button onClick={() => setCopias(i.barcode, i.copias - 1)} aria-label="Menos uma">−</button>
@@ -589,7 +601,7 @@ export function Labels() {
                     <div
                       className="etq-papel-cod"
                       dangerouslySetInnerHTML={{
-                        __html: eanSvg(i.barcode, { modulo: 2, altura: mostrarNome ? 46 : 60 }),
+                        __html: codigoSvg(i.barcode, { modulo: 2, altura: mostrarNome ? 46 : 60 }),
                       }}
                     />
                   </div>
