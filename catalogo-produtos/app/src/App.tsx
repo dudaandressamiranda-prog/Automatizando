@@ -22,6 +22,7 @@ import { Permissions } from './pages/Permissions';
 import { ProductForm } from './pages/ProductForm';
 import { ProductView } from './pages/ProductView';
 import { Retiradas } from './pages/Retiradas';
+import { Sincronizar } from './pages/Sincronizar';
 import { Review } from './pages/Review';
 import { Validades } from './pages/Validades';
 
@@ -76,7 +77,7 @@ export function App() {
 
   const adminOnly =
     route.page === 'new' || route.page === 'review' || route.page === 'logs' ||
-    route.page === 'cartsAdmin' || route.page === 'pendencias' || route.page === 'permissions' || route.page === 'categories' || route.page === 'labels' || route.page === 'nota';
+    route.page === 'cartsAdmin' || route.page === 'pendencias' || route.page === 'permissions' || route.page === 'categories' || route.page === 'labels' || route.page === 'nota' || route.page === 'tiny';
   const blocked = adminOnly && !admin;
 
   return (
@@ -116,6 +117,7 @@ export function App() {
         {!blocked && route.page === 'categories' && <Categories />}
         {!blocked && route.page === 'labels' && <Labels />}
         {!blocked && route.page === 'nota' && <NotaFiscal />}
+        {!blocked && route.page === 'tiny' && <Sincronizar />}
         {!blocked && route.page === 'review' && <Review />}
         {!blocked && route.page === 'pendencias' && <Pendencias />}
         {!blocked && route.page === 'logs' && <Logs />}

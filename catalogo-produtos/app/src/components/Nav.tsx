@@ -191,6 +191,13 @@ export function Nav({ route, onNavigate, onSignOut, email, admin, store, onChoos
             <span className="nav-ico">🧾</span> Entrada de nota
           </a>
           <a
+            href="#/tiny"
+            className={`nav-item ${route.page === 'tiny' ? 'active' : ''}`}
+            onClick={onNavigate}
+          >
+            <span className="nav-ico">🔄</span> Sincronizar com o Tiny
+          </a>
+          <a
             href="#/etiquetas"
             className={`nav-item ${route.page === 'labels' ? 'active' : ''}`}
             onClick={onNavigate}

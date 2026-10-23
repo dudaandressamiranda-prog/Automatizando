@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  *   #/retiradas  saídas para uso interno da loja
  *   #/validades  lotes e validades lidos pela câmera
  *   #/logs     atividade recente do catálogo — admin
+ *   #/tiny     sincronizar produtos com o Tiny pelo código de barras — admin
  *   #/novo     cadastro (aceita ?barcode=... vindo do leitor) — admin
  *   #/p/<id>   edição de um produto
  */
@@ -27,6 +28,7 @@ export type Route =
   | { page: 'retiradas' }
   | { page: 'validades' }
   | { page: 'logs' }
+  | { page: 'tiny' }
   | { page: 'new'; barcode?: string }
   | { page: 'product'; id: string };
 
@@ -50,6 +52,7 @@ function parseHash(hash: string): Route {
   if (path === '/retiradas') return { page: 'retiradas' };
   if (path === '/validades') return { page: 'validades' };
   if (path === '/logs') return { page: 'logs' };
+  if (path === '/tiny') return { page: 'tiny' };
   const p = path?.match(/^\/p\/(.+)$/);
   if (p) return { page: 'product', id: p[1]! };
   const c = path?.match(/^\/c\/(.+)$/);
