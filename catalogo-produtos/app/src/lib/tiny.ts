@@ -15,6 +15,7 @@
  * - código de barras já cadastrado nunca é trocado por outro.
  */
 import { FunctionsHttpError } from '@supabase/supabase-js';
+import { nextInternalEan } from './ean';
 import { norm } from './normalize';
 import { supabase } from './supabase';
 
@@ -283,4 +284,129 @@ export async function puxarCandidatos(
     aoAvancar(feitos);
   }
   return falhas;
+}
+
+// ---------------------------------------------------------------------------
+// Busca por nome — para produto que ainda não tem EAN no Tiny (variação de
+// cor recém-criada, por exemplo). O EAN é gerado aqui, na faixa interna.
+// ---------------------------------------------------------------------------
+
+export interface DetalheTiny {
+  marca: string | null;
+  fornecedor: string | null;
+  categoria: string | null;
+  fotos: string[];
+  kit: boolean;
+}
+
+export interface ItemBuscaTiny {
+  tiny_id: string;
+  nome: string;
+  gtin: string | null;
+  codigo: string | null;
+  situacao: string | null;
+  tipo_variacao: string | null;
+  /** Só vem para quem pode virar produto (não "pai", não kit), até 15 por busca. */
+  detalhe: DetalheTiny | null;
+}
+
+export async function buscarTinyPorNome(nome: string): Promise<{ itens: ItemBuscaTiny[]; total: number }> {
+  const { data, error } = await supabase.functions.invoke('tiny-produto', { body: { nome } });
+  if (error) throw new Error(await erroDaFuncao(error));
+  return data as { itens: ItemBuscaTiny[]; total: number };
+}
+
+/** Quais itens da busca já estão no catálogo (pelo id do Tiny, EAN ou SKU). */
+export async function jaNoCatalogo(itens: ItemBuscaTiny[]): Promise<Map<string, string>> {
+  const ids = itens.map((i) => i.tiny_id);
+  const codigos = [...new Set(itens.flatMap((i) => [i.gtin, i.codigo]).filter((c): c is string => Boolean(c)))];
+  const lista = (xs: string[]) => xs.map((x) => `"${x.replace(/"/g, '')}"`).join(',');
+  const filtros = [`external_id.in.(${lista(ids)})`];
+  if (codigos.length) filtros.push(`barcode.in.(${lista(codigos)})`, `sku.in.(${lista(codigos)})`);
+  const { data, error } = await supabase.from('products').select('id, external_id, barcode, sku').or(filtros.join(','));
+  if (error) throw error;
+  const achado = new Map<string, string>(); // tiny_id → id do produto no catálogo
+  for (const i of itens) {
+    const p = (data ?? []).find(
+      (p) => p.external_id === i.tiny_id ||
+        (p.barcode && (p.barcode === i.gtin || p.barcode === i.codigo)) ||
+        (p.sku && p.sku === i.codigo),
+    );
+    if (p) achado.set(i.tiny_id, p.id as string);
+  }
+  return achado;
+}
+
+/** Códigos internos já usados (faixa 2), para gerar os próximos sem repetir. */
+async function eansInternosExistentes(): Promise<string[]> {
+  const todos: string[] = [];
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await supabase
+      .from('products')
+      .select('barcode')
+      .like('barcode', '2%')
+      .order('barcode')
+      .range(de, de + 999);
+    if (error) throw error;
+    todos.push(...(data ?? []).map((r) => r.barcode as string));
+    if (!data || data.length < 1000) break;
+  }
+  return todos;
+}
+
+export interface Importado {
+  id: string;
+  nome: string;
+  barcode: string | null;
+  eanGerado: boolean;
+}
+
+/**
+ * Cria no catálogo os itens escolhidos na busca por nome. Quem não tem EAN
+ * no Tiny ganha um EAN interno (faixa 2). Sem foto não entra — nunca.
+ */
+export async function importarDoTiny(
+  itens: ItemBuscaTiny[],
+  categorias: Categoria[],
+): Promise<{ importados: Importado[]; falhas: FalhaPuxar[] }> {
+  const importados: Importado[] = [];
+  const falhas: FalhaPuxar[] = [];
+  const internos = await eansInternosExistentes();
+  for (const i of itens) {
+    const d = i.detalhe;
+    if (!d || d.fotos.length === 0) {
+      falhas.push({ tiny_id: i.tiny_id, nome: i.nome, erro: 'sem foto no Tiny' });
+      continue;
+    }
+    if (d.kit) {
+      falhas.push({ tiny_id: i.tiny_id, nome: i.nome, erro: 'kit não entra no catálogo' });
+      continue;
+    }
+    let { barcode, sku } = codigoDoCandidato(i);
+    const eanGerado = !barcode;
+    if (!barcode) {
+      barcode = nextInternalEan(internos);
+      internos.push(barcode);
+    }
+    const { data, error } = await supabase
+      .from('products')
+      .insert({
+        name: i.nome,
+        barcode,
+        sku,
+        brand: d.marca,
+        supplier: d.fornecedor,
+        category_id: acharCategoria(d.categoria, categorias),
+        source: 'erp',
+        external_id: i.tiny_id,
+        photo_source_url: d.fotos[0],
+        photo_updated_at: new Date().toISOString(),
+        status: 'ativo', // tem foto
+      })
+      .select('id')
+      .single();
+    if (error) falhas.push({ tiny_id: i.tiny_id, nome: i.nome, erro: error.message });
+    else importados.push({ id: data.id as string, nome: i.nome, barcode, eanGerado });
+  }
+  return { importados, falhas };
 }

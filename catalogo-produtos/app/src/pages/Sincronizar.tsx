@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BuscaTinyNome } from '../components/BuscaTinyNome';
 import { VarreduraTiny } from '../components/VarreduraTiny';
 import { cleanBarcode } from '../lib/normalize';
 import { supabase } from '../lib/supabase';
@@ -45,7 +46,7 @@ function descrever(c: ConsultaTiny, s?: Sincronizado): Linha {
   }
 }
 
-type Aba = 'codigo' | 'varredura';
+type Aba = 'codigo' | 'nome' | 'varredura';
 
 export function Sincronizar() {
   const [aba, setAba] = useState<Aba>('codigo');
@@ -59,11 +60,16 @@ export function Sincronizar() {
         <button className={`chip ${aba === 'codigo' ? 'active' : ''}`} onClick={() => setAba('codigo')} aria-pressed={aba === 'codigo'}>
           Por código de barras
         </button>
+        <button className={`chip ${aba === 'nome' ? 'active' : ''}`} onClick={() => setAba('nome')} aria-pressed={aba === 'nome'}>
+          Por nome (sem EAN)
+        </button>
         <button className={`chip ${aba === 'varredura' ? 'active' : ''}`} onClick={() => setAba('varredura')} aria-pressed={aba === 'varredura'}>
           Varredura completa
         </button>
       </div>
-      {aba === 'codigo' ? <PorCodigo /> : <VarreduraTiny />}
+      {aba === 'codigo' && <PorCodigo />}
+      {aba === 'nome' && <BuscaTinyNome />}
+      {aba === 'varredura' && <VarreduraTiny />}
     </main>
   );
 }

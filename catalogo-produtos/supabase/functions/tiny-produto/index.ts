@@ -1,5 +1,5 @@
 /**
- * Consulta produtos no Tiny (API v2) pelo código de barras.
+ * Consulta produtos no Tiny (API v2) pelo código de barras ou pelo nome.
  *
  * Existe só para o token do Tiny não ir para o app: tudo que vai no app
  * pode ser lido por quem abre o site (inclusive quem entra sem cadastro), e
@@ -11,6 +11,11 @@
  *
  * Entrada:  POST { "eans": ["7891234567895", ...] }  (até 10 por chamada)
  * Saída:    { "resultados": [{ ean, status, produto?, erro? }, ...] }
+ *
+ * Ou, para produto ainda sem EAN (ex.: variação de cor recém-criada):
+ * Entrada:  POST { "nome": "arranhador plataforma" }  (nome ou SKU)
+ * Saída:    { "itens": [{ tiny_id, nome, gtin, codigo, situacao,
+ *                         tipo_variacao, detalhe? }], "total": n }
  */
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -87,28 +92,76 @@ async function buscar(ean: string) {
 
   const { produto: p } = await tiny('produto.obter.php', { id: String(candidatos[0].id) });
   const nome = String(p.nome ?? '').trim();
-  if (p.classe_produto === 'K' || pareceKit(nome)) return { ean, status: 'kit', nome };
-
-  const anexos = ((p.anexos ?? []) as Json[]).map((a) => (typeof a === 'string' ? a : a?.anexo));
-  const externas = ((p.imagens_externas ?? []) as Json[]).map((i) =>
-    typeof i === 'string' ? i : (i?.imagem_externa?.url ?? i?.url),
-  );
-  const fotos = [...anexos, ...externas].filter((u): u is string => typeof u === 'string' && ehImagem(u));
-
-  const texto = (v: unknown) => String(v ?? '').trim() || null;
+  const d = detalhe(p);
+  if (d.kit) return { ean, status: 'kit', nome };
   return {
     ean,
     status: 'ok',
     produto: {
       tiny_id: String(p.id),
       nome,
-      marca: texto(p.marca),
-      fornecedor: texto(p.nome_fornecedor),
-      categoria: texto(p.categoria),
-      fotos,
+      marca: d.marca,
+      fornecedor: d.fornecedor,
+      categoria: d.categoria,
+      fotos: d.fotos,
       situacao: String(p.situacao ?? ''), // A = ativo, I = inativo (no Tiny = não vende online)
     },
   };
+}
+
+const texto = (v: unknown) => String(v ?? '').trim() || null;
+
+/** O que só vem na consulta individual (produto.obter). */
+function detalhe(p: Json) {
+  const anexos = ((p.anexos ?? []) as Json[]).map((a) => (typeof a === 'string' ? a : a?.anexo));
+  const externas = ((p.imagens_externas ?? []) as Json[]).map((i) =>
+    typeof i === 'string' ? i : (i?.imagem_externa?.url ?? i?.url),
+  );
+  return {
+    marca: texto(p.marca),
+    fornecedor: texto(p.nome_fornecedor),
+    categoria: texto(p.categoria),
+    fotos: [...anexos, ...externas].filter((u): u is string => typeof u === 'string' && ehImagem(u)),
+    kit: p.classe_produto === 'K' || pareceKit(String(p.nome ?? '')),
+  };
+}
+
+/** Quantos resultados da busca por nome ganham foto/marca (1 consulta cada). */
+const MAX_DETALHES = 15;
+
+/**
+ * Busca por nome ou SKU — para produto que ainda não tem EAN, como variação
+ * de cor recém-criada no Tiny. "Pai" de variação e kit vêm na lista, mas sem
+ * detalhe: não viram produto do catálogo.
+ */
+async function buscarPorNome(termo: string) {
+  let lista: Json;
+  try {
+    lista = await tiny('produtos.pesquisa.php', { pesquisa: termo });
+  } catch (e) {
+    if (e instanceof ErroTiny && e.codigo === NAO_ENCONTRADO) return { itens: [], total: 0 };
+    throw e;
+  }
+  const achados = ((lista.produtos ?? []) as Json[]).map((x) => x.produto).filter((p) => p && p.situacao !== 'E');
+  const itens: Json[] = [];
+  let detalhados = 0;
+  for (const p of achados) {
+    const item: Json = {
+      tiny_id: String(p.id),
+      nome: String(p.nome ?? '').trim(),
+      gtin: texto(p.gtin),
+      codigo: texto(p.codigo),
+      situacao: texto(p.situacao),
+      tipo_variacao: texto(p.tipoVariacao),
+      detalhe: null,
+    };
+    if (p.tipoVariacao !== 'P' && !pareceKit(item.nome) && detalhados < MAX_DETALHES) {
+      detalhados++;
+      item.detalhe = detalhe((await tiny('produto.obter.php', { id: item.tiny_id })).produto);
+    }
+    itens.push(item);
+  }
+  return { itens, total: achados.length };
 }
 
 /** Prefere o EAN no GTIN e produto comum/variação, não o "pai" das variações. */
@@ -130,13 +183,31 @@ Deno.serve(async (req) => {
     return json({ erro: 'Só administradores podem sincronizar com o Tiny.' }, 403);
   }
 
-  let eans: string[];
+  let corpo: Json;
   try {
-    const corpo = await req.json();
-    eans = [...new Set((corpo?.eans ?? []) as unknown[])].map((e) => String(e).trim());
+    corpo = await req.json();
   } catch {
-    return json({ erro: 'Corpo inválido: mande { "eans": [...] }.' }, 400);
+    return json({ erro: 'Corpo inválido: mande { "eans": [...] } ou { "nome": "..." }.' }, 400);
   }
+
+  if (typeof corpo?.nome === 'string') {
+    const termo = corpo.nome.trim();
+    if (termo.length < 3) return json({ erro: 'Digite pelo menos 3 letras do nome ou do SKU.' }, 400);
+    try {
+      return json(await buscarPorNome(termo));
+    } catch (e) {
+      const erro = e instanceof Error ? e.message : String(e);
+      if (e instanceof ErroTiny && e.codigo === BLOQUEADO) {
+        return json({ erro: 'O Tiny bloqueou por excesso de acessos — espere 1 minuto e tente de novo.' }, 429);
+      }
+      if (e instanceof ErroTiny && e.codigo === TOKEN_INVALIDO) {
+        return json({ erro: 'O token do Tiny foi recusado — confira o segredo TINY_TOKEN no Supabase.' }, 502);
+      }
+      return json({ erro }, 502);
+    }
+  }
+
+  const eans = [...new Set((corpo?.eans ?? []) as unknown[])].map((e) => String(e).trim());
   if (!eans.length || eans.length > MAX_EANS || eans.some((e) => !/^\d{6,14}$/.test(e))) {
     return json({ erro: `Mande de 1 a ${MAX_EANS} códigos de barras (só números, 6 a 14 dígitos).` }, 400);
   }
