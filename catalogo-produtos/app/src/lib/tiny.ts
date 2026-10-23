@@ -40,18 +40,7 @@ export const LOTE_TINY = 10;
 
 export async function consultarTiny(eans: string[]): Promise<ConsultaTiny[]> {
   const { data, error } = await supabase.functions.invoke('tiny-produto', { body: { eans } });
-  if (error) {
-    let msg = error.message;
-    if (error instanceof FunctionsHttpError) {
-      try {
-        const corpo = await error.context.json();
-        if (corpo?.erro) msg = corpo.erro;
-      } catch {
-        /* resposta sem JSON: fica a mensagem genérica */
-      }
-    }
-    throw new Error(msg);
-  }
+  if (error) throw new Error(await erroDaFuncao(error));
   return (data as { resultados: ConsultaTiny[] }).resultados;
 }
 
@@ -146,4 +135,152 @@ export async function aplicarNoCatalogo(ean: string, p: ProdutoTiny, categorias:
   const { error } = await supabase.from('products').update(mudar).eq('id', atual.id);
   if (error) throw error;
   return mudancas.length ? { acao: 'atualizado', id: atual.id, mudancas } : { acao: 'igual', id: atual.id };
+}
+
+// ---------------------------------------------------------------------------
+// Varredura (todos os cadastros do Tiny) — roda em segundo plano na função
+// `tiny-varredura`; aqui só acompanha, mostra a prévia e grava o escolhido.
+// ---------------------------------------------------------------------------
+
+export interface EstadoVarredura {
+  estado: 'parada' | 'listando' | 'detalhando' | 'pronta' | 'erro';
+  pagina: number;
+  paginas: number | null;
+  detalhados: number;
+  a_detalhar: number | null;
+  mensagem: string | null;
+  iniciada_em: string | null;
+  concluida_em: string | null;
+  atualizada_em: string | null;
+  iniciada_por: string | null;
+}
+
+export interface ResumoVarredura {
+  total: number;
+  no_catalogo: number;
+  sem_codigo: number;
+  kits: number;
+  pais: number;
+  consultados: number;
+  sem_foto: number;
+  completos: number;
+}
+
+/** Cadastro do Tiny completo (foto + código) que ainda não está no catálogo. */
+export interface CandidatoTiny {
+  tiny_id: string;
+  nome: string;
+  gtin: string | null;
+  codigo: string | null;
+  situacao: string | null;
+  tipo_variacao: string | null;
+  marca: string | null;
+  fornecedor: string | null;
+  categoria: string | null;
+  fotos: string[];
+  /** Já existe no catálogo um produto com o mesmo nome (talvez sem código). */
+  nome_parecido: boolean;
+}
+
+async function erroDaFuncao(error: Error): Promise<string> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const corpo = await error.context.json();
+      if (corpo?.erro) return corpo.erro;
+    } catch {
+      /* sem JSON */
+    }
+  }
+  return error.message;
+}
+
+export async function comandarVarredura(acao: 'iniciar' | 'parar' | 'retomar'): Promise<void> {
+  const { error } = await supabase.functions.invoke('tiny-varredura', { body: { acao } });
+  if (error) throw new Error(await erroDaFuncao(error));
+}
+
+export async function lerVarredura(): Promise<{ estado: EstadoVarredura; resumo: ResumoVarredura }> {
+  const [e, r] = await Promise.all([
+    supabase.from('tiny_varredura').select('*').eq('id', 1).single(),
+    supabase.rpc('tiny_resumo'),
+  ]);
+  if (e.error) throw e.error;
+  if (r.error) throw r.error;
+  return { estado: e.data as EstadoVarredura, resumo: r.data as ResumoVarredura };
+}
+
+export async function listarCandidatos(): Promise<CandidatoTiny[]> {
+  const todos: CandidatoTiny[] = [];
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await supabase
+      .from('tiny_candidatos')
+      .select('*')
+      .order('nome')
+      .range(de, de + 999);
+    if (error) throw error;
+    todos.push(...((data ?? []) as CandidatoTiny[]));
+    if (!data || data.length < 1000) break;
+  }
+  return todos;
+}
+
+const soDigitos = (s: string | null) => (s && /^\d{6,14}$/.test(s) ? s : null);
+
+/**
+ * Código de barras que o produto vai ter no catálogo: o GTIN; sem ele, o SKU
+ * quando o SKU é só números (no Tiny da loja, muito EAN está no SKU). SKU
+ * com letras ("areia-bio-3kg") fica só como SKU.
+ */
+export function codigoDoCandidato(c: Pick<CandidatoTiny, 'gtin' | 'codigo'>): { barcode: string | null; sku: string | null } {
+  const barcode = soDigitos(c.gtin) ?? soDigitos(c.codigo);
+  const sku = c.codigo && c.codigo !== barcode ? c.codigo : null;
+  return { barcode, sku };
+}
+
+/** A regra da dona, conferida de novo aqui: sem foto ou sem código não entra. */
+export function candidatoCompleto(c: CandidatoTiny): boolean {
+  return c.fotos.length > 0 && Boolean(c.gtin || c.codigo);
+}
+
+export interface FalhaPuxar {
+  tiny_id: string;
+  nome: string;
+  erro: string;
+}
+
+/** Grava os escolhidos no catálogo, em lotes. Devolve quem falhou. */
+export async function puxarCandidatos(
+  escolhidos: CandidatoTiny[],
+  categorias: Categoria[],
+  aoAvancar: (feitos: number) => void,
+): Promise<FalhaPuxar[]> {
+  const falhas: FalhaPuxar[] = [];
+  const linha = (c: CandidatoTiny) => ({
+    name: c.nome,
+    ...codigoDoCandidato(c),
+    brand: c.marca,
+    supplier: c.fornecedor,
+    category_id: acharCategoria(c.categoria, categorias),
+    source: 'erp',
+    external_id: c.tiny_id,
+    photo_source_url: c.fotos[0],
+    photo_updated_at: new Date().toISOString(),
+    status: 'ativo', // todos têm foto
+  });
+  const completos = escolhidos.filter(candidatoCompleto);
+  let feitos = 0;
+  for (let i = 0; i < completos.length; i += 50) {
+    const lote = completos.slice(i, i + 50);
+    const { error } = await supabase.from('products').insert(lote.map(linha));
+    if (error) {
+      // um código repetido derruba o lote inteiro: tenta um a um para achar quem
+      for (const c of lote) {
+        const r = await supabase.from('products').insert(linha(c));
+        if (r.error) falhas.push({ tiny_id: c.tiny_id, nome: c.nome, erro: r.error.message });
+      }
+    }
+    feitos += lote.length;
+    aoAvancar(feitos);
+  }
+  return falhas;
 }

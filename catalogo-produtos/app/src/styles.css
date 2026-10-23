@@ -1506,3 +1506,47 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
 .sinc-res.sinc-aviso { border-left-color: #f59e0b; }
 .sinc-res.sinc-erro { border-left-color: var(--danger); }
 .sinc-res a { color: var(--green); font-weight: 600; }
+
+/* -- varredura do Tiny ------------------------------------------------- */
+.varr-estado {
+  display: grid; gap: 0.4rem; background: var(--card); border: 1px solid var(--border);
+  border-left: 4px solid var(--border); border-radius: 0.7rem; padding: 0.8rem 1rem; margin: 0.6rem 0;
+}
+.varr-estado.varr-listando, .varr-estado.varr-detalhando { border-left-color: #60a5fa; }
+.varr-estado.varr-pronta { border-left-color: var(--green-light); }
+.varr-estado.varr-erro { border-left-color: var(--danger); }
+.varr-estado progress { width: 100%; height: 0.6rem; }
+.varr-botoes { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.2rem; }
+.varr-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: 0.5rem; margin: 0.6rem 0; }
+.varr-resumo > div {
+  display: grid; gap: 0.1rem; background: var(--card); border: 1px solid var(--border);
+  border-radius: 0.6rem; padding: 0.55rem 0.7rem; font-size: 0.78rem; color: var(--muted);
+}
+.varr-resumo strong { font-size: 1.15rem; color: var(--text); }
+.varr-resumo .varr-destaque { border-color: var(--green-light); background: var(--green-soft); }
+.varr-resumo .varr-destaque strong { color: var(--green); }
+.varr-busca { width: 100%; margin-bottom: 0.4rem; }
+.varr-barra { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.9rem; margin: 0.2rem 0; }
+.varr-lista { list-style: none; margin: 0.4rem 0; padding: 0; display: grid; gap: 0.3rem; }
+.varr-item label {
+  display: flex; flex-direction: row; align-items: center; gap: 0.6rem; font-weight: 400; cursor: pointer;
+  background: var(--card); border: 1px solid var(--border); border-radius: 0.6rem; padding: 0.45rem 0.6rem;
+}
+.varr-item.on label { border-color: var(--green-light); background: var(--green-soft); }
+.varr-item input[type='checkbox'] { width: 1.15rem; height: 1.15rem; flex: none; }
+.varr-item img { width: 3rem; height: 3rem; object-fit: contain; background: #fff; border-radius: 0.4rem; flex: none; }
+.varr-texto { display: grid; gap: 0.1rem; min-width: 0; }
+.varr-nome { font-size: 0.9rem; overflow-wrap: anywhere; }
+.varr-avisos { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.varr-avisos em {
+  font-style: normal; font-size: 0.7rem; padding: 0.05rem 0.4rem; border-radius: 999px;
+  background: var(--border); color: var(--text);
+}
+.varr-avisos em.alerta { background: #fef3c7; color: #92400e; }
+.varr-mais { width: 100%; }
+.varr-confirmar {
+  position: sticky; bottom: 0; padding: 0.6rem 0 calc(0.6rem + env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, var(--bg) 35%);
+}
+.varr-confirmar button { width: 100%; }
+.varr-falhas ul { margin: 0.3rem 0; padding-left: 1.1rem; }

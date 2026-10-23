@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { VarreduraTiny } from '../components/VarreduraTiny';
 import { cleanBarcode } from '../lib/normalize';
 import { supabase } from '../lib/supabase';
 import {
@@ -44,7 +45,30 @@ function descrever(c: ConsultaTiny, s?: Sincronizado): Linha {
   }
 }
 
+type Aba = 'codigo' | 'varredura';
+
 export function Sincronizar() {
+  const [aba, setAba] = useState<Aba>('codigo');
+  return (
+    <main className="content">
+      <div className="page-head">
+        <a href="#/" className="back">‹ Início</a>
+        <h1>🔄 Sincronizar com o Tiny</h1>
+      </div>
+      <div className="val-filtros">
+        <button className={`chip ${aba === 'codigo' ? 'active' : ''}`} onClick={() => setAba('codigo')} aria-pressed={aba === 'codigo'}>
+          Por código de barras
+        </button>
+        <button className={`chip ${aba === 'varredura' ? 'active' : ''}`} onClick={() => setAba('varredura')} aria-pressed={aba === 'varredura'}>
+          Varredura completa
+        </button>
+      </div>
+      {aba === 'codigo' ? <PorCodigo /> : <VarreduraTiny />}
+    </main>
+  );
+}
+
+function PorCodigo() {
   const [texto, setTexto] = useState('');
   const [linhas, setLinhas] = useState<Linha[]>([]);
   const [rodando, setRodando] = useState(false);
@@ -92,11 +116,7 @@ export function Sincronizar() {
   }
 
   return (
-    <main className="content">
-      <div className="page-head">
-        <a href="#/" className="back">‹ Início</a>
-        <h1>🔄 Sincronizar com o Tiny</h1>
-      </div>
+    <section>
       <p className="muted review-hint">
         Cole os códigos de barras (um por linha) de produtos que já estão no Tiny
         e toque em <strong>Sincronizar</strong>. Produto novo entra no catálogo —
@@ -139,6 +159,6 @@ export function Sincronizar() {
           ))}
         </ul>
       )}
-    </main>
+    </section>
   );
 }
