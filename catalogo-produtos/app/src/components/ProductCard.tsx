@@ -1,5 +1,6 @@
 import type { ListProduct } from '../lib/types';
 import { STATUS_LABEL } from '../lib/types';
+import { CopiarCodigo } from './CopiarCodigo';
 
 interface Props {
   product: ListProduct;
@@ -52,7 +53,7 @@ export function ProductCard({
       <div className="pcard-body">
         <span className="pcard-name" title={p.name}>{p.name}</span>
         {p.brand && <span className="muted small">{p.brand}</span>}
-        {p.barcode && <span className="mono tiny muted">{p.barcode}</span>}
+        {p.barcode && <CopiarCodigo codigo={p.barcode} className="tiny muted" />}
         {mostrarQtd && (
           <div
             className="qtd pcard-qtd"

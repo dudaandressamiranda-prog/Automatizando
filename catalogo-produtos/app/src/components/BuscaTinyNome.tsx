@@ -5,6 +5,7 @@ import {
   buscarTinyPorNome, codigoDoCandidato, importarDoTiny, jaNoCatalogo,
 } from '../lib/tiny';
 import { enviarParaEtiquetas } from '../lib/zpl';
+import { CopiarCodigo } from './CopiarCodigo';
 
 const mensagem = (e: unknown) => (e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e));
 
@@ -166,9 +167,9 @@ export function BuscaTinyNome() {
                     {foto ? <img src={foto} alt="" loading="lazy" /> : <span className="nome-sem-foto">{i.detalhe ? 'sem foto' : ''}</span>}
                     <span className="varr-texto">
                       <span className="varr-nome">{i.nome}</span>
-                      <span className="tiny muted mono">
-                        {barcode ? `EAN ${barcode}` : motivo ? 'sem EAN' : 'sem EAN — será gerado'}
-                        {sku ? ` · SKU ${sku}` : ''}
+                      <span className="tiny muted">
+                        {barcode ? <>EAN <CopiarCodigo codigo={barcode} /></> : motivo ? 'sem EAN' : 'sem EAN — será gerado'}
+                        {sku && <> · SKU <CopiarCodigo codigo={sku} /></>}
                         {i.detalhe?.marca ? ` · ${i.detalhe.marca}` : ''}
                       </span>
                       <span className="varr-avisos">

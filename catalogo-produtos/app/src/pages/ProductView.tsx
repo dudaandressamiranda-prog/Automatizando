@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Photo } from '../components/Photo';
 import { supabase } from '../lib/supabase';
 import { STATUS_LABEL, type Category, type Product } from '../lib/types';
+import { CopiarCodigo } from '../components/CopiarCodigo';
 
 interface Props {
   productId: string;
@@ -76,7 +77,7 @@ export function ProductView({ productId, voltar }: Props) {
         <dl className="ficha-dados">
           {produto.brand && (<><dt>Marca</dt><dd>{produto.brand}</dd></>)}
           {categoria && (<><dt>Categoria</dt><dd>{categoria}</dd></>)}
-          {produto.barcode && (<><dt>Código de barras</dt><dd className="mono">{produto.barcode}</dd></>)}
+          {produto.barcode && (<><dt>Código de barras</dt><dd><CopiarCodigo codigo={produto.barcode} /></dd></>)}
           {produto.supplier && (<><dt>Fornecedor</dt><dd>{produto.supplier}</dd></>)}
           {produto.notes && (<><dt>Observações</dt><dd>{produto.notes}</dd></>)}
         </dl>

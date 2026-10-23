@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import {
   LOTE_TINY, aplicarNoCatalogo, consultarTiny, type Categoria, type ConsultaTiny, type Sincronizado,
 } from '../lib/tiny';
+import { CopiarCodigo } from '../components/CopiarCodigo';
 
 type Linha = {
   ean: string;
@@ -157,7 +158,7 @@ function PorCodigo() {
         <ul className="sinc-resultados">
           {linhas.map((l) => (
             <li key={l.ean} className={`sinc-res sinc-${l.tipo}`}>
-              <span className="mono tiny muted">{l.ean}</span>
+              <CopiarCodigo codigo={l.ean} className="tiny muted" />
               <strong>{l.titulo}</strong>
               {l.detalhe && <span className="small">{l.detalhe}</span>}
               {l.produtoId && <a href={`#/p/${l.produtoId}`} className="small">Abrir produto ›</a>}

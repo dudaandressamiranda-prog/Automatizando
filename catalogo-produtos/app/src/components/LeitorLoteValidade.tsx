@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { mensagemErroCamera, vibrar } from '../lib/camera';
 import { interpretarOcr, lerDataDigitada } from '../lib/loteParser';
 import type { NovaValidade, ProdutoDoCodigo } from '../lib/validades';
+import { CopiarCodigo } from './CopiarCodigo';
 
 interface Props {
   codigo: string;
@@ -358,7 +359,7 @@ export function LeitorLoteValidade({
 
       <form className="lv-painel" onSubmit={(e) => { e.preventDefault(); void salvar(false); }}>
         <div className="lv-produto">
-          <span className="mono tiny muted">{codigo}</span>
+          {codigo && <CopiarCodigo codigo={codigo} className="tiny muted" />}
           {produto ? (
             <strong>{produto.name}</strong>
           ) : (

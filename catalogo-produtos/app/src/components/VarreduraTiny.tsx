@@ -5,6 +5,7 @@ import {
   type CandidatoTiny, type Categoria, type EstadoVarredura, type FalhaPuxar, type ResumoVarredura,
   codigoDoCandidato, comandarVarredura, lerVarredura, listarCandidatos, puxarCandidatos,
 } from '../lib/tiny';
+import { CopiarCodigo } from './CopiarCodigo';
 
 /** Mesmo valor da função: sem notícia há mais que isso, a varredura travou. */
 const TRAVADA_APOS_MS = 4 * 60_000;
@@ -326,10 +327,10 @@ export function VarreduraTiny() {
                     <img src={c.fotos[0]} alt="" loading="lazy" />
                     <span className="varr-texto">
                       <span className="varr-nome">{c.nome}</span>
-                      <span className="tiny muted mono">
-                        {barcode ? `EAN ${barcode}` : ''}
+                      <span className="tiny muted">
+                        {barcode && <>EAN <CopiarCodigo codigo={barcode} /></>}
                         {barcode && sku ? ' · ' : ''}
-                        {sku ? `SKU ${sku}` : ''}
+                        {sku && <>SKU <CopiarCodigo codigo={sku} /></>}
                         {c.marca ? ` · ${c.marca}` : ''}
                       </span>
                       <span className="varr-avisos">

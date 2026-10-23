@@ -16,6 +16,7 @@ import {
   zplCalibrar,
   type ItemEtiqueta,
 } from '../lib/zpl';
+import { CopiarCodigo } from '../components/CopiarCodigo';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -326,7 +327,7 @@ export function Labels() {
               <li key={p.id}>
                 <button onClick={() => addProduto(p.name, p.barcode!)}>
                   <span className="etq-res-nome">{p.name}</span>
-                  <span className="mono tiny muted">{p.barcode}</span>
+                  <CopiarCodigo codigo={p.barcode!} className="tiny muted" />
                 </button>
               </li>
             ))}
@@ -446,8 +447,8 @@ export function Labels() {
                 />
                 <div className="etq-item-info">
                   <span className="etq-item-nome">{i.nome}</span>
-                  <span className="mono tiny muted">
-                    {i.barcode}
+                  <span className="tiny muted">
+                    <CopiarCodigo codigo={i.barcode} />
                     {simbologia(i.barcode) === 'code128' && ' · Code 128'}
                   </span>
                 </div>

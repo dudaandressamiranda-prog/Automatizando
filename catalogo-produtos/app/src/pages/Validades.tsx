@@ -7,6 +7,7 @@ import {
   DIAS_ALERTA, apagarValidade, formataValidade, listarValidades, registrarValidade, situacao,
   validadesCsv, type NovaValidade, type Situacao, type Validade,
 } from '../lib/validades';
+import { CopiarCodigo } from '../components/CopiarCodigo';
 
 // câmera + leitor de código + OCR são pesados — só baixam ao abrir
 const LeitorValidade = lazy(() =>
@@ -205,7 +206,7 @@ export function Validades({ store, email }: Props) {
                 <span className="val-nome">{v.product_name}</span>
                 <span className="tiny muted">
                   Lote <b className="mono">{v.lote ?? '—'}</b>
-                  {v.barcode ? ` · ${v.barcode}` : ''}
+                  {v.barcode && <> · <CopiarCodigo codigo={v.barcode} /></>}
                 </span>
                 {v.created_by && <span className="tiny muted">{v.created_by}</span>}
               </span>

@@ -1,4 +1,5 @@
 import { REASON_LABEL, type CartItemRow, type ItemReason, type ItemStatus } from '../lib/cart';
+import { CopiarCodigo } from './CopiarCodigo';
 
 interface Props {
   item: CartItemRow;
@@ -46,7 +47,7 @@ export function CartItemCard({ item, src, editable, onChange, onQty, onRemove }:
       </a>
       <div className="cart-card-body">
         <a href={`#/p/${item.product_id}`} className="cart-card-name" title={item.name}>{item.name}</a>
-        {item.barcode && <span className="mono tiny muted">{item.barcode}</span>}
+        {item.barcode && <CopiarCodigo codigo={item.barcode} className="tiny muted" />}
 
         {onQty ? (
           <div className="qtd">

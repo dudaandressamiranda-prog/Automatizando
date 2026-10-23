@@ -1562,3 +1562,14 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
 .nome-ok ul { margin: 0; padding-left: 1.1rem; font-weight: 400; }
 .nome-ok a { color: var(--green); }
 .nome-ok button { justify-self: start; }
+
+/* -- código com botão de copiar ---------------------------------------- */
+.cod { display: inline-flex; align-items: center; gap: 0.15rem; max-width: 100%; vertical-align: middle; }
+.cod .mono { overflow-wrap: anywhere; }
+.cod-copiar {
+  display: inline-grid; place-items: center; flex: none; width: 1.6rem; height: 1.6rem;
+  margin: -0.3rem 0; border-radius: 0.35rem; cursor: pointer; color: var(--muted); font-size: 0.8rem;
+}
+.cod-copiar:hover, .cod-copiar:focus-visible { background: var(--border); color: var(--text); outline: none; }
+.cod-copiar.ok { color: var(--green); font-weight: 700; }
+.cod-copiar svg { width: 0.85rem; height: 0.85rem; }

@@ -3,6 +3,7 @@ import { criarBusca } from '../lib/busca';
 import { photoSrc, useSignedUrls } from '../lib/photos';
 import { supabase } from '../lib/supabase';
 import { LIST_COLUMNS, STATUS_LABEL, type ListProduct } from '../lib/types';
+import { CopiarCodigo } from '../components/CopiarCodigo';
 
 const PAGE = 1000;
 
@@ -192,7 +193,7 @@ export function Pendencias() {
                   <span className="pend-faltas">
                     {!temFoto(p) && <span className="pend-falta">sem foto</span>}
                     {!temCodigo(p) && <span className="pend-falta">sem código</span>}
-                    {p.barcode && <span className="mono tiny muted">{p.barcode}</span>}
+                    {p.barcode && <CopiarCodigo codigo={p.barcode} className="tiny muted" />}
                   </span>
                 </span>
 

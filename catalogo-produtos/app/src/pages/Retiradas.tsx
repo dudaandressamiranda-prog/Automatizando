@@ -8,6 +8,7 @@ import {
   marcarResolvida, registrarRetirada, type Retirada, type TipoRetirada, type Unidade,
 } from '../lib/retiradas';
 import { storeLabel, type StoreId } from '../lib/store';
+import { CopiarCodigo } from '../components/CopiarCodigo';
 
 interface Props {
   store: StoreId;
@@ -174,7 +175,7 @@ export function Retiradas({ store, email }: Props) {
               )}
             </span>
             <span className="ret-escolhido-nome">{escolhido.nome}</span>
-            {escolhido.barcode && <span className="mono tiny muted">{escolhido.barcode}</span>}
+            {escolhido.barcode && <CopiarCodigo codigo={escolhido.barcode} className="tiny muted" />}
             <button className="ret-trocar" onClick={() => { setEscolhido(null); setQ(''); }}>
               trocar
             </button>
@@ -209,7 +210,7 @@ export function Retiradas({ store, email }: Props) {
                         </span>
                         <span className="ret-res-texto">
                           <span>{p.name}</span>
-                          {p.barcode && <span className="mono tiny muted">{p.barcode}</span>}
+                          {p.barcode && <CopiarCodigo codigo={p.barcode} className="tiny muted" />}
                         </span>
                       </button>
                     </li>
