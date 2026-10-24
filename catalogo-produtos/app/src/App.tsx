@@ -31,7 +31,7 @@ export function App() {
   const [ready, setReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { route, navigate, voltar } = useHashRoute();
-  const admin = isAdmin(session?.user.email);
+  const admin = isAdmin(session?.user);
   const isGuest = Boolean(session?.user.is_anonymous);
   const { active, loading: storeLoading, choose, canSwitch } = useActiveStore(session, admin, isGuest);
 

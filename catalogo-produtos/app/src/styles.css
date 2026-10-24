@@ -1573,3 +1573,8 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
 .cod-copiar:hover, .cod-copiar:focus-visible { background: var(--border); color: var(--text); outline: none; }
 .cod-copiar.ok { color: var(--green); font-weight: 700; }
 .cod-copiar svg { width: 0.85rem; height: 0.85rem; }
+
+/* -- administradores (Funcionários e lojas) ---------------------------- */
+.perm-admins { margin-top: 2rem; }
+.perm-admins h2 { font-size: 1.15rem; color: var(--green); margin: 0 0 0.4rem; }
+.perm-admins .perm-row button { padding: 0.35rem 0.8rem; font-size: 0.85rem; }
