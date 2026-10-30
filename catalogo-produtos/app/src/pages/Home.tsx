@@ -2,11 +2,12 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { ProductCard } from '../components/ProductCard';
 import { lerProdutoRecente, limparProdutoRecente } from '../lib/recentes';
 import { topRequested } from '../lib/cart';
-import { SEM_CATEGORIA, topLevel, useCatalog } from '../lib/catalog';
+import { SEM_CATEGORIA, contarGalpao, topLevel, useCatalog } from '../lib/catalog';
 import { iconFor } from '../lib/categoryIcons';
 import { APP_NAME, APP_TAGLINE } from '../lib/config';
 import { criarBusca } from '../lib/busca';
 import { compartilharApp } from '../lib/compartilhar';
+import { useSoGalpao } from '../lib/galpao';
 import { cleanBarcode } from '../lib/normalize';
 import { photoSrc, useSignedUrls } from '../lib/photos';
 import type { ListProduct } from '../lib/types';
@@ -20,9 +21,11 @@ interface Props {
   navigate: (hash: string) => void;
   /** Busca que veio na URL, para reaparecer ao voltar da edição. */
   buscaInicial?: string;
+  /** Admin marca/desmarca Galpão direto no card. */
+  admin?: boolean;
 }
 
-export function Home({ navigate, buscaInicial }: Props) {
+export function Home({ navigate, buscaInicial, admin = false }: Props) {
   const [q, setQ] = useState(buscaInicial ?? '');
 
   // Espelha a busca na URL SEM empilhar histórico (replaceState não dispara
@@ -35,8 +38,31 @@ export function Home({ navigate, buscaInicial }: Props) {
   const [scanning, setScanning] = useState(false);
   const [scanMiss, setScanMiss] = useState<string | null>(null);
   const [avisoCompartilhar, setAvisoCompartilhar] = useState<string | null>(null);
-  const { products, categories, loading, error } = useCatalog();
-  const signed = useSignedUrls(products);
+  const { products: todos, categories, loading, error, marcarGalpao } = useCatalog();
+  const signed = useSignedUrls(todos);
+
+  // "Só Galpão": tudo abaixo (categorias, busca, lista) passa a olhar só
+  // para os produtos marcados — e continua ligado ao entrar numa categoria
+  const [soGalpao, setSoGalpao] = useSoGalpao();
+  const noGalpao = useMemo(() => todos.filter((p) => p.galpao), [todos]);
+  const products = soGalpao ? noGalpao : todos;
+
+  // o catálogo só traz os ativos; o total do banco conta os desativados também
+  const [totalGalpao, setTotalGalpao] = useState<number | null>(null);
+  useEffect(() => {
+    if (!loading) void contarGalpao().then(setTotalGalpao);
+  }, [loading, noGalpao.length]);
+
+  const [erroGalpao, setErroGalpao] = useState<string | null>(null);
+  async function alternarGalpao(id: string, galpao: boolean) {
+    setErroGalpao(null);
+    try {
+      await marcarGalpao(id, galpao);
+    } catch (e) {
+      setErroGalpao(`Não consegui ${galpao ? 'marcar' : 'desmarcar'} Galpão: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  const onGalpao = admin ? alternarGalpao : undefined;
 
   const catNameById = useMemo(
     () => new Map(categories.map((c) => [c.id, c.name])),
@@ -127,7 +153,7 @@ export function Home({ navigate, buscaInicial }: Props) {
   function onScan(code: string) {
     setScanning(false);
     setScanMiss(null);
-    const found = products.find((p) => p.barcode === code);
+    const found = todos.find((p) => p.barcode === code);
     if (found) navigate(`/p/${found.id}`);
     else {
       setQ(code);
@@ -166,6 +192,22 @@ export function Home({ navigate, buscaInicial }: Props) {
         </Suspense>
       )}
 
+      <div className="galpao-barra">
+        <button
+          className={`chip ${soGalpao ? 'active' : ''}`}
+          onClick={() => setSoGalpao(!soGalpao)}
+          aria-pressed={soGalpao}
+        >
+          🏭 Só Galpão
+        </button>
+        <span className="small muted">
+          <strong>{noGalpao.length}</strong> produto{noGalpao.length === 1 ? '' : 's'} no Galpão
+          {totalGalpao != null && totalGalpao > noGalpao.length &&
+            ` (+${totalGalpao - noGalpao.length} desativado${totalGalpao - noGalpao.length === 1 ? '' : 's'})`}
+        </span>
+      </div>
+      {erroGalpao && <p className="error">{erroGalpao}</p>}
+
       {scanMiss && (
         <div className="notice">
           Nenhum produto com o código <strong>{scanMiss}</strong>.{' '}
@@ -180,14 +222,18 @@ export function Home({ navigate, buscaInicial }: Props) {
         <>
           <h2 className="section-title">{results.length} resultado{results.length === 1 ? '' : 's'}</h2>
           {results.length === 0 && <p className="muted center-msg">Nenhum produto encontrado.</p>}
-          <CardGrid products={results} signed={signed} />
+          <CardGrid products={results} signed={signed} onGalpao={onGalpao} />
         </>
       )}
 
       {!loading && !results && (
         <>
           {products.length === 0 && !error && (
-            <p className="muted center-msg">Catálogo vazio — cadastre o primeiro produto.</p>
+            <p className="muted center-msg">
+              {soGalpao
+                ? 'Nenhum produto marcado como Galpão ainda.'
+                : 'Catálogo vazio — cadastre o primeiro produto.'}
+            </p>
           )}
           {groups.length > 0 && (
             <>
@@ -213,16 +259,27 @@ export function Home({ navigate, buscaInicial }: Props) {
               </div>
             </>
           )}
-          {featured.length > 0 && (
+          {soGalpao ? (
+            products.length > 0 && (
+              <>
+                <h2 className="section-title">🏭 No Galpão</h2>
+                <CardGrid products={products} signed={signed} onGalpao={onGalpao} />
+              </>
+            )
+          ) : (
             <>
-              <h2 className="section-title">{featuredTitle}</h2>
-              <CardGrid products={featured} signed={signed} />
-            </>
-          )}
-          {novosHoje.length > 0 && (
-            <>
-              <h2 className="section-title">🆕 Novos hoje</h2>
-              <CardGrid products={novosHoje} signed={signed} />
+              {featured.length > 0 && (
+                <>
+                  <h2 className="section-title">{featuredTitle}</h2>
+                  <CardGrid products={featured} signed={signed} onGalpao={onGalpao} />
+                </>
+              )}
+              {novosHoje.length > 0 && (
+                <>
+                  <h2 className="section-title">🆕 Novos hoje</h2>
+                  <CardGrid products={novosHoje} signed={signed} onGalpao={onGalpao} />
+                </>
+              )}
             </>
           )}
         </>
@@ -249,10 +306,12 @@ interface GridProps {
   /** Quantidade já indicada para quem está selecionado (montar carrinho). */
   qtyOf?: (id: string) => number | undefined;
   onQtyChange?: (id: string, qty: number) => void;
+  /** Botão "Galpão" em cada card (só admin). */
+  onGalpao?: (id: string, galpao: boolean) => void;
 }
 
 export function CardGrid({
-  products, signed, selectable, isSelected, onToggle, blockNav, qtyOf, onQtyChange,
+  products, signed, selectable, isSelected, onToggle, blockNav, qtyOf, onQtyChange, onGalpao,
 }: GridProps) {
   const [limite, setLimite] = useState(PAGINA);
   const chave = products.length > 0 ? products[0]!.id : '';
@@ -294,6 +353,7 @@ export function CardGrid({
             destacado={p.id === destaque}
             qty={qtyOf?.(p.id)}
             onQtyChange={onQtyChange}
+            onGalpao={onGalpao}
           />
         ))}
       </div>

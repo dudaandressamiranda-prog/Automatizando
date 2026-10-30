@@ -16,6 +16,11 @@ export interface Product {
   photo_source_url: string | null;
   photo_updated_at: string | null;
   status: ProductStatus;
+  /**
+   * Fica no Galpão. Marcação à parte da categoria: o produto continua na
+   * categoria dele e, além disso, pode estar no Galpão.
+   */
+  galpao: boolean;
   source: string;
   external_id: string | null;
   external_url: string | null;
@@ -38,12 +43,13 @@ export type ListProduct = Pick<
   | 'photo_path'
   | 'photo_source_url'
   | 'status'
+  | 'galpao'
   | 'created_at'
   | 'updated_at'
 >;
 
 export const LIST_COLUMNS =
-  'id, name, barcode, brand, category_id, photo_path, photo_source_url, status, created_at, updated_at';
+  'id, name, barcode, brand, category_id, photo_path, photo_source_url, status, galpao, created_at, updated_at';
 
 export const STATUS_LABEL: Record<ProductStatus, string> = {
   ativo: 'Ativo',

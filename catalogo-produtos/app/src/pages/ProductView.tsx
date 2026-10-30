@@ -77,6 +77,7 @@ export function ProductView({ productId, voltar }: Props) {
         <dl className="ficha-dados">
           {produto.brand && (<><dt>Marca</dt><dd>{produto.brand}</dd></>)}
           {categoria && (<><dt>Categoria</dt><dd>{categoria}</dd></>)}
+          <dt>Galpão</dt><dd>{produto.galpao ? <span className="selo-galpao">🏭 No Galpão</span> : 'Não'}</dd>
           {produto.barcode && (<><dt>Código de barras</dt><dd><CopiarCodigo codigo={produto.barcode} /></dd></>)}
           {produto.supplier && (<><dt>Fornecedor</dt><dd>{produto.supplier}</dd></>)}
           {produto.notes && (<><dt>Observações</dt><dd>{produto.notes}</dd></>)}

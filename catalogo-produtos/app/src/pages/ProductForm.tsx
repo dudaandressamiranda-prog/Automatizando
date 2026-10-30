@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from 'react';
 import { Photo } from '../components/Photo';
 import { codigoSvg, simbologia } from '../lib/codigoBarras';
 import { isInternalEan, isValidEan13, nextInternalEan } from '../lib/ean';
+import { definirGalpao } from '../lib/catalog';
 import { buscarFotoPorEan } from '../lib/fotoweb';
 import { cleanBarcode, norm } from '../lib/normalize';
 import { PRODUTO_RECENTE } from '../lib/recentes';
@@ -31,6 +32,8 @@ export function ProductForm({ voltar, productId, initialBarcode }: Props) {
   const [categoryId, setCategoryId] = useState('');
   const [newCategory, setNewCategory] = useState('');
   const [status, setStatus] = useState<ProductStatus>('ativo');
+  const [galpao, setGalpao] = useState(false);
+  const [salvandoGalpao, setSalvandoGalpao] = useState(false);
   const [notes, setNotes] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoUrl, setPhotoUrl] = useState('');
@@ -70,6 +73,7 @@ export function ProductForm({ voltar, productId, initialBarcode }: Props) {
         setSupplier(p.supplier ?? '');
         setCategoryId(p.category_id ?? '');
         setStatus(p.status);
+        setGalpao(Boolean(p.galpao));
         setNotes(p.notes ?? '');
         setLoaded(true);
       });
@@ -203,6 +207,25 @@ export function ProductForm({ voltar, productId, initialBarcode }: Props) {
     if (updErr) throw new Error(`Foto salva, mas não foi vinculada: ${updErr.message}`);
   }
 
+  /**
+   * Galpão grava na hora em produto que já existe — o mesmo interruptor da
+   * lista, sem depender do Salvar. Em produto novo vai junto no cadastro.
+   */
+  async function alternarGalpao(valor: boolean) {
+    setGalpao(valor);
+    if (!editing) return;
+    setSalvandoGalpao(true);
+    setError(null);
+    try {
+      await definirGalpao(productId!, valor);
+    } catch (err) {
+      setGalpao(!valor);
+      setError(`Não consegui ${valor ? 'marcar' : 'desmarcar'} Galpão: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setSalvandoGalpao(false);
+    }
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -247,7 +270,7 @@ export function ProductForm({ voltar, productId, initialBarcode }: Props) {
       } else {
         const { data, error: err } = await supabase
           .from('products')
-          .insert({ ...fields, source: 'manual' })
+          .insert({ ...fields, galpao, source: 'manual' })
           .select('id')
           .single();
         if (err) throw friendlyDbError(err);
@@ -290,6 +313,7 @@ export function ProductForm({ voltar, productId, initialBarcode }: Props) {
         brand: product.brand,
         supplier: product.supplier,
         category_id: product.category_id,
+        galpao,
         notes: product.notes,
         source: 'manual',
         // sem código de barras não dá pra deixar ativo — mesma regra do resto do catálogo
@@ -432,6 +456,21 @@ export function ProductForm({ voltar, productId, initialBarcode }: Props) {
               <option key={s} value={s}>{STATUS_LABEL[s]}</option>
             ))}
           </select>
+        </label>
+
+        <label className="switch">
+          <input
+            type="checkbox"
+            checked={galpao}
+            onChange={(e) => void alternarGalpao(e.target.checked)}
+            disabled={salvandoGalpao}
+          />
+          <span>
+            🏭 Galpão
+            <span className="muted tiny switch-ajuda">
+              {editing ? ' — grava na hora; não muda a categoria' : ' — não muda a categoria'}
+            </span>
+          </span>
         </label>
 
         <label>

@@ -83,7 +83,38 @@ export function useCatalog() {
 
   const reload = () => setReloadKey((k) => k + 1);
 
-  return { products, categories, loading, error, reload };
+  /**
+   * Marca/desmarca Galpão com um clique: a lista muda na hora e, se o banco
+   * recusar, volta como estava (e o erro sobe para a tela mostrar).
+   */
+  async function marcarGalpao(id: string, galpao: boolean): Promise<void> {
+    const aplicar = (valor: boolean) =>
+      setProducts((ps) => ps.map((p) => (p.id === id ? { ...p, galpao: valor } : p)));
+    aplicar(galpao);
+    try {
+      await definirGalpao(id, galpao);
+    } catch (e) {
+      aplicar(!galpao);
+      throw e;
+    }
+  }
+
+  return { products, categories, loading, error, reload, marcarGalpao };
+}
+
+/** Grava a marcação de Galpão de um produto (só admin — RLS de products). */
+export async function definirGalpao(id: string, galpao: boolean): Promise<void> {
+  const { error } = await supabase.from('products').update({ galpao }).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+/** Quantos produtos estão no Galpão, contando também os desativados. */
+export async function contarGalpao(): Promise<number | null> {
+  const { count, error } = await supabase
+    .from('products')
+    .select('id', { count: 'exact', head: true })
+    .eq('galpao', true);
+  return error ? null : count;
 }
 
 /** Cria uma categoria nova (uso do admin). Nome duplicado vira erro amigável. */

@@ -102,7 +102,7 @@ export function App() {
 
       <div className="main">
         {(blocked || route.page === 'list') && (
-          <Home navigate={navigate} buscaInicial={route.page === 'list' ? route.q : undefined} />
+          <Home navigate={navigate} buscaInicial={route.page === 'list' ? route.q : undefined} admin={admin} />
         )}
         {!blocked && route.page === 'category' && (
           <CategoryPage group={route.group} initialSub={route.sub ?? null} store={active} email={identidade} admin={admin} />

@@ -230,11 +230,13 @@ html, body { overflow-x: hidden; max-width: 100%; }
   border-radius: 0 0.9rem 0.9rem 0; cursor: pointer;
 }
 .home .section-title, .home .cat-grid, .home .card-grid,
-.home .notice, .home .center-msg, .home .mais { margin-left: 1rem; margin-right: 1rem; }
+.home .notice, .home .center-msg, .home .mais,
+.home .galpao-barra, .home > .error { margin-left: 1rem; margin-right: 1rem; }
 @media (min-width: 900px) {
   .hero { padding: 2.1rem 2rem 2.4rem; border-radius: 0 0 1.2rem 1.2rem; }
   .home .section-title, .home .cat-grid, .home .card-grid,
-  .home .notice, .home .center-msg, .home .mais { margin-left: 2rem; margin-right: 2rem; }
+  .home .notice, .home .center-msg, .home .mais,
+  .home .galpao-barra, .home > .error { margin-left: 2rem; margin-right: 2rem; }
 }
 
 .review-hint {
@@ -1578,3 +1580,35 @@ button.danger { background: none; border-color: #fecaca; color: var(--danger); m
 .perm-admins { margin-top: 2rem; }
 .perm-admins h2 { font-size: 1.15rem; color: var(--green); margin: 0 0 0.4rem; }
 .perm-admins .perm-row button { padding: 0.35rem 0.8rem; font-size: 0.85rem; }
+
+/* -- Galpão (marcação à parte da categoria) ----------------------------- */
+.galpao-barra { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; margin: 0.8rem 0 0.4rem; }
+.pcard-selo-galpao, .selo-galpao {
+  background: #b45309; color: #fff; font-size: 0.68rem; font-weight: 700;
+  padding: 0.12rem 0.5rem; border-radius: 999px; white-space: nowrap;
+}
+.pcard-selo-galpao { position: absolute; left: 0.4rem; bottom: 0.4rem; z-index: 1; }
+.selo-galpao { font-size: 0.78rem; }
+.pcard-galpao {
+  align-self: flex-start; margin-top: 0.3rem; padding: 0.2rem 0.6rem; border-radius: 999px;
+  border: 1px solid #d97706; background: transparent; color: #b45309;
+  font-size: 0.75rem; font-weight: 600; cursor: pointer; line-height: 1.4;
+}
+.pcard-galpao.on { background: #b45309; border-color: #b45309; color: #fff; }
+.pcard-galpao:focus-visible { outline: 2px solid #d97706; outline-offset: 2px; }
+
+/* interruptor (tela de edição) */
+.switch { flex-direction: row; align-items: center; gap: 0.6rem; cursor: pointer; }
+.switch input {
+  appearance: none; -webkit-appearance: none; flex: none; position: relative; cursor: pointer;
+  width: 2.6rem; height: 1.45rem; padding: 0; border: none; border-radius: 999px;
+  background: var(--border); transition: background 0.15s;
+}
+.switch input::after {
+  content: ''; position: absolute; top: 0.15rem; left: 0.15rem; width: 1.15rem; height: 1.15rem;
+  border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.25); transition: transform 0.15s;
+}
+.switch input:checked { background: #b45309; }
+.switch input:checked::after { transform: translateX(1.15rem); }
+.switch input:disabled { opacity: 0.6; }
+.switch-ajuda { font-weight: 400; }

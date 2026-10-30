@@ -4,6 +4,7 @@ import { SEM_CATEGORIA, bulkSetCategory, bulkSetStatus, topLevel, useCatalog } f
 import { availableBrands, productHasBrand } from '../lib/brands';
 import { useCartSaver } from '../lib/cart';
 import { criarBusca } from '../lib/busca';
+import { useSoGalpao } from '../lib/galpao';
 import { norm } from '../lib/normalize';
 import { useSignedUrls } from '../lib/photos';
 import { setPending } from '../lib/pending';
@@ -18,7 +19,9 @@ interface Props {
 }
 
 export function CategoryPage({ group, initialSub, store, email, admin }: Props) {
-  const { products, categories, loading, error, reload } = useCatalog();
+  const { products, categories, loading, error, reload, marcarGalpao } = useCatalog();
+  const [soGalpao, setSoGalpao] = useSoGalpao();
+  const [erroGalpao, setErroGalpao] = useState<string | null>(null);
   const signed = useSignedUrls(products);
   const { save } = useCartSaver(store, email);
   const [saving, setSaving] = useState(false);
@@ -155,16 +158,28 @@ export function CategoryPage({ group, initialSub, store, email, admin }: Props) 
   // marcas que existem neste grupo (chips de filtro), curadas por lib/brands
   const brands = useMemo(() => availableBrands(scopedBase, group), [scopedBase, group]);
 
-  // aplica busca por texto e filtro de marca
+  // aplica busca por texto, filtro de marca e "Só Galpão"
   const scoped = useMemo(() => {
     const casa = criarBusca(q);
     const marca = brands.find((m) => m.label === brand) ?? null;
     return scopedBase.filter((p) => {
+      if (soGalpao && !p.galpao) return false;
       if (casa && !casa(`${p.name} ${p.brand ?? ''}`)) return false;
       if (marca && !productHasBrand(p, marca)) return false;
       return true;
     });
-  }, [scopedBase, q, brand, brands]);
+  }, [scopedBase, q, brand, brands, soGalpao]);
+
+  const noGalpaoAqui = useMemo(() => scopedBase.filter((p) => p.galpao).length, [scopedBase]);
+
+  async function alternarGalpao(id: string, galpao: boolean) {
+    setErroGalpao(null);
+    try {
+      await marcarGalpao(id, galpao);
+    } catch (e) {
+      setErroGalpao(`Não consegui ${galpao ? 'marcar' : 'desmarcar'} Galpão: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
 
   return (
     <main className={nPicked > 0 || nCatPicked > 0 ? 'has-selbar' : ''}>
@@ -189,6 +204,20 @@ export function CategoryPage({ group, initialSub, store, email, admin }: Props) 
           🔍
         </button>
       </div>
+
+      <div className="galpao-barra">
+        <button
+          className={`chip ${soGalpao ? 'active' : ''}`}
+          onClick={() => setSoGalpao(!soGalpao)}
+          aria-pressed={soGalpao}
+        >
+          🏭 Só Galpão
+        </button>
+        <span className="small muted">
+          <strong>{noGalpaoAqui}</strong> no Galpão {sub ? 'nesta subcategoria' : 'nesta categoria'}
+        </span>
+      </div>
+      {erroGalpao && <p className="error">{erroGalpao}</p>}
 
       {catMode && (
         <div className="notice">
@@ -225,7 +254,9 @@ export function CategoryPage({ group, initialSub, store, email, admin }: Props) 
       {loading && <p className="muted center-msg">Carregando…</p>}
 
       {!loading && scoped.length === 0 && !error && (
-        <p className="muted center-msg">Nenhum produto nesta categoria.</p>
+        <p className="muted center-msg">
+          {soGalpao && scopedBase.length > 0 ? 'Nenhum produto desta categoria está no Galpão.' : 'Nenhum produto nesta categoria.'}
+        </p>
       )}
       <CardGrid
         products={scoped}
@@ -236,6 +267,7 @@ export function CategoryPage({ group, initialSub, store, email, admin }: Props) 
         blockNav={catMode}
         qtyOf={catMode ? undefined : (id) => picked[id]?.qty}
         onQtyChange={catMode ? undefined : setQty}
+        onGalpao={admin && !catMode ? alternarGalpao : undefined}
       />
 
       {catMode && nCatPicked > 0 && (

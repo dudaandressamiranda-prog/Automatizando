@@ -25,10 +25,12 @@ interface Props {
    */
   qty?: number;
   onQtyChange?: (id: string, qty: number) => void;
+  /** Marca/desmarca Galpão com um clique (só admin). Sem isto, só o selo aparece. */
+  onGalpao?: (id: string, galpao: boolean) => void;
 }
 
 export function ProductCard({
-  product: p, src, selectable, selected, onToggle, blockNav, destacado, qty, onQtyChange,
+  product: p, src, selectable, selected, onToggle, blockNav, destacado, qty, onQtyChange, onGalpao,
 }: Props) {
   // Selecionar já é dizer "quero 1"; o controle só aparece depois, para
   // ajustar sem precisar abrir o carrinho — a etapa que este recurso corta.
@@ -49,11 +51,24 @@ export function ProductCard({
         {p.status !== 'ativo' && (
           <span className={`badge badge-${p.status} pcard-badge`}>{STATUS_LABEL[p.status]}</span>
         )}
+        {p.galpao && <span className="pcard-selo-galpao">🏭 Galpão</span>}
       </div>
       <div className="pcard-body">
         <span className="pcard-name" title={p.name}>{p.name}</span>
         {p.brand && <span className="muted small">{p.brand}</span>}
         {p.barcode && <CopiarCodigo codigo={p.barcode} className="tiny muted" />}
+        {onGalpao && (
+          <button
+            type="button"
+            className={`pcard-galpao ${p.galpao ? 'on' : ''}`}
+            aria-pressed={p.galpao}
+            title={p.galpao ? 'Tirar do Galpão' : 'Marcar como Galpão'}
+            // o card inteiro é link para o produto: o clique não pode subir
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onGalpao(p.id, !p.galpao); }}
+          >
+            {p.galpao ? '✓ Galpão' : '+ Galpão'}
+          </button>
+        )}
         {mostrarQtd && (
           <div
             className="qtd pcard-qtd"
