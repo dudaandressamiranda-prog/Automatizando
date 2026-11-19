@@ -1,6 +1,6 @@
 :root {
   --bg: #F5EDE1; --paper: #FFF9F0; --line: #E7D9C4;
-  --ink: #1E3747; --soft: #5E7484; --ocean: #2D5B78; --ocean2: #3E7393; --onocean: #FFF6E9; --onocean2: #BFDCE6;
+  --ink: #1E3747; --soft: #4F6575; --kelpink: #3F6E57; --ckline: #628CA2; --ocean: #2D5B78; --ocean2: #3E7393; --onocean: #FFF6E9; --onocean2: #BFDCE6;
   --sea: #9CC2D1; --foam: #E1EEF0; --lamp: #D9963F; --lampbg: #FBEBD3; --lampink: #8A5A1C;
   --coral: #C96A5C; --coralbg: #F8E1DB; --coralink: #8E4337; --kelp: #5E9277; --kelpbg: #E3EFE6;
   --ring: #F2C27E; --shadow: 0 10px 30px -18px rgba(30, 55, 71, .5);
@@ -11,7 +11,7 @@
   --bg: #13283A; --paper: #1B3449; --line: #2A465D; --ink: #F3E8D6; --soft: #9FB4C1;
   --ocean: #24435A; --ocean2: #2E5068; --onocean: #F3E8D6; --onocean2: #9FB4C1;
   --sea: #6E9CB2; --foam: #24435A; --lampbg: #3A3526; --lampink: #F0C88E; --coralbg: #3E2C2E; --coralink: #F2B3A8;
-  --kelpbg: #213D35; --ring: #F0B86A; --primary: #F0B86A; --onprimary: #13283A;
+  --kelpbg: #213D35; --kelpink: #8CC3A6; --ckline: #6E9CB2; --ring: #F0B86A; --primary: #F0B86A; --onprimary: #13283A;
   color-scheme: dark;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -37,7 +37,7 @@ img { display: block; }
 .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 800; border-radius: 99px; padding: 4px 10px; }
 .chip.lamp { background: var(--lampbg); color: var(--lampink); }
 .chip.coral { background: var(--coralbg); color: var(--coralink); }
-.chip.kelp { background: var(--kelpbg); color: var(--kelp); }
+.chip.kelp { background: var(--kelpbg); color: var(--kelpink); }
 .chip.sea { background: var(--foam); color: var(--ink); }
 
 .btn {
@@ -66,11 +66,14 @@ img { display: block; }
 /* Hoje */
 .hello { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 16px; gap: 8px; }
 .hello h1 { font-size: 30px; line-height: 1.1; }
+.hello > div:first-child { min-width: 0; }
+.hello img { width: min(96px, 24vw) !important; }
 .now { background: var(--ocean); color: var(--onocean); border-radius: 26px; padding: 18px; position: relative; overflow: hidden; }
 .now .lbl { font-size: 13px; letter-spacing: .14em; font-weight: 800; color: var(--onocean2); }
 .now h2 { font-size: 27px; margin: 6px 96px 4px 0; line-height: 1.12; }
 .now .ring { position: absolute; right: 16px; top: 16px; }
-.now .acts { display: flex; gap: 10px; margin-top: 16px; }
+.now .acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.now .acts .btn { flex: 1 1 130px; }
 .now .btn.feito { flex: 1; background: var(--onocean); color: #2D5B78; }
 :root[data-theme="noite"] .now .btn.feito { background: #F0B86A; color: #13283A; }
 .now .btn.alt { background: var(--ocean2); color: var(--onocean); }
@@ -86,7 +89,8 @@ img { display: block; }
 .t .tx small { display: block; font-size: 13px; color: var(--soft); }
 .t.done .tx { color: var(--soft); opacity: .75; text-decoration: line-through; }
 .t.cur { background: var(--foam); border-radius: 14px; border-bottom-color: transparent; margin: 2px -6px; padding: 10px 8px; width: calc(100% + 12px); }
-.ck { width: 32px; height: 32px; border-radius: 50%; border: 2.5px solid var(--sea); display: grid; place-items: center; flex: none; color: #fff; background: none; }
+.ck { position: relative; width: 32px; height: 32px; border-radius: 50%; border: 2.5px solid var(--ckline); display: grid; place-items: center; flex: none; color: #fff; background: none; }
+.ck::after { content: ''; position: absolute; inset: -8px; } /* área de toque de 48 px */
 .ck.on { background: var(--kelp); border-color: var(--kelp); }
 .ck svg { width: 17px; height: 17px; }
 
@@ -102,6 +106,7 @@ img { display: block; }
 /* Passo a passo */
 .depth { margin: 10px 0 4px; }
 .stepbig { font-size: 38px; line-height: 1.06; margin: 14px 0 8px; }
+.sub .ck { border-color: var(--ckline); }
 .sub { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-radius: 16px; background: var(--paper); margin-bottom: 8px; font-size: 17px; width: 100%; border: 1px solid var(--line); text-align: left; }
 .sub.done span { color: var(--soft); text-decoration: line-through; }
 .timer { display: flex; align-items: center; gap: 16px; margin: 14px 0 16px; }
@@ -146,7 +151,7 @@ img { display: block; }
 .task .tx b { display: block; font-size: 17px; font-weight: 700; }
 .task.done .tx b { text-decoration: line-through; color: var(--soft); }
 .seg { display: flex; background: var(--foam); border-radius: 14px; padding: 4px; gap: 4px; }
-.seg button { flex: 1; border: 0; background: none; border-radius: 11px; padding: 9px 6px; font-weight: 800; font-size: 15px; color: var(--soft); min-height: 42px; }
+.seg button { flex: 1; border: 0; background: none; border-radius: 11px; padding: 9px 6px; font-weight: 800; font-size: 15px; color: var(--soft); min-height: 44px; }
 .seg button.on { background: var(--paper); color: var(--ink); box-shadow: var(--shadow); }
 
 /* janelas */
@@ -164,7 +169,8 @@ textarea.input { min-height: 84px; resize: vertical; }
 .emojis { display: flex; flex-wrap: wrap; gap: 6px; }
 .emojis button { width: 46px; height: 46px; border-radius: 13px; border: 1.5px solid var(--line); background: var(--paper); font-size: 22px; }
 .emojis button.on { border-color: var(--ocean); background: var(--foam); }
-.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 100px); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 12px 18px; border-radius: 14px; font-weight: 700; z-index: 60; max-width: 90vw; text-align: center; }
+.toast button { margin-left: 12px; border: 0; background: var(--bg); color: var(--ink); border-radius: 10px; padding: 8px 12px; font-weight: 800; min-height: 40px; }
+.toast { display: flex; align-items: center; gap: 8px; position: fixed; left: 16px; right: 16px; margin: 0 auto; max-width: 520px; bottom: calc(env(safe-area-inset-bottom) + 100px); background: var(--ink); color: var(--bg); padding: 10px 10px 10px 18px; border-radius: 14px; font-weight: 700; z-index: 60; max-width: 92vw; }
 .list-edit { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
 .stepedit { padding: 12px; margin-bottom: 10px; }
 

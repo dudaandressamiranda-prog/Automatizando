@@ -3,7 +3,7 @@ import {
   useData, update, stepsDoDia, ymd, dataLonga, fromMin, contasAtencao, diffDays, quando, reais,
   tarefasDoDia, DayStep,
 } from './store';
-import { Baleia, Check, Ring, useNow, Icon } from './ui';
+import { Baleia, Check, Ring, useNow, Icon, desfazer } from './ui';
 
 export type Tab = 'hoje' | 'contas' | 'demandas' | 'semana';
 
@@ -15,10 +15,12 @@ export function toggleStep(dia: string, id: string) {
   });
 }
 export function toggleTask(id: string) {
+  let feito = false, nome = '';
   update((d) => {
     const t = d.tasks.find((x) => x.id === id);
-    if (t) t.doneAt = t.doneAt ? null : new Date().toISOString();
+    if (t) { t.doneAt = t.doneAt ? null : new Date().toISOString(); feito = !!t.doneAt; nome = t.title; }
   });
+  if (feito) desfazer(`Feito: ${nome}`, () => update((d) => { const t = d.tasks.find((x) => x.id === id); if (t) t.doneAt = null; }));
 }
 
 /** Qual passo mostrar no cartão grande: o de agora, ou o próximo. */
@@ -89,7 +91,11 @@ export function Hoje({ go, openFoco, openAjustes }: {
           </div>
           <Ring frac={frac} label={rotLabel} sub={rotSub} />
           <div className="acts">
-            <button className="btn feito" onClick={() => toggleStep(dia, atual.step.id)}>✓ Feito</button>
+            <button className="btn feito" onClick={() => {
+              const id = atual.step.id;
+              toggleStep(dia, id);
+              desfazer(`Feito: ${atual.step.title}`, () => toggleStep(dia, id));
+            }}>✓ Feito</button>
             <button className="btn alt" onClick={() => openFoco(atual.step.id)}>Passo a passo</button>
           </div>
         </div>
@@ -138,7 +144,7 @@ export function Hoje({ go, openFoco, openAjustes }: {
           <div className="grp">Demandas de hoje</div>
           <div className="card tl">
             {[...atrasadas, ...tarefas].map((t) => (
-              <button key={t.id} className={'t' + (t.doneAt ? ' done' : '')}
+              <button key={t.id} className={'t' + (t.doneAt ? ' done' : '')} aria-pressed={t.kind === 'tarefa' ? !!t.doneAt : undefined}
                 onClick={() => t.kind === 'tarefa' ? toggleTask(t.id) : go('demandas')}>
                 <span className="h">{t.time || (t.date < dia ? '!' : '—')}</span>
                 <span className="tx">{t.title}
@@ -162,7 +168,7 @@ export function Hoje({ go, openFoco, openAjustes }: {
               return (
                 <div key={s.id}>
                   {novaRotina && i > 0 && <div style={{ height: 8 }} />}
-                  <button className={'t' + (feito ? ' done' : '') + (cur ? ' cur' : '')} onClick={() => toggleStep(dia, s.id)}>
+                  <button className={'t' + (feito ? ' done' : '') + (cur ? ' cur' : '')} aria-pressed={feito} onClick={() => toggleStep(dia, s.id)}>
                     <span className="h" style={cur ? { color: 'var(--ink)' } : undefined}>{s.time}</span>
                     <span className="tx">{cur ? <b>{s.title}</b> : s.title}
                       {novaRotina && <small>{s.routineName}</small>}

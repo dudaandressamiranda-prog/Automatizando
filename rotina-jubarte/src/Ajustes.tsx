@@ -76,6 +76,13 @@ export function Ajustes({ onClose }: { onClose: () => void }) {
           </div>
           <div className="small" style={{ margin: '6px 4px 0' }}>Automático: segue o modo escuro do iPhone.</div>
         </div>
+        <div className="field"><span>Tamanho das letras</span>
+          <div className="seg">
+            {[[1, 'Normal'], [1.15, 'Grande'], [1.3, 'Maior']].map(([v, n]) => (
+              <button key={v} className={(s.textSize || 1) === v ? 'on' : ''} onClick={() => setS({ textSize: v as number })}>{n}</button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="grp">Avisos</div>
@@ -184,7 +191,7 @@ function RotinaForm({ r, onClose }: { r: Routine; onClose: () => void }) {
         <div key={s.id} className="card stepedit">
           <div className="row">
             <b className="small" style={{ flex: 1 }}>Passo {i + 1}</b>
-            <button className="btn ghost small" style={{ minHeight: 36 }} onClick={() => setF({ ...f, steps: f.steps.filter((x) => x.id !== s.id) })}>Tirar</button>
+            <button className="btn ghost small" onClick={() => setF({ ...f, steps: f.steps.filter((x) => x.id !== s.id) })}>Tirar</button>
           </div>
           <input className="input" style={{ marginTop: 8 }} value={s.title} placeholder="O que fazer" onChange={(e) => setStep(s.id, { title: e.target.value })} />
           <div className="row" style={{ marginTop: 8 }}>

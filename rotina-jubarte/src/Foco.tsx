@@ -112,8 +112,8 @@ export function Foco({ stepId, onClose }: { stepId: string; onClose: () => void 
       <div className="card timer">
         <Ring frac={restam / total} size={78} track="var(--line)" color="var(--ring)" />
         <div>
-          <div className="serif" style={{ fontSize: 30 }}>{restam === 0 ? 'Tempo acabou' : `${mm}:${String(ss).padStart(2, '0')}`}</div>
-          <div className="small">{pausado ? 'pausado' : `sem pressa · no plano até ${fromMin(step.end)}`}</div>
+          <div className="serif" style={{ fontSize: 30 }}>{restam === 0 ? 'Passou do tempo' : `${mm}:${String(ss).padStart(2, '0')}`}</div>
+          <div className="small">{pausado ? 'pausado' : restam === 0 ? 'Tudo bem. Termine com calma.' : `sem pressa · no plano até ${fromMin(step.end)}`}</div>
         </div>
       </div>
 

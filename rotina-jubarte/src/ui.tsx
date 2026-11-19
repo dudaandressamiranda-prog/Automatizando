@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 
 export const BALEIA = {
   principal: './baleias/principal.webp',
@@ -23,12 +23,14 @@ export function Cauda({ size = 17 }: { size?: number }) {
   );
 }
 
+/** Bolinha de marcar. Sem onClick ela é só o desenho (quem marca é o botão em volta). */
 export function Check({ on, onClick, label }: { on: boolean; onClick?: () => void; label: string }) {
+  if (!onClick) return <span aria-hidden className={'ck' + (on ? ' on' : '')}>{on && <Cauda />}</span>;
   return (
-    <span role="checkbox" aria-checked={on} aria-label={label} className={'ck' + (on ? ' on' : '')}
-      onClick={onClick ? (e) => { e.stopPropagation(); onClick(); } : undefined}>
+    <button type="button" role="checkbox" aria-checked={on} aria-label={label} className={'ck' + (on ? ' on' : '')}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}>
       {on && <Cauda />}
-    </span>
+    </button>
   );
 }
 
@@ -50,16 +52,22 @@ export function Ring({ frac, size = 86, label, sub, track = 'var(--ocean2)', col
   );
 }
 
+const PERGUNTA = 'Fechar sem salvar? O que você escreveu será perdido.';
+
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  // Se ela já digitou alguma coisa, tocar fora não fecha sem perguntar.
+  const sujo = useRef(false);
+  const fora = () => { if (!sujo.current || confirm(PERGUNTA)) onClose(); };
   useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && (!sujo.current || confirm(PERGUNTA)) && onClose();
     window.addEventListener('keydown', k);
     document.body.style.overflow = 'hidden';
     return () => { window.removeEventListener('keydown', k); document.body.style.overflow = ''; };
   }, [onClose]);
   return (
-    <div className="sheet-bg" onClick={onClose}>
-      <div className="sheet" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
+    <div className="sheet-bg" onClick={fora}>
+      <div className="sheet" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
+        onInput={() => { sujo.current = true; }} onChange={() => { sujo.current = true; }}>
         <div className="row" style={{ marginBottom: 6 }}>
           <h2 style={{ flex: 1 }}>{title}</h2>
           <button className="iconbtn" aria-label="Fechar" onClick={onClose}>✕</button>
@@ -70,16 +78,25 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
   );
 }
 
-let toastFn: ((m: string) => void) | null = null;
-export const toast = (m: string) => toastFn?.(m);
+type Acao = { label: string; fn: () => void };
+let toastFn: ((m: string, a?: Acao) => void) | null = null;
+/** Aviso rápido embaixo. Com ação ("Desfazer"), fica mais tempo na tela. */
+export const toast = (m: string, a?: Acao) => toastFn?.(m, a);
+export const desfazer = (m: string, fn: () => void) => toast(m, { label: 'Desfazer', fn });
 export function Toaster() {
-  const [msg, setMsg] = useState('');
+  const [msg, setMsg] = useState<{ m: string; a?: Acao } | null>(null);
   useEffect(() => {
     let t: number;
-    toastFn = (m) => { setMsg(m); clearTimeout(t); t = window.setTimeout(() => setMsg(''), 2600); };
+    toastFn = (m, a) => { setMsg({ m, a }); clearTimeout(t); t = window.setTimeout(() => setMsg(null), a ? 6000 : 2600); };
     return () => { toastFn = null; };
   }, []);
-  return msg ? <div className="toast" role="status">{msg}</div> : null;
+  if (!msg) return null;
+  return (
+    <div className="toast" role="status">
+      <span style={{ flex: 1 }}>{msg.m}</span>
+      {msg.a && <button onClick={() => { msg.a!.fn(); setMsg(null); }}>{msg.a.label}</button>}
+    </div>
+  );
 }
 
 export async function copiar(texto: string) {

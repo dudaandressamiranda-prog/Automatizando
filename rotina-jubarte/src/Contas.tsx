@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useData, update, contasDoMes, diffDays, quando, reais, MESES, uid, Bill, BillDue, ymd, ym, dataCurta, pad } from './store';
-import { Baleia, Sheet, copiar, toast, Icon, Cauda } from './ui';
+import { Baleia, Sheet, copiar, toast, desfazer as avisoDesfazer, Icon, Cauda } from './ui';
 
 const ICONES = ['🏠', '💡', '💧', '📶', '📱', '💳', '🛒', '🚗', '🏥', '🎓', '📺', '🐾', '🧾'];
 
@@ -22,7 +22,7 @@ export function Contas() {
 
   const pagar = (c: BillDue) => {
     update((d) => { d.paid[c.key] = new Date().toISOString(); });
-    toast(`${c.bill.name}: paga! 🐋`);
+    avisoDesfazer(`${c.bill.name}: paga! 🐋`, () => update((d) => { delete d.paid[c.key]; }));
   };
   const desfazer = (c: BillDue) => update((d) => { delete d.paid[c.key]; });
   const mudaMes = (n: number) => setMes(new Date(mes.getFullYear(), mes.getMonth() + n, 1));
