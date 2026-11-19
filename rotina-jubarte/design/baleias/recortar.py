@@ -6,7 +6,7 @@ from PIL import Image
 import numpy as np, cv2
 
 sess = new_session('isnet-general-use')
-for nome in ['principal', 'dourada', 'clara']:
+for nome in ['principal', 'dourada', 'clara', 'cachecol']:
     im = Image.open(f'design/baleias/jubarte-{nome}-original.png').convert('RGB')
     al = np.array(remove(im, session=sess, only_mask=True, post_process_mask=True))
     solid = (al > 20).astype(np.uint8) * 255
