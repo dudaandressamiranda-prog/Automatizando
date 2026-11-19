@@ -41,7 +41,6 @@ export type Settings = {
   theme: 'auto' | 'claro' | 'noite';
   notify: boolean;
   billDaysBefore: number;
-  textSize: number; // 1 = normal, 1.15 = grande, 1.3 = muito grande
 };
 export type Data = {
   v: 1;
@@ -65,7 +64,7 @@ function exemplo(): Data {
   });
   return {
     v: 1,
-    settings: { name: 'Mari', theme: 'auto', notify: false, billDaysBefore: 3, textSize: 1 },
+    settings: { name: 'Mari', theme: 'auto', notify: false, billDaysBefore: 3 },
     routines: [
       {
         id: uid(), name: 'Rotina da manhã', days: dias, steps: [

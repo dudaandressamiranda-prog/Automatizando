@@ -46,7 +46,7 @@ Teste de telas: `npm run build && npx vite preview --port 5191` e `node design/t
 - "Feito", "Paguei" e demanda feita mostram aviso com **Desfazer** (6 s).
 - Janela com texto digitado não fecha ao tocar fora sem perguntar.
 - Passo a passo: quando o tempo passa, "Passou do tempo · Tudo bem. Termine com calma." (sem pressão).
-- Ajustes → **Tamanho das letras** (Normal, Grande, Maior; usa zoom da página). Testado a 375 px sem rolagem lateral.
+- Testado a 375 px sem rolagem lateral. (Tamanho das letras foi testado e retirado a pedido: fica o padrão.)
 - Leitor de tela: bolinhas dentro de linhas tocáveis são só desenho; a linha tem `aria-pressed`. Janelas com `aria-modal`.
 - Emojis ficam só como ícone das contas (escolhidos por ela), não na navegação.
 - Teste: `node design/teste-usabilidade.cjs <pasta>` com o preview na porta 5191.

@@ -76,13 +76,7 @@ export function Ajustes({ onClose }: { onClose: () => void }) {
           </div>
           <div className="small" style={{ margin: '6px 4px 0' }}>Automático: segue o modo escuro do iPhone.</div>
         </div>
-        <div className="field"><span>Tamanho das letras</span>
-          <div className="seg">
-            {[[1, 'Normal'], [1.15, 'Grande'], [1.3, 'Maior']].map(([v, n]) => (
-              <button key={v} className={(s.textSize || 1) === v ? 'on' : ''} onClick={() => setS({ textSize: v as number })}>{n}</button>
-            ))}
-          </div>
-        </div>
+
       </div>
 
       <div className="grp">Avisos</div>

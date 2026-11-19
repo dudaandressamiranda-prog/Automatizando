@@ -30,9 +30,6 @@ function useTema(tema: 'auto' | 'claro' | 'noite') {
 export function App() {
   const data = useData();
   useTema(data.settings.theme);
-  useEffect(() => {
-    (document.documentElement.style as any).zoom = String(data.settings.textSize || 1);
-  }, [data.settings.textSize]);
   const [tab, setTab] = useState<Tab>('hoje');
   const [foco, setFoco] = useState<string | null>(null);
   const [ajustes, setAjustes] = useState(false);
