@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Maré — proposta visual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,500..700,100&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5EDE1; --paper:#FFF9F0; --paper2:#FBF2E4; --line:#E7D9C4;
+  --ink:#1E3747; --soft:#5E7484; --ocean:#2D5B78; --ocean2:#244B64;
+  --sea:#9CC2D1; --foam:#E1EEF0; --sand:#EAD6B8;
+  --lamp:#D9963F; --lampbg:#FBEBD3; --coral:#C96A5C; --coralbg:#F8E1DB;
+  --kelp:#5E9277; --kelpbg:#E3EFE6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#D9CCB8;font-family:"Nunito",system-ui,sans-serif;color:var(--ink);padding:40px 36px 48px}
+.board{display:flex;gap:34px;align-items:flex-start;justify-content:center}
+.cap{font:600 15px "Nunito";color:#4b5a63;text-align:center;margin-top:14px;letter-spacing:.02em}
+h1,h2,h3,.serif{font-family:"Fraunces",Georgia,serif;font-variation-settings:"SOFT" 100;font-weight:600}
+.phone{width:390px;height:844px;border-radius:46px;background:var(--bg);overflow:hidden;position:relative;
+  box-shadow:0 0 0 10px #1b2a33,0 30px 60px -20px rgba(20,35,45,.55)}
+.status{height:44px;display:flex;justify-content:space-between;align-items:center;padding:0 28px;font:700 15px system-ui}
+.scroll{padding:6px 20px 0}
+.nav{position:absolute;left:0;right:0;bottom:0;height:86px;background:var(--paper);border-top:1px solid var(--line);
+  display:flex;justify-content:space-around;padding-top:10px}
+.nav div{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12.5px;color:var(--soft);width:76px}
+.nav div.on{color:var(--ocean);font-weight:700}
+.nav svg{width:26px;height:26px}
+.nav .on .pill{background:var(--foam);border-radius:14px;padding:3px 16px}
+.small{font-size:14px;color:var(--soft)}
+.card{background:var(--paper);border-radius:22px;padding:16px;border:1px solid var(--line)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;border-radius:99px;padding:4px 10px}
+.btn{border:0;border-radius:16px;font:700 17px "Nunito";padding:14px 18px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+/* knit / wave texture */
+.waves{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='14'%3E%3Cpath d='M0 7 Q15 0 30 7 T60 7' fill='none' stroke='%23FFFFFF' stroke-opacity='.12' stroke-width='2'/%3E%3C/svg%3E")}
+/* ===== tela 1 */
+.hello{display:flex;align-items:center;justify-content:space-between;margin:8px 0 16px}
+.hello h1{font-size:30px;line-height:1.1}
+.now{background:var(--ocean);color:#FFF6E9;border-radius:26px;padding:18px 18px 18px;position:relative;overflow:hidden}
+.now .lbl{font-size:13px;letter-spacing:.14em;font-weight:700;color:#BFDCE6}
+.now h2{font-size:27px;margin:6px 0 4px;color:#FFF6E9}
+.ring{position:absolute;right:16px;top:16px;width:86px;height:86px}
+.timeline{margin-top:6px}
+.t{display:flex;gap:12px;align-items:center;padding:11px 4px;border-bottom:1px dashed var(--line)}
+.t:last-child{border:0}
+.t .h{width:46px;font-weight:700;font-size:15px;color:var(--soft)}
+.t .tx{flex:1;font-size:17px}
+.t.done .tx{color:#9AA7AF;text-decoration:line-through;text-decoration-color:#C8CED2}
+.ck{width:30px;height:30px;border-radius:50%;border:2.5px solid var(--sea);display:grid;place-items:center}
+.done .ck{background:var(--kelp);border-color:var(--kelp)}
+.cur{background:var(--foam);border-radius:14px;border:0!important;margin:2px -6px;padding:11px 10px}
+/* ===== tela 2 (noite) */
+.night{--bg:#13283A;--paper:#1B3449;--line:#2A465D;--ink:#F3E8D6;--soft:#9FB4C1;--foam:#24435A;background:var(--bg);color:var(--ink)}
+.night .status{color:#F3E8D6}
+.depth{position:relative;height:64px;margin:14px 0 6px}
+.stepbig{font-size:38px;line-height:1.05;margin:20px 0 6px}
+.sub{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:16px;background:var(--paper);margin-bottom:8px;font-size:17px}
+.sub .ck{border-color:#5F8AA3}
+.sub.done .ck{background:var(--kelp);border-color:var(--kelp)}
+.sub.done span{color:#7F96A4;text-decoration:line-through}
+.timer{display:flex;align-items:center;gap:16px;margin:16px 0 18px;background:var(--paper);border-radius:22px;padding:14px 16px}
+/* ===== tela 3 */
+.sum{background:var(--paper);border-radius:22px;padding:16px;border:1px solid var(--line);margin-bottom:16px}
+.bar{height:12px;background:var(--foam);border-radius:99px;overflow:hidden;margin:10px 0 6px}
+.bar i{display:block;height:100%;width:57%;background:linear-gradient(90deg,var(--sea),var(--ocean));border-radius:99px}
+.grp{font-size:13px;letter-spacing:.12em;font-weight:700;color:var(--soft);margin:16px 4px 8px}
+.bill{background:var(--paper);border-radius:20px;border:1px solid var(--line);padding:14px;margin-bottom:10px}
+.bill .row{display:flex;justify-content:space-between;align-items:flex-start}
+.bill .nm{font-size:18px;font-weight:700}
+.bill .val{white-space:nowrap;font-family:"Fraunces";font-weight:600;font-size:20px}
+.bill .acts{display:flex;gap:8px;margin-top:12px}
+.bill .acts .btn{padding:10px 14px;font-size:15px;border-radius:13px}
+.ico{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;flex:none}
+/* ===== tela 4 */
+.week{display:flex;gap:6px;margin:6px 0 14px}
+.d{flex:1;background:var(--paper);border:1px solid var(--line);border-radius:16px;text-align:center;padding:8px 0 9px}
+.d b{display:block;font-family:"Fraunces";font-size:20px;font-weight:600}
+.d small{font-size:12px;color:var(--soft);font-weight:700}
+.d.on{background:var(--ocean);border-color:var(--ocean);color:#FFF6E9}
+.d.on small{color:#BFDCE6}
+.dots{display:flex;gap:3px;justify-content:center;margin-top:5px;height:6px}
+.dots i{width:6px;height:6px;border-radius:50%}
+.ag{display:flex;gap:12px;align-items:stretch;margin-bottom:9px}
+.ag .h{width:44px;font-weight:700;color:var(--soft);font-size:14px;padding-top:14px}
+.ag .c{flex:1;border-radius:16px;padding:11px 13px;border-left:5px solid}
+.ag .c b{display:block;font-size:16.5px}
+.ag .c span{font-size:13.5px;color:var(--soft)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--soft);margin:2px 2px 12px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+/* paleta */
+.pal{display:flex;gap:10px;justify-content:center;margin-top:30px;align-items:center;flex-wrap:wrap}
+.sw{display:flex;align-items:center;gap:8px;background:#F7F0E5;border-radius:99px;padding:6px 14px 6px 6px;font-size:13.5px;font-weight:700;color:#3d4c55}
+.sw i{width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.brand{display:flex;align-items:center;gap:14px;justify-content:center;margin-bottom:26px}
+.brand h1{font-size:44px;color:#1E3747}
+.brand p{font-size:17px;color:#4b5a63}
+</style>
+</head>
+<body>
+
+<!-- jubarte reutilizável (de lado, virada para a direita) -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="whale" viewBox="0 0 220 110">
+      <!-- nadadeira peitoral de trás -->
+      <path d="M128 70 C122 82 112 92 98 98 C106 90 112 80 116 70 Z" fill="#244B64"/>
+      <!-- cauda (dois lobos, com a ponta recortada) -->
+      <path d="M48 51 C36 42 24 30 16 17 C14 14 10 15 11 19 C14 30 20 38 30 45 C20 50 13 58 9 69 C8 72 11 73 13 70 C22 63 34 60 48 60 Z" fill="#244B64"/>
+      <!-- corpo -->
+      <path d="M42 50 C70 36 104 25 146 28 C176 30 200 40 210 52 C213 57 209 64 200 67
+               C176 76 144 81 112 77 C84 73 62 64 42 60 Z" fill="#2D5B78"/>
+      <!-- barriga clara com sulcos -->
+      <path d="M203 64 C182 74 150 80 118 77 C134 82 166 84 188 76 C196 73 201 69 203 64 Z" fill="#E6EEF0"/>
+      <g stroke="#B9CDD5" stroke-width="1.3" fill="none" stroke-linecap="round">
+        <path d="M136 79 C156 81 176 78 192 72"/><path d="M146 81.5 C164 82.5 180 79 194 74.5"/>
+      </g>
+      <!-- barbatana dorsal -->
+      <path d="M86 36 C90 29 96 26 101 27 C97 30 95 33 95 34 Z" fill="#244B64"/>
+      <!-- nadadeira peitoral longa (marca da jubarte) -->
+      <path d="M146 69 C152 65 162 64 166 68 C158 83 138 96 110 104 C105 105 104 102 107 100 C126 90 140 80 146 69 Z" fill="#E6EEF0"/>
+      <path d="M156 72 C148 82 138 89 126 95" stroke="#B9CDD5" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+      <!-- tubérculos da cabeça -->
+      <g fill="#244B64"><circle cx="176" cy="39" r="2"/><circle cx="185" cy="42" r="2"/><circle cx="193" cy="46" r="1.8"/><circle cx="200" cy="50" r="1.6"/></g>
+      <!-- boca -->
+      <path d="M209 59 C196 63 186 64 176 63" stroke="#244B64" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+      <!-- olho fechado sorrindo -->
+      <path d="M168 53 q4 3.5 8 0" stroke="#FFF6E9" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <!-- bochecha -->
+      <ellipse cx="182" cy="58" rx="5" ry="3" fill="#E6A08F" opacity=".6"/>
+    </symbol>
+    <symbol id="tail" viewBox="0 0 40 40">
+      <path d="M20 36 C20 26 20 20 18 16 C12 16 6 12 3 6 C9 7 15 9 20 13 C25 9 31 7 37 6 C34 12 28 16 22 16 C20 20 20 26 20 36Z" fill="currentColor"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="brand">
+  <svg width="120" height="60"><use href="#whale"/></svg>
+  <div><h1>Maré</h1><p>Sua rotina no ritmo do mar · proposta visual (nome provisório)</p></div>
+</div>
+
+<div class="board">
+
+<!-- ================= TELA 1: HOJE ================= -->
+<div>
+<div class="phone">
+  <div class="status"><span>7:48</span><span>●●● 100%</span></div>
+  <div class="scroll">
+    <div class="hello">
+      <div><div class="small">Quinta-feira, 19 de novembro</div><h1>Bom dia!</h1></div>
+      <svg width="92" height="46"><use href="#whale"/></svg>
+    </div>
+
+    <div class="now waves">
+      <div class="lbl">AGORA</div>
+      <h2>Tomar café<br>da manhã</h2>
+      <div style="color:#D6E7EC;font-size:15px">7:30 até 8:00</div>
+      <svg class="ring" viewBox="0 0 86 86">
+        <circle cx="43" cy="43" r="36" fill="none" stroke="#3E7393" stroke-width="9"/>
+        <circle cx="43" cy="43" r="36" fill="none" stroke="#F2C27E" stroke-width="9" stroke-linecap="round"
+          stroke-dasharray="226" stroke-dashoffset="135" transform="rotate(-90 43 43)"/>
+        <text x="43" y="42" text-anchor="middle" fill="#FFF6E9" font-family="Fraunces" font-weight="600" font-size="22">12</text>
+        <text x="43" y="58" text-anchor="middle" fill="#BFDCE6" font-size="11" font-weight="700">min</text>
+      </svg>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="btn" style="flex:1;background:#FFF6E9;color:var(--ocean)">✓ Feito</button>
+        <button class="btn" style="background:#3E7393;color:#FFF6E9">Passo a passo</button>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px;margin:12px 4px 4px;font-size:15px;color:var(--soft)">
+      <b style="letter-spacing:.12em;font-size:12.5px">DEPOIS</b> 8:00 · Escovar os dentes
+    </div>
+
+    <div class="card" style="margin-top:12px;padding:6px 14px">
+      <div class="t done"><span class="h">7:00</span><span class="tx">Acordar e beber água</span><span class="ck"><svg width="16" height="16" style="color:#fff"><use href="#tail"/></svg></span></div>
+      <div class="t done"><span class="h">7:10</span><span class="tx">Tomar banho</span><span class="ck"><svg width="16" height="16" style="color:#fff"><use href="#tail"/></svg></span></div>
+      <div class="t cur"><span class="h" style="color:var(--ocean)">7:30</span><span class="tx"><b>Tomar café da manhã</b></span><span class="ck"></span></div>
+      <div class="t"><span class="h">8:00</span><span class="tx">Escovar os dentes</span><span class="ck"></span></div>
+      <div class="t"><span class="h">8:15</span><span class="tx">Separar bolsa e chaves</span><span class="ck"></span></div>
+    </div>
+
+    <div class="card" style="margin-top:12px;display:flex;gap:12px;align-items:center;background:var(--lampbg);border-color:#F1D7AF">
+      <div class="ico" style="background:#F6D9AE">💡</div>
+      <div style="flex:1"><b style="font-size:16px">Conta de luz vence em 2 dias</b><div class="small">R$ 142,30 · sábado, 21/11</div></div>
+    </div>
+  </div>
+  <div class="nav">
+    <div class="on"><span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></svg></span>Hoje</div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/></svg>Contas</div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>Demandas</div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Semana</div>
+  </div>
+</div>
+<div class="cap">1 · Hoje — o que fazer agora e o que vem depois</div>
+</div>
+
+<!-- ================= TELA 2: PASSO A PASSO (NOITE) ================= -->
+<div>
+<div class="phone night">
+  <div class="status"><span>7:52</span><span>●●● 100%</span></div>
+  <div class="scroll">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+      <span style="font-size:15px;color:var(--soft)">← Voltar</span>
+      <span class="chip" style="background:#24435A;color:#CFE3EA">Rotina da manhã</span>
+    </div>
+
+    <!-- profundidade: a baleia nada conforme avança -->
+    <div class="depth">
+      <svg width="350" height="64" viewBox="0 0 350 64">
+        <path d="M6 38 Q46 28 88 38 T172 38 T256 38 T344 38" fill="none" stroke="#2E5068" stroke-width="6" stroke-linecap="round"/>
+        <path d="M6 38 Q46 28 88 38 T172 38" fill="none" stroke="#9CC2D1" stroke-width="6" stroke-linecap="round"/>
+        <g fill="#9CC2D1"><circle cx="6" cy="38" r="7"/><circle cx="88" cy="38" r="7"/></g>
+        <g fill="#2E5068"><circle cx="256" cy="38" r="7"/><circle cx="344" cy="38" r="7"/></g>
+        <circle cx="300" cy="38" r="7" fill="#2E5068"/>
+        <circle cx="214" cy="38" r="7" fill="#2E5068"/>
+        <svg x="138" y="6" width="80" height="40"><use href="#whale"/></svg>
+        <g fill="#9CC2D1" opacity=".5"><circle cx="226" cy="12" r="2.5"/><circle cx="232" cy="5" r="1.8"/></g>
+      </svg>
+    </div>
+    <div style="font-size:15px;color:var(--soft);font-weight:700">Passo 3 de 6</div>
+    <h1 class="stepbig">Tomar café<br>da manhã</h1>
+
+    <div class="timer">
+      <svg width="74" height="74" viewBox="0 0 86 86">
+        <circle cx="43" cy="43" r="36" fill="none" stroke="#2E5068" stroke-width="10"/>
+        <circle cx="43" cy="43" r="36" fill="none" stroke="#F0B86A" stroke-width="10" stroke-linecap="round"
+          stroke-dasharray="226" stroke-dashoffset="135" transform="rotate(-90 43 43)"/>
+      </svg>
+      <div><div class="serif" style="font-size:30px">12 min</div><div style="color:var(--soft);font-size:15px">sem pressa · termina 8:00</div></div>
+    </div>
+
+    <div class="sub done"><span class="ck"><svg width="16" height="16" style="color:#fff"><use href="#tail"/></svg></span><span>Pegar o pão e o requeijão</span></div>
+    <div class="sub done"><span class="ck"><svg width="16" height="16" style="color:#fff"><use href="#tail"/></svg></span><span>Fazer o café</span></div>
+    <div class="sub"><span class="ck"></span><span>Comer sentada à mesa</span></div>
+    <div class="sub"><span class="ck"></span><span>Lavar a xícara</span></div>
+
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn" style="background:#24435A;color:#CFE3EA">Pausar</button>
+      <button class="btn" style="flex:1;background:#F0B86A;color:#13283A">✓ Terminei</button>
+    </div>
+    <div style="text-align:center;margin-top:14px;color:var(--soft);font-size:15px">Depois vem: <b style="color:#F3E8D6">Escovar os dentes</b></div>
+  </div>
+</div>
+<div class="cap">2 · Passo a passo — uma coisa de cada vez (modo noite)</div>
+</div>
+
+<!-- ================= TELA 3: CONTAS ================= -->
+<div>
+<div class="phone">
+  <div class="status"><span>9:10</span><span>●●● 100%</span></div>
+  <div class="scroll">
+    <h1 style="font-size:30px;margin:8px 0 14px">Contas de novembro</h1>
+    <div class="sum">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <b style="font-size:17px">4 de 7 pagas</b><span class="small">R$ 812 de R$ 1.430</span>
+      </div>
+      <div class="bar"><i></i></div>
+      <div class="small">Faltam R$ 618 · você está indo bem 🐋</div>
+    </div>
+
+    <div class="grp">PRECISA DE ATENÇÃO</div>
+    <div class="bill" style="background:var(--coralbg);border-color:#EDC4BB">
+      <div class="row">
+        <div style="display:flex;gap:12px"><div class="ico" style="background:#F1CDC4">💳</div>
+          <div><div class="nm">Cartão Nubank</div><div class="chip" style="background:#F1CDC4;color:#8E4337;margin-top:4px">Venceu ontem</div><div class="small" style="margin-top:4px">Ainda dá para pagar hoje</div></div></div>
+        <div class="val">R$ 386</div>
+      </div>
+      <div class="acts"><button class="btn" style="background:var(--ocean);color:#FFF6E9;flex:1">✓ Paguei</button><button class="btn" style="background:#fff;color:var(--ocean);border:1px solid var(--line)">Copiar código</button></div>
+    </div>
+
+    <div class="grp">VENCE LOGO</div>
+    <div class="bill">
+      <div class="row">
+        <div style="display:flex;gap:12px"><div class="ico" style="background:var(--lampbg)">💡</div>
+          <div><div class="nm">Conta de luz</div><div class="chip" style="background:var(--lampbg);color:#8A5A1C;margin-top:4px">Em 2 dias · sáb, 21/11</div></div></div>
+        <div class="val">R$ 142,30</div>
+      </div>
+      <div class="acts"><button class="btn" style="background:var(--ocean);color:#FFF6E9;flex:1">✓ Paguei</button><button class="btn" style="background:#fff;color:var(--ocean);border:1px solid var(--line)">Copiar Pix</button></div>
+    </div>
+    <div class="bill">
+      <div class="row">
+        <div style="display:flex;gap:12px"><div class="ico" style="background:var(--foam)">📶</div>
+          <div><div class="nm">Internet</div><div class="small" style="margin-top:4px">Quarta, 25/11 · todo mês</div></div></div>
+        <div class="val">R$ 89,90</div>
+      </div>
+    </div>
+
+    <div class="grp">PAGAS ✓</div>
+    <div class="bill" style="display:flex;justify-content:space-between;align-items:center;background:var(--kelpbg);border-color:#CFE2D5">
+      <span style="font-size:16px"><b>Aluguel</b>, <b>Água</b>, <b>Celular</b> e mais 1</span>
+      <svg width="26" height="26" style="color:var(--kelp)"><use href="#tail"/></svg>
+    </div>
+  </div>
+  <div class="nav">
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></svg>Hoje</div>
+    <div class="on"><span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/></svg></span>Contas</div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>Demandas</div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Semana</div>
+  </div>
+</div>
+<div class="cap">3 · Contas — o que vence, o que já foi pago</div>
+</div>
+
+<!-- ================= TELA 4: SEMANA ================= -->
+<div>
+<div class="phone">
+  <div class="status"><span>20:30</span><span>●●● 100%</span></div>
+  <div class="scroll">
+    <h1 style="font-size:30px;margin:8px 0 12px">Sua semana</h1>
+    <div class="week">
+      <div class="d"><small>SEG</small><b>16</b><div class="dots"><i style="background:var(--sea)"></i></div></div>
+      <div class="d"><small>TER</small><b>17</b><div class="dots"><i style="background:var(--sea)"></i><i style="background:var(--kelp)"></i></div></div>
+      <div class="d"><small>QUA</small><b>18</b><div class="dots"><i style="background:var(--sea)"></i></div></div>
+      <div class="d on"><small>QUI</small><b>19</b><div class="dots"><i style="background:#FFF6E9"></i><i style="background:#F2C27E"></i><i style="background:#F0A497"></i></div></div>
+      <div class="d"><small>SEX</small><b>20</b><div class="dots"><i style="background:var(--sea)"></i><i style="background:var(--kelp)"></i></div></div>
+      <div class="d"><small>SÁB</small><b>21</b><div class="dots"><i style="background:var(--lamp)"></i></div></div>
+      <div class="d"><small>DOM</small><b>22</b><div class="dots"></div></div>
+    </div>
+    <div class="legend"><span><i style="background:var(--sea)"></i>Rotina</span><span><i style="background:var(--lamp)"></i>Conta</span><span><i style="background:var(--coral)"></i>Compromisso</span><span><i style="background:var(--kelp)"></i>Demanda</span></div>
+
+    <div class="ag"><span class="h">7:00</span><div class="c" style="background:var(--foam);border-color:var(--sea)"><b>Rotina da manhã</b><span>6 passos · até 8:30</span></div></div>
+    <div class="ag"><span class="h">10:00</span><div class="c" style="background:var(--coralbg);border-color:var(--coral)"><b>Consulta com a dentista</b><span>Sair de casa às 9:30 · levar documento</span></div></div>
+    <div class="ag"><span class="h">14:00</span><div class="c" style="background:var(--kelpbg);border-color:var(--kelp)"><b>Mandar e-mail para o RH</b><span>Demanda · importante</span></div></div>
+    <div class="ag"><span class="h">dia</span><div class="c" style="background:var(--lampbg);border-color:var(--lamp)"><b>Pagar cartão Nubank</b><span>R$ 386 · venceu ontem</span></div></div>
+    <div class="ag"><span class="h">21:00</span><div class="c" style="background:var(--foam);border-color:var(--sea)"><b>Rotina da noite</b><span>5 passos · dormir às 22:30</span></div></div>
+
+    <div class="card" style="margin-top:12px;display:flex;gap:12px;align-items:center">
+      <svg width="64" height="32"><use href="#whale"/></svg>
+      <div style="flex:1;font-size:15px"><b>Amanhã é mais leve:</b> só a rotina e 1 demanda.</div>
+    </div>
+  </div>
+  <div class="nav">
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></svg>Hoje</div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/></svg>Contas</div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>Demandas</div>
+    <div class="on"><span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></span>Semana</div>
+  </div>
+</div>
+<div class="cap">4 · Semana — tudo que vem pela frente, sem surpresa</div>
+</div>
+
+</div>
+
+<div class="pal">
+  <span class="sw"><i style="background:#2D5B78"></i>Oceano</span>
+  <span class="sw"><i style="background:#9CC2D1"></i>Mar raso</span>
+  <span class="sw"><i style="background:#F5EDE1"></i>Manta creme</span>
+  <span class="sw"><i style="background:#D9963F"></i>Luz de abajur</span>
+  <span class="sw"><i style="background:#5E9277"></i>Alga</span>
+  <span class="sw"><i style="background:#C96A5C"></i>Coral</span>
+  <span class="sw"><i style="background:#13283A"></i>Noite no mar</span>
+</div>
+</body>
+</html>
