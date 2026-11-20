@@ -1,6 +1,6 @@
 # App Mari — resumo
 
-Última atualização: 19/11/2026
+Última atualização: 20/11/2026
 
 ## O que é
 Um app para a Mari organizar a rotina, as contas e as demandas. A Mari é TEA e tem disfunção executiva, então o app foi pensado para mostrar **uma coisa de cada vez**, sem pressa e sem cobrança. O tema junta duas coisas de que ela gosta: **baleias jubarte** e o estilo **aconchegante (cozy)**.
@@ -17,7 +17,11 @@ Um app para a Mari organizar a rotina, as contas e as demandas. A Mari é TEA e 
   - **clara**: passo a passo e telas vazias;
   - **dourada**: contas e comemorações ("Tudo pago!");
   - **de cachecol**: noite e "Dia concluído".
-- **Sem login:** os dados ficam só no celular dela. Por isso o app tem o botão "Cópia de segurança" nos Ajustes.
+- **Login (decidido em 20/11):** a Mari contou que o app do celular e o do computador não conversam, e ela tinha que fazer tudo de novo. Por isso o app vai ter **login**, e os dados vão ficar num servidor. O que ela fizer num aparelho vai aparecer no outro em segundos.
+  - A sugestão é entrar com **um código que chega no e-mail**, sem senha. "Entrar com Google" pode vir depois.
+  - **Falta confirmar:** qual dos dois vocês preferem e se a Mari tem conta Google.
+  - No primeiro login, o app vai perguntar qual versão manter (a do celular ou a do computador) e vai guardar uma cópia da outra.
+  - Até o login ficar pronto, os dados continuam só em cada aparelho. A "Cópia de segurança" continua valendo.
 - **Celular dela:** iPhone.
 - **Letra:** tamanho padrão. A opção "tamanho das letras" foi testada e tirada a pedido.
 
@@ -33,7 +37,7 @@ Um app para a Mari organizar a rotina, as contas e as demandas. A Mari é TEA e 
 
 ## Próximos passos (nesta ordem)
 1. **Apple Watch + reforço** (grátis): um segundo aviso, 10 minutos depois, nos lembretes do Calendário, e as instruções para as notificações aparecerem no relógio.
-2. **Servidor + notificações que repetem até ela marcar "Feito"** (aprovado). O servidor fica numa **organização grátis nova no Supabase**, separada do Lobinha.
+2. **Servidor + login + celular e computador iguais + notificações que repetem até ela marcar "Feito"** (aprovado). O servidor fica numa **organização grátis nova no Supabase**, separada do Lobinha.
 3. **WhatsApp:** lembrete que repete até ela tocar em "✅ feito".
    - Ela não tem chip extra e não quer pagar, então a ideia é usar o mesmo serviço grátis do bot da loja (aquele que lembra de contar a vacina às 17:50).
    - **Falta:** um print de uma mensagem desse bot, para saber qual é o serviço.

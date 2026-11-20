@@ -75,6 +75,21 @@ Playwright já vem instalado no ambiente (require('playwright')).
 - Avisos hoje (`src/avisos.ts`): notificação só com o app aberto/recente (confere a cada 20 s) +
   arquivo .ics para o Calendário do iPhone (RRULE semanal/mensal, VALARM), que toca com o app fechado.
 
+## DECISÃO 20/11: LOGIN E SINCRONIZAÇÃO ENTRE APARELHOS
+Problema relatado pela Mari: o app do celular e o do computador não conversam (cada aparelho tem seus
+próprios dados no localStorage) e ela tem que fazer tudo de novo. Decisão da Andressa: **usar login**
+(a decisão "sem login" do começo caiu). Fazer JUNTO com o passo 2 (o mesmo Supabase vira a "memória" do app).
+- Login sugerido: **código por e-mail (OTP do Supabase Auth, sem senha)**, que não exige configurar nada no
+  Google Cloud; "Entrar com Google" pode vir depois. CONFIRMAR com ela qual prefere e se a Mari tem conta Google.
+- Tabelas com RLS por usuário (rotinas, passos, contas, pagamentos, demandas, feitos do dia); app continua
+  funcionando offline (cache local) e sincroniza ao voltar a internet; atualização em tempo real (Realtime)
+  para o outro aparelho ver em segundos.
+- PRIMEIRO LOGIN: ela já tem dados diferentes em cada aparelho. Perguntar qual versão manter (a do aparelho
+  que ela mais usa, provavelmente o celular); antes, guardar automaticamente uma cópia de segurança da outra
+  (download/arquivo local) para nada se perder. NÃO mesclar sozinho (as rotinas de exemplo têm ids diferentes
+  em cada aparelho e duplicariam).
+- Com login, a "Cópia de segurança" vira opcional (manter o botão mesmo assim).
+
 ## PRÓXIMOS PASSOS (combinados com a Andressa em 19/11 — seguir nesta ordem)
 Pedido da Mari: ela pula notificações quando está ocupada e esquece; quer Apple Watch e WhatsApp, com o
 lembrete repetindo até ela fazer.
@@ -82,9 +97,9 @@ lembrete repetindo até ela fazer.
    de reforço (ex.: TRIGGER:PT10M) em passos e demandas com hora (compromisso já tem -PT60M; pôr também PT0M).
    Na janela "Calendário do iPhone" (Ajustes.tsx), instruções: app Watch → Notificações → Calendário (e Mari)
    → "Espelhar o iPhone". Notificações chegam no Watch quando o iPhone está bloqueado.
-2. **Servidor + notificações que repetem até "Feito" (APROVADO).** Supabase em ORGANIZAÇÃO GRÁTIS NOVA
-   (decisão dela; não usar a org paga "PetLife"/Lobinha, que custaria ~US$ 10/mês). Sem login: cada aparelho
-   gera uma chave secreta; o app sincroniza demandas/contas/passos com o servidor. Web Push (VAPID) para iPhone
+2. **Servidor + LOGIN + sincronização + notificações que repetem até "Feito" (APROVADO).** Supabase em
+   ORGANIZAÇÃO GRÁTIS NOVA (decisão dela; não usar a org paga "PetLife"/Lobinha, que custaria ~US$ 10/mês).
+   Login (ver DECISÃO 20/11 acima); o app sincroniza tudo com o servidor. Web Push (VAPID) para iPhone
    com app instalado (iOS 16.4+), cron a cada minuto, repetir a cada X min até marcar Feito; horário de silêncio.
    Também aparece no Watch.
 3. **WhatsApp.** Ela NÃO tem chip extra e não quer pagar. No "Controle Centro" (loja) existe um bot que manda
