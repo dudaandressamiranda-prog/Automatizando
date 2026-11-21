@@ -1,25 +1,28 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Mari</title>
-  <meta name="description" content="Rotina, contas e demandas da Mari, no ritmo do mar." />
-  <meta name="theme-color" content="#F5EDE1" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="Mari" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <link rel="manifest" href="./manifest.webmanifest" />
-  <link rel="icon" type="image/png" href="./icons/icon-192.png" />
-  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,600,100&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet" />
-  <script type="module" crossorigin src="./assets/index-kCoKJm4m.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-PBL6KhBX.css">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<meta http-equiv="refresh" content="0; url=https://rotina-da-mari.vercel.app/" />
+<title>Mari mudou de endereço</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #F5EDE1; color: #1F3A4D;
+         font: 18px/1.5 system-ui, -apple-system, sans-serif; text-align: center; padding: 24px; box-sizing: border-box; }
+  a { display: inline-block; margin-top: 16px; background: #2D5B78; color: #fff; padding: 14px 22px; border-radius: 14px;
+      text-decoration: none; font-weight: 700; }
+</style>
+<script>
+  // O app antigo guardava uma cópia para abrir sem internet: apaga e vai para o endereço novo.
+  if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+  if (window.caches) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {});
+  location.replace('https://rotina-da-mari.vercel.app/');
+</script>
 </head>
 <body>
-  <div id="root"></div>
+  <div>
+    <p>🐋 O app da Mari mudou de endereço.</p>
+    <a href="https://rotina-da-mari.vercel.app/">Abrir o app novo</a>
+  </div>
 </body>
 </html>
