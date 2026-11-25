@@ -1,7 +1,7 @@
 # Controle de Horas Extras — contexto do projeto (leia antes de tudo)
 
-App pessoal da **Andressa** (duda.andressa.miranda@gmail.com) para registrar as **horas extras**
-dela num calendário e exportar um **PDF** para enviar à contabilidade. Substitui a planilha de Excel
+App pessoal da **Andressa** para registrar as **horas extras** dela num calendário e exportar um
+**PDF** para enviar à contabilidade. Substitui a planilha de Excel
 que ela refazia todo mês (tinha que olhar o calendário, achar fins de semana e feriados e apagar
 linhas). Ela mora em **Contagem - MG**. Fala pt-BR, quer explicações simples e passo a passo, usa
 muito o celular.
